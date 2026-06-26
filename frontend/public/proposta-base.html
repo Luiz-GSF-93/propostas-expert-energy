@@ -3189,41 +3189,38 @@
       }
     }
 
-    function saveDraft(){
-      try{
-        const data = collectFormData();
-        localStorage.setItem("expert_energy_proposta_html_draft", JSON.stringify(data));
+  async function saveDraft(){
+  try{
+    const data = collectFormData();
 
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        const code = (document.getElementById("resp_codigo")?.value || "rascunho").replace(/[^a-zA-Z0-9_-]+/g, "_");
-        link.href = url;
-        link.download = `proposta_expert_energy_${code}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
-      }catch(error){
-        showToast("Não foi possível arquivar o rascunho.", "error");
-      }
+    localStorage.setItem("expert_energy_proposta_html_draft", JSON.stringify(data));
+
+    const response = await fetch("/api/proposals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        client_name: data.fields?.cliente_empresa || "Sem nome",
+        title: data.fields?.obj_principal || "Proposta sem título",
+        status: "draft",
+        editable_json: data
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Falha ao salvar no backend");
     }
 
-    function restoreDraft(){
-      try{
-        const raw = localStorage.getItem("expert_energy_proposta_html_draft");
-        if(!raw){
-          showToast("Nenhum rascunho salvo no navegador.", "error");
-          return;
-        }
-        const data = JSON.parse(raw);
-        restoreFormData(data);
-        showToast("Rascunho restaurado com sucesso.", "success");
-      }catch(error){
-        showToast("Não foi possível restaurar o rascunho salvo.", "error");
-      }
-    }
+    const result = await response.json();
+
+    showToast("Proposta salva com sucesso.", "success");
+    console.log("Proposta salva:", result);
+  } catch(error){
+    console.error(error);
+    showToast("Rascunho salvo localmente, mas falhou no backend.", "error");
+  }
+}
 
     function getFieldValue(id){
       return document.getElementById(id)?.value?.trim() || "";
