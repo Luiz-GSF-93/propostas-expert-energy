@@ -993,63 +993,34 @@ section,
   </style>
 </head>
 <body>
-  <div class="action-bar editor-only">
-    <div class="action-row">
-      <div class="action-left">
-        <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
-        <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
-        <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
-        <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
-        <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
-      </div>
-
-      <div class="action-right">
-        <div class="action-status">Preencha os campos, salve a proposta e gere a versão cliente.</div>
-      </div>
+<div class="action-bar editor-only">
+  <div class="action-row">
+    <div class="action-left">
+      <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
+      <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
+      <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
+      <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
+      <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
+    </div>
+    <div class="action-right">
+      <div class="action-status">Preencha os campos, salve a proposta e gere a versão cliente.</div>
     </div>
   </div>
+</div>
 
-  <div class="toast" id="toast"></div>
+<div class="toast" id="toast"></div>
 
-  <section class="link-output-panel editor-only" id="clientLinkPanel">
-    <div class="link-output-copy">
-      <div class="link-output-title">Versão cliente gerada para visualização local</div>
-      <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
-      <div class="link-output-row">
-        <input type="text" id="clientViewLink" class="link-output-input" readonly value="">
-        <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
-        <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
-      </div>
+<section class="link-output-panel editor-only" id="clientLinkPanel">
+  <div class="link-output-copy">
+    <div class="link-output-title">Versão cliente gerada para visualização local</div>
+    <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
+    <div class="link-output-row">
+      <input type="text" id="clientViewLink" class="link-output-input" readonly value="" />
+      <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
+      <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
     </div>
-  </section>
-
-  <header class="editor-only">
-    <div class="brand-hero">
-      <div class="brand-signature">
-        <span class="brand-signature-name">Expert Energy Performance em Energia</span>
-      </div>
-      <div class="brand-copy">
-        <div class="brand-kicker">Identidade comercial | proposta premium interativa</div>
-        <h1>Modelo Interativo de Proposta Comercial Especializada</h1>
-        <div class="site-link">EXPERT ENERGY PERFORMANCE EM ENERGIA • www.expertenergy.com.br</div>
-        <div class="doc-subtitle">Ambiente profissional para montagem de propostas técnicas e comerciais, com narrativa executiva, composição financeira automática, condições contratuais dinâmicas e apresentação alinhada à identidade da marca.</div>
-      </div>
-    </div>
-  </header>
-
-  <header class="editor-only">
-    <div class="brand-hero">
-      <div class="brand-signature">
-        <span class="brand-signature-name">Expert Energy Performance em Energia</span>
-      </div>
-      <div class="brand-copy">
-        <div class="brand-kicker">Identidade comercial | proposta premium interativa</div>
-        <h1>Modelo Interativo de Proposta Comercial Especializada</h1>
-        <div class="site-link">EXPERT ENERGY PERFORMANCE EM ENERGIA • www.expertenergy.com.br</div>
-        <div class="doc-subtitle">Ambiente profissional para montagem de propostas técnicas e comerciais, com narrativa executiva, composição financeira automática, condições contratuais dinâmicas e apresentação alinhada à identidade da marca.</div>
-      </div>
-    </div>
-  </header>
+  </div>
+</section>
 
   <section class="summary-note editor-only">
     <p><strong>Como usar este modelo:</strong> selecione um ou mais serviços, contextualize a necessidade do cliente, complete as linhas comerciais e revise a minuta contratual. Ao final, utilize <strong>“Gerar versão cliente / PDF”</strong> para obter uma visualização somente leitura adequada para impressão ou envio em PDF.</p>
