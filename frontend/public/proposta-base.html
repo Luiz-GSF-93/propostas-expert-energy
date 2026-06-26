@@ -3728,100 +3728,72 @@ section,
       showToast("Modo edição ativo nesta página.", "success");
     }
 
-    const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
+const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
 const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
-const API_BASE_URL = "https://cuddly-parakeet-974r47g7v9r4h97xp-4000.app.github.dev";
-
-function getSupabaseAccessToken() {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-
-        try {
-          const parsed = JSON.parse(raw);
-
-          if (parsed?.access_token) return parsed.access_token;
-          if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
-
-          if (Array.isArray(parsed)) {
-            for (const item of parsed) {
-              if (item?.access_token) return item.access_token;
-              if (item?.currentSession?.access_token) return item.currentSession.access_token;
-            }
-          }
-        } catch (error) {
-          const tokenMatch = raw.match(/"access_token":"([^"]+)"/);
-          if (tokenMatch?.[1]) return tokenMatch[1];
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Erro ao buscar token do Supabase:", error);
-  }
-
-  return null;
-}
-
-function buildProposalPayload() {
-  const formData = collectFormData();
-  const selected = getSelectedServices ? getSelectedServices() : [];
-
-  const clientName =
-    getFieldValue("cliente_empresa") ||
-    getFieldValue("cliente_contato") ||
-    "Cliente não informado";
-
-  const title =
-    getFieldValue("obj_principal") ||
-    (selected.length
-      ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
-      : "Proposta comercial");
-
-  return {
-    client_name: clientName,
-    title,
-    status: "draft",
-    editable_json: formData
-  };
-}
 
 async function saveProposalToBackend() {
   try {
-    const token = getSupabaseAccessToken();
+    const sessionRaw = Object.keys(localStorage)
+      .map((key) => localStorage.getItem(key))
+      .find((value) => value && value.includes("access_token"));
 
-    if (!token) {
+    if (!sessionRaw) {
       showToast("Faça login novamente para salvar a proposta.", "error");
       return;
     }
 
-    const payload = buildProposalPayload();
+    let token = null;
+
+    try {
+      const parsed = JSON.parse(sessionRaw);
+      token =
+        parsed?.access_token ||
+        parsed?.currentSession?.access_token ||
+        null;
+    } catch (error) {
+      const match = sessionRaw.match(/"access_token":"([^"]+)"/);
+      token = match ? match[1] : null;
+    }
+
+    if (!token) {
+      showToast("Token de autenticação não encontrado. Faça login novamente.", "error");
+      return;
+    }
+
+    const data = collectFormData();
+    const selected = getSelectedServices();
     const proposalId = localStorage.getItem(LOCAL_PROPOSAL_ID_KEY);
 
-    const endpoint = proposalId
-      ? `${API_BASE_URL}/api/proposals/${proposalId}`
-      : `${API_BASE_URL}/api/proposals`;
+    const payload = {
+      client_name:
+        data.fields?.cliente_empresa ||
+        data.fields?.cliente_contato ||
+        "Cliente não informado",
+      title:
+        data.fields?.obj_principal ||
+        (selected.length
+          ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
+          : "Proposta comercial"),
+      status: "draft",
+      editable_json: data,
+    };
 
-    const method = proposalId ? "PUT" : "POST";
-
-    const response = await fetch(endpoint, {
-      method,
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
+    const response = await fetch(
+      proposalId ? `/api/proposals/${proposalId}` : "/api/proposals",
+      {
+        method: proposalId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
 
     let result = {};
     try {
       result = await response.json();
-    } catch (_) {}
+    } catch (error) {}
 
     if (!response.ok) {
       console.error("Erro ao salvar proposta:", result);
@@ -3840,7 +3812,7 @@ async function saveProposalToBackend() {
       localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, savedId);
     }
 
-    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(collectFormData()));
+    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
     showToast("Proposta salva com sucesso no sistema.", "success");
   } catch (error) {
     console.error(error);
@@ -3848,230 +3820,137 @@ async function saveProposalToBackend() {
   }
 }
 
-<script>
-  const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
-  const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
+function saveDraft() {
+  try {
+    const data = collectFormData();
+    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
 
-  function saveDraft() {
-    try {
-      const data = collectFormData();
-      localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const code = (
+      document.getElementById("resp_codigo")?.value || "rascunho"
+    ).replace(/[^a-zA-Z0-9_-]+/g, "_");
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      const code = (
-        document.getElementById("resp_codigo")?.value || "rascunho"
-      ).replace(/[^a-zA-Z0-9_-]+/g, "_");
+    link.href = url;
+    link.download = `proposta_expert_energy_${code}_${new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[:T]/g, "-")}.json`;
 
-      link.href = url;
-      link.download = `proposta_expert_energy_${code}_${new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace(/[:T]/g, "-")}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
 
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-
-      showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
-    } catch (error) {
-      console.error(error);
-      showToast("Não foi possível arquivar o rascunho.", "error");
-    }
+    showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Não foi possível arquivar o rascunho.", "error");
   }
+}
 
-  function restoreDraft() {
-    try {
-      const raw = localStorage.getItem(LOCAL_DRAFT_KEY);
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(LOCAL_DRAFT_KEY);
 
-      if (!raw) {
-        showToast("Nenhum rascunho salvo no navegador.", "error");
-        return;
-      }
-
-      const data = JSON.parse(raw);
-      restoreFormData(data);
-      calculatePricing();
-      updateServiceSelectionUI();
-      updateSelectedServicesSummary();
-      updateAnnex();
-      updateCoverClientName();
-
-      showToast("Rascunho restaurado com sucesso.", "success");
-    } catch (error) {
-      console.error(error);
-      showToast("Não foi possível restaurar o rascunho salvo.", "error");
+    if (!raw) {
+      showToast("Nenhum rascunho salvo no navegador.", "error");
+      return;
     }
+
+    const data = JSON.parse(raw);
+    restoreFormData(data);
+    calculatePricing();
+    updateServiceSelectionUI();
+    updateSelectedServicesSummary();
+    updateAnnex();
+    updateCoverClientName();
+
+    showToast("Rascunho restaurado com sucesso.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Não foi possível restaurar o rascunho salvo.", "error");
   }
+}
 
-  async function saveProposalToBackend() {
-    try {
-      const sessionRaw = Object.keys(localStorage)
-        .map((key) => localStorage.getItem(key))
-        .find((value) => value && value.includes("access_token"));
+function generateClientPreview() {
+  try {
+    const link = buildClientViewLink();
+    updateClientLinkPanel(link);
 
-      if (!sessionRaw) {
-        showToast("Faça login novamente para salvar a proposta.", "error");
-        return;
-      }
+    const previewHTML = buildPreviewHTML();
+    const previewWindow = window.open("", "_blank");
 
-      let token = null;
+    if (!previewWindow) {
+      showToast("Permita pop-ups para abrir a versão cliente.", "error");
+      return;
+    }
 
+    previewWindow.document.open();
+    previewWindow.document.write(previewHTML);
+    previewWindow.document.close();
+
+    window.__lastPreviewWindow = previewWindow;
+
+    previewWindow.onload = function () {
       try {
-        const parsed = JSON.parse(sessionRaw);
-        token =
-          parsed?.access_token ||
-          parsed?.currentSession?.access_token ||
-          null;
-      } catch (error) {
-        const match = sessionRaw.match(/"access_token":"([^"]+)"/);
-        token = match ? match[1] : null;
-      }
-
-      if (!token) {
-        showToast("Token de autenticação não encontrado. Faça login novamente.", "error");
-        return;
-      }
-
-      const data = collectFormData();
-      const selected = getSelectedServices();
-      const proposalId = localStorage.getItem(LOCAL_PROPOSAL_ID_KEY);
-
-      const payload = {
-        client_name:
-          data.fields?.cliente_empresa ||
-          data.fields?.cliente_contato ||
-          "Cliente não informado",
-        title:
-          data.fields?.obj_principal ||
-          (selected.length
-            ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
-            : "Proposta comercial"),
-        status: "draft",
-        editable_json: data,
-      };
-
-      const response = await fetch(
-        proposalId ? `/api/proposals/${proposalId}` : "/api/proposals",
-        {
-          method: proposalId ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      let result = {};
-      try {
-        result = await response.json();
+        previewWindow.focus();
+        setTimeout(() => {
+          try {
+            previewWindow.print();
+          } catch (error) {}
+        }, 500);
       } catch (error) {}
+    };
 
-      if (!response.ok) {
-        console.error("Erro ao salvar proposta:", result);
-        showToast("Não foi possível salvar a proposta no sistema.", "error");
-        return;
-      }
-
-      const savedId =
-        result?.id ||
-        result?.data?.id ||
-        result?.proposal?.id ||
-        proposalId ||
-        null;
-
-      if (savedId) {
-        localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, savedId);
-      }
-
-      localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
-      showToast("Proposta salva com sucesso no sistema.", "success");
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao salvar a proposta.", "error");
-    }
+    showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Não foi possível gerar a versão cliente.", "error");
   }
+}
 
-  function generateClientPreview() {
-    try {
-      const link = buildClientViewLink();
-      updateClientLinkPanel(link);
-
-      const previewHTML = buildPreviewHTML();
-      const previewWindow = window.open("", "_blank");
-
-      if (!previewWindow) {
-        showToast("Permita pop-ups para abrir a versão cliente.", "error");
-        return;
-      }
-
-      previewWindow.document.open();
-      previewWindow.document.write(previewHTML);
-      previewWindow.document.close();
-
-      window.__lastPreviewWindow = previewWindow;
-
-      previewWindow.onload = function () {
-        try {
-          previewWindow.focus();
-          setTimeout(() => {
-            try {
-              previewWindow.print();
-            } catch (error) {}
-          }, 500);
-        } catch (error) {}
-      };
-
-      showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
-    } catch (error) {
-      console.error(error);
-      showToast("Não foi possível gerar a versão cliente.", "error");
-    }
+function returnToEditMode() {
+  if (window.__lastPreviewWindow && !window.__lastPreviewWindow.closed) {
+    window.__lastPreviewWindow.close();
   }
+  showToast("Modo edição ativo nesta página.", "success");
+}
 
-  function returnToEditMode() {
-    if (window.__lastPreviewWindow && !window.__lastPreviewWindow.closed) {
-      window.__lastPreviewWindow.close();
-    }
-    showToast("Modo edição ativo nesta página.", "success");
-  }
+function bindTopActions() {
+  document
+    .getElementById("saveProposalBtn")
+    ?.addEventListener("click", saveProposalToBackend);
 
-  function bindTopActions() {
-    document
-      .getElementById("saveProposalBtn")
-      ?.addEventListener("click", saveProposalToBackend);
+  document
+    .getElementById("saveDraftBtn")
+    ?.addEventListener("click", saveDraft);
 
-    document
-      .getElementById("saveDraftBtn")
-      ?.addEventListener("click", saveDraft);
+  document
+    .getElementById("restoreDraftBtn")
+    ?.addEventListener("click", restoreDraft);
 
-    document
-      .getElementById("restoreDraftBtn")
-      ?.addEventListener("click", restoreDraft);
+  document
+    .getElementById("generatePdfBtn")
+    ?.addEventListener("click", generateClientPreview);
 
-    document
-      .getElementById("generatePdfBtn")
-      ?.addEventListener("click", generateClientPreview);
+  document
+    .getElementById("editModeBtn")
+    ?.addEventListener("click", returnToEditMode);
 
-    document
-      .getElementById("editModeBtn")
-      ?.addEventListener("click", returnToEditMode);
+  document
+    .getElementById("copyClientLinkBtn")
+    ?.addEventListener("click", copyClientLink);
 
-    document
-      .getElementById("copyClientLinkBtn")
-      ?.addEventListener("click", copyClientLink);
-
-    document
-      .getElementById("openClientLinkBtn")
-      ?.addEventListener("click", openClientLink);
-  }
-  function initialize(){
+  document
+    .getElementById("openClientLinkBtn")
+    ?.addEventListener("click", openClientLink);
+}
+    function initialize(){
       renderServiceCards();
       renderServiceBlocks();
       attachServiceEvents();
