@@ -932,7 +932,7 @@
         margin:16mm;
       }
     }
-html {
+   html {
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -3263,6 +3263,7 @@ section,
       }
     }
 
+
     function getFieldValue(id){
       return document.getElementById(id)?.value?.trim() || "";
     }
@@ -3711,7 +3712,7 @@ section,
 </html>`;
     }
 
- function generateClientPreview(){
+   function generateClientPreview(){
   try{
     const link = buildClientViewLink();
     updateClientLinkPanel(link);
@@ -3750,14 +3751,13 @@ section,
 }
 
     function returnToEditMode(){
-      
       if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
         window.__lastPreviewWindow.close();
       }
       showToast("Modo edição ativo nesta página.", "success");
     }
 
-const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
+    const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
 const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
 const API_BASE_URL = "https://cuddly-parakeet-974r47g7v9r4h97xp-4000.app.github.dev";
 
@@ -3965,4 +3965,5 @@ function bindTopActions() {
 
     initialize();
   </script>
+
 </body></html>
