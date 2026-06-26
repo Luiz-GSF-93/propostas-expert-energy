@@ -3673,21 +3673,43 @@
 </html>`;
     }
 
-    function generateClientPreview(){
-      try{
-        const link = buildClientViewLink();
-        updateClientLinkPanel(link);
-        const previewWindow = window.open(link, "_blank");
-        if(!previewWindow){
-          showToast("Link gerado. Permita pop-ups para abrir automaticamente a visualização cliente.", "error");
-          return;
-        }
-        window.__lastPreviewWindow = previewWindow;
-        showToast("Link da versão cliente gerado com sucesso.", "success");
-      }catch(error){
-        showToast("Não foi possível gerar o link da versão cliente.", "error");
-      }
+ function generateClientPreview(){
+  try{
+    const link = buildClientViewLink();
+    updateClientLinkPanel(link);
+
+    const previewHTML = buildPreviewHTML();
+    const previewWindow = window.open("", "_blank");
+
+    if(!previewWindow){
+      showToast("Permita pop-ups para abrir a versão cliente.", "error");
+      return;
     }
+
+    previewWindow.document.open();
+    previewWindow.document.write(previewHTML);
+    previewWindow.document.close();
+
+    window.__lastPreviewWindow = previewWindow;
+    window.__lastClientLink = link;
+
+    previewWindow.onload = function(){
+      try{
+        previewWindow.focus();
+        setTimeout(() => {
+          try {
+            previewWindow.print();
+          } catch (err) {}
+        }, 500);
+      }catch(error){}
+    };
+
+    showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
+  }catch(error){
+    console.error(error);
+    showToast("Não foi possível gerar a versão cliente.", "error");
+  }
+}
 
     function returnToEditMode(){
       if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
@@ -3725,6 +3747,4 @@
 
     initialize();
   </script>
-<script defer="" src="./index_files/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;4edd5f8ec12a48cfa682ab8261b80a79&quot;,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
-
 </body></html>
