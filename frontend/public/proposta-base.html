@@ -1,0 +1,3730 @@
+<!DOCTYPE html>
+<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/fZOE1Ak9 -->
+<html lang="pt-BR" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modelo Interativo de Proposta Comercial Especializada - Expert Energy Performance em Energia</title>
+  <style>
+    :root{
+      --azul-escuro:#123d56;
+      --azul:#1b5e7b;
+      --azul-claro:#dceaf2;
+      --cinza:#eef2f4;
+      --cinza-medio:#aab7bf;
+      --texto:#1f2b33;
+      --texto-suave:#55656f;
+      --borda:#c7d3da;
+      --fundo:#f7f9fa;
+      --branco:#ffffff;
+      --sucesso:#2f6f44;
+      --erro:#8b3030;
+    }
+    *{box-sizing:border-box}
+    html,body{background:var(--fundo); color:var(--texto); margin:0}
+    body{
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 92px 52px 40px;
+      position: relative;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+    h1,h2,h3,h4{margin:0 0 10px 0; color:var(--azul-escuro)}
+    h1{font-size:28px; letter-spacing:.2px}
+    h2{font-size:20px; padding-bottom:6px; border-bottom:1px solid var(--borda); margin-top:28px}
+    h3{font-size:16px; margin-top:18px}
+    h4{font-size:14px; margin-top:14px}
+    p{margin:0 0 10px 0}
+    ul{margin:8px 0 12px 20px; padding:0}
+    li{margin:0 0 6px 0}
+    .action-bar{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      background:var(--azul-escuro);
+      color:#fff;
+      padding:12px 18px;
+      border-bottom:2px solid #0d2c3d;
+      z-index:1000;
+    }
+    .action-row{
+      max-width:1080px;
+      margin:0 auto;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .action-left,.action-right{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .action-bar button{
+      background:#fff;
+      color:var(--azul-escuro);
+      border:1px solid #d8e2e8;
+      padding:8px 12px;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .action-bar .secondary{
+      background:#eaf1f5;
+    }
+    .action-bar .primary{
+      background:#f3f8fb;
+      font-weight:700;
+    }
+    .action-status{
+      font-size:12px;
+      color:#dfeaf0;
+    }
+    .link-output-panel{
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin:0 0 18px 0;
+      padding:16px 18px;
+      background:linear-gradient(135deg, rgba(7,28,40,.98) 0%, rgba(16,52,74,.96) 100%);
+      border:1px solid rgba(103, 215, 244, .18);
+      border-radius:20px;
+      box-shadow:0 22px 42px rgba(9, 31, 43, .14);
+      color:#fff;
+    }
+    .link-output-panel.visible{display:flex}
+    .link-output-copy{flex:1; min-width:0}
+    .link-output-title{
+      font-size:14px;
+      font-weight:700;
+      color:#fff;
+      margin-bottom:4px;
+    }
+    .link-output-help{
+      font-size:12px;
+      color:#d8eef5;
+      margin:0 0 10px 0;
+    }
+    .link-output-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .link-output-input{
+      flex:1;
+      min-width:280px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      border-radius:999px;
+      padding:11px 14px;
+      font-size:13px;
+    }
+    .link-output-panel button{
+      border-radius:999px;
+      padding:10px 16px;
+      font-size:13px;
+    }
+    .link-output-panel .secondary{
+      background:rgba(255,255,255,.10);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.14);
+    }
+    header{
+      background:var(--branco);
+      border:1px solid var(--borda);
+      padding:24px 26px;
+      margin-bottom:18px;
+    }
+    .site-link{font-size:14px; color:var(--texto-suave)}
+    .doc-subtitle{
+      margin-top:8px;
+      color:var(--texto-suave);
+      font-size:15px;
+    }
+    .summary-note{
+      background:var(--branco);
+      border:1px solid var(--borda);
+      padding:18px 20px;
+      margin-bottom:18px;
+    }
+    .summary-note strong{color:var(--azul-escuro)}
+    .instruction-list{
+      margin:10px 0 0 18px;
+    }
+    section{
+      background:var(--branco);
+      border:1px solid var(--borda);
+      padding:18px 20px;
+      margin-bottom:16px;
+    }
+    .grid-2,.grid-3,.grid-4{
+      display:grid;
+      gap:14px 16px;
+    }
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .field.full{grid-column:1/-1}
+    .field label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:5px;
+      color:var(--azul-escuro);
+    }
+    input[type="text"], input[type="email"], textarea, select{
+      width:100%;
+      border:1px solid var(--borda);
+      padding:9px 10px;
+      font-size:14px;
+      font-family:Arial, Helvetica, sans-serif;
+      color:var(--texto);
+      background:#fff;
+      resize:vertical;
+      min-height:38px;
+    }
+    textarea{min-height:92px}
+    .small-textarea{min-height:64px}
+    .summary-box{
+      min-height:42px;
+      border:1px solid var(--borda);
+      background:#f8fbfc;
+      padding:10px;
+      font-size:14px;
+      color:var(--texto);
+    }
+    .service-card-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+    }
+    .selection-intro{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:flex-start;
+      margin-bottom:14px;
+      padding:16px 18px;
+      border:1px solid rgba(18, 61, 86, .10);
+      background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(244,250,252,.96) 100%);
+      border-radius:18px;
+    }
+    .selection-intro strong{color:var(--azul-escuro)}
+    .selection-intro .muted{max-width:360px}
+    .service-card{
+      border:1px solid var(--borda);
+      padding:16px;
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      background:#fff;
+    }
+    .service-card-main{flex:1}
+    .service-card-head{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      margin-bottom:8px;
+    }
+    .service-card-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:64px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(18,61,86,.06);
+      color:var(--azul-escuro);
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.06em;
+    }
+    .service-card-summary{
+      font-size:13px;
+      color:var(--texto);
+      line-height:1.5;
+      margin-bottom:10px;
+    }
+    .service-card-highlight{
+      font-size:12px;
+      color:var(--texto-suave);
+      padding-top:10px;
+      border-top:1px dashed #d8e4ea;
+      line-height:1.45;
+    }
+    .service-card.selected{
+      background:#f4fafc;
+      border-color:#7fa2b5;
+    }
+    .service-card input[type="checkbox"]{
+      margin-top:4px;
+      width:18px;
+      height:18px;
+      flex:0 0 auto;
+      accent-color:#2abfe5;
+    }
+    .service-card-title{
+      font-weight:700;
+      color:var(--azul-escuro);
+      margin-bottom:4px;
+      font-size:15px;
+      line-height:1.35;
+    }
+    .service-card-code{
+      font-size:12px;
+      color:var(--texto-suave);
+    }
+    .service-block{
+      display:none;
+      border-top:2px solid var(--azul);
+      margin-top:16px;
+      padding-top:8px;
+    }
+    .service-block.active{display:block}
+    .service-meta{
+      font-size:12px;
+      color:var(--texto-suave);
+      margin-bottom:8px;
+    }
+    .subsection{
+      margin-top:10px;
+    }
+    .mini-table, .pricing-table, .preview-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:8px;
+    }
+    .mini-table th, .mini-table td,
+    .pricing-table th, .pricing-table td,
+    .preview-table th, .preview-table td{
+      border:1px solid var(--borda);
+      padding:8px;
+      vertical-align:top;
+      font-size:13px;
+    }
+    .mini-table th, .pricing-table th, .preview-table th{
+      background:var(--azul-claro);
+      color:var(--azul-escuro);
+      font-weight:700;
+      text-align:left;
+    }
+    .mini-table input, .mini-table textarea,
+    .pricing-table input, .pricing-table textarea{
+      width:100%;
+      border:1px solid #d5dfe5;
+      padding:7px 8px;
+      font-size:13px;
+      min-height:34px;
+      font-family:Arial, Helvetica, sans-serif;
+    }
+    .mini-table textarea, .pricing-table textarea{
+      min-height:58px;
+    }
+    .table-action{
+      text-align:right;
+      margin-top:8px;
+    }
+    .table-action button, .inline-btn{
+      padding:7px 10px;
+      font-size:12px;
+      background:#f4f8fa;
+      border:1px solid var(--borda);
+      cursor:pointer;
+      color:var(--azul-escuro);
+    }
+    .remove-btn{
+      background:#fbf4f4;
+      border:1px solid #d7bcbc;
+      color:#7b3131;
+      padding:6px 8px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .money, .align-right{text-align:right}
+    .muted{
+      color:var(--texto-suave);
+      font-size:12px;
+    }
+    .totals{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1fr 280px;
+      gap:18px;
+      align-items:start;
+    }
+    .totals-box{
+      border:1px solid var(--borda);
+      background:#fbfcfd;
+      padding:12px;
+    }
+    .totals-line{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:5px 0;
+      border-bottom:1px solid #e3eaee;
+      font-size:14px;
+    }
+    .totals-line:last-child{border-bottom:none}
+    .totals-line.strong{
+      font-weight:700;
+      color:var(--azul-escuro);
+      font-size:16px;
+      padding-top:10px;
+    }
+    .contract-clause{
+      margin-bottom:10px;
+      text-align:justify;
+    }
+    .contract-clause strong{
+      color:var(--azul-escuro);
+    }
+    .annex-block{
+      margin-bottom:16px;
+      padding-bottom:10px;
+      border-bottom:1px solid #e3eaee;
+    }
+    .footer-note{
+      background:#fff;
+      border:1px solid var(--borda);
+      padding:14px 18px;
+      margin-top:16px;
+      font-size:12px;
+      color:var(--texto-suave);
+    }
+    .toast{
+      position:fixed;
+      top:64px;
+      right:18px;
+      z-index:1100;
+      background:#fff;
+      color:var(--texto);
+      border:1px solid var(--borda);
+      padding:10px 12px;
+      font-size:13px;
+      display:none;
+      max-width:340px;
+    }
+    .toast.success{border-left:4px solid var(--sucesso)}
+    .toast.error{border-left:4px solid var(--erro)}
+    .readonly-mode .editor-only{display:none !important}
+    .readonly-mode #client-preview{display:block !important}
+    #client-preview{
+      display:none;
+      background:#fff;
+      border:1px solid var(--borda);
+      padding:26px;
+    }
+    .preview-head{
+      border-bottom:1px solid var(--borda);
+      padding-bottom:14px;
+      margin-bottom:18px;
+    }
+    .preview-title{
+      font-size:26px;
+      color:var(--azul-escuro);
+      font-weight:700;
+      margin-bottom:4px;
+    }
+    .preview-sub{
+      font-size:14px;
+      color:var(--texto-suave);
+    }
+    .preview-section{
+      margin-bottom:18px;
+    }
+    .preview-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px 20px;
+    }
+    .preview-item{
+      border-bottom:1px solid #e7edf0;
+      padding-bottom:6px;
+      margin-bottom:6px;
+    }
+    .preview-label{
+      font-size:12px;
+      color:var(--texto-suave);
+      font-weight:700;
+      margin-bottom:3px;
+    }
+    .preview-value{
+      font-size:14px;
+      white-space:pre-wrap;
+    }
+    .preview-kpi{
+      background:#f7fbfd;
+      border:1px solid var(--borda);
+      padding:10px 12px;
+      margin-top:10px;
+      font-size:13px;
+    }
+    .print-meta{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--texto-suave);
+    }
+    body{
+      background:
+        radial-gradient(circle at top left, rgba(86,196,230,.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(44,123,154,.12), transparent 24%),
+        linear-gradient(180deg, #f3f8fb 0%, #edf3f6 100%);
+      color:var(--texto);
+    }
+    .action-bar{
+      background:rgba(7, 23, 33, .92);
+      border-bottom:1px solid rgba(103, 215, 244, .2);
+      box-shadow:0 14px 34px rgba(8, 28, 39, .24);
+      backdrop-filter:blur(14px);
+    }
+    .action-bar button{
+      border-radius:999px;
+      padding:9px 14px;
+      font-weight:700;
+      transition:all .2s ease;
+    }
+    .action-bar button:hover,
+    .table-action button:hover,
+    .inline-btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 10px 18px rgba(17, 66, 91, .14);
+    }
+    .action-bar .primary{
+      background:linear-gradient(135deg, #74def7 0%, #45badc 100%);
+      color:#07202d;
+      border-color:#67d7f4;
+    }
+    header{
+      background:linear-gradient(135deg, #071c28 0%, #10344a 48%, #174f6d 100%);
+      border:1px solid rgba(103, 215, 244, .18);
+      border-radius:28px;
+      padding:28px 30px;
+      margin-bottom:20px;
+      color:#fff;
+      position:relative;
+      overflow:hidden;
+      box-shadow:0 28px 60px rgba(10, 38, 52, .20);
+    }
+    header::after{
+      content:"";
+      position:absolute;
+      inset:auto -70px -90px auto;
+      width:240px;
+      height:240px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(116, 222, 247, .22) 0%, rgba(116, 222, 247, 0) 72%);
+      pointer-events:none;
+    }
+    .brand-hero{
+      display:flex;
+      align-items:flex-start;
+      gap:22px;
+      position:relative;
+      z-index:1;
+    }
+    .brand-signature{
+      min-width:300px;
+      padding:18px 20px;
+      border-radius:26px;
+      background:linear-gradient(135deg, rgba(255,255,255,.10) 0%, rgba(116, 222, 247, .06) 100%);
+      border:1px solid rgba(103, 215, 244, .18);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.04), 0 18px 34px rgba(0,0,0,.16);
+    }
+    .brand-signature-line,
+    .brand-signature-sub{
+      display:block;
+      text-transform:uppercase;
+      letter-spacing:.18em;
+    }
+    .brand-signature-line{
+      font-size:13px;
+      color:#93e2f4;
+    }
+    .brand-signature-name{
+      display:block;
+      margin-top:0;
+      font-size:29px;
+      line-height:1.08;
+      font-weight:700;
+      color:#fff;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+    }
+    .brand-signature-sub{
+      margin-top:6px;
+      font-size:11px;
+      color:#d7eef5;
+    }
+    .brand-copy{max-width:640px}
+    .brand-kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 12px;
+      border-radius:999px;
+      margin-bottom:12px;
+      background:rgba(116, 222, 247, .12);
+      border:1px solid rgba(116, 222, 247, .2);
+      color:#a6ecfb;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    header h1{
+      color:#fff;
+      font-size:32px;
+      line-height:1.15;
+      margin-bottom:10px;
+    }
+    .site-link{
+      color:#93e2f4;
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+    .doc-subtitle{
+      color:#d7eef5;
+      font-size:15px;
+      line-height:1.55;
+      max-width:720px;
+    }
+    .summary-note,
+    section,
+    .footer-note,
+    #client-preview{
+      border-radius:22px;
+      border:1px solid rgba(18, 61, 86, .10);
+      box-shadow:0 18px 40px rgba(13, 44, 61, .06);
+    }
+    .summary-note{
+      background:linear-gradient(180deg, #ffffff 0%, #f9fcfd 100%);
+      padding:20px 22px;
+    }
+    section{
+      background:rgba(255,255,255,.97);
+      backdrop-filter:blur(8px);
+    }
+    h2{
+      border-bottom-color:#d9e6ec;
+      color:#10344a;
+    }
+    .field label,
+    .service-card-title,
+    .contract-clause strong,
+    .preview-title{
+      color:#10344a;
+    }
+    input[type="text"], input[type="email"], textarea, select{
+      border-radius:14px;
+      border:1px solid #d2e1e8;
+      background:#fcfeff;
+      transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    input[type="text"]:focus, input[type="email"]:focus, textarea:focus, select:focus{
+      outline:none;
+      border-color:#63d8f4;
+      box-shadow:0 0 0 4px rgba(99, 216, 244, .18);
+      background:#fff;
+    }
+    .summary-box,
+    .totals-box,
+    .preview-kpi,
+    .ro-field{
+      border-radius:18px;
+      background:linear-gradient(180deg, #fbfdfe 0%, #f5fafc 100%);
+    }
+    .service-card{
+      border-radius:22px;
+      padding:18px;
+      border:1px solid #d7e4ea;
+      box-shadow:0 10px 22px rgba(14, 54, 76, .04);
+      transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .service-card::after{
+      content:"";
+      position:absolute;
+      inset:auto -30px -34px auto;
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(103, 215, 244, .12) 0%, rgba(103, 215, 244, 0) 72%);
+      pointer-events:none;
+    }
+    .service-card:hover{
+      transform:translateY(-3px);
+      box-shadow:0 18px 30px rgba(14, 54, 76, .08);
+    }
+    .service-card.selected{
+      background:linear-gradient(180deg, rgba(116, 222, 247, .14) 0%, rgba(116, 222, 247, .05) 100%);
+      border-color:#67d7f4;
+      box-shadow:0 18px 34px rgba(58, 167, 198, .12);
+    }
+    .service-block{
+      border-top:2px solid #52c8e8;
+      padding-top:14px;
+    }
+    .mini-table th, .pricing-table th, .preview-table th{
+      background:linear-gradient(180deg, #e9f6fb 0%, #d9eef7 100%);
+    }
+    .table-action button, .inline-btn{
+      border-radius:999px;
+      background:#f6fbfd;
+      padding:8px 12px;
+    }
+    .remove-btn{
+      border-radius:999px;
+    }
+    .totals-box{
+      border-color:#d8e6ec;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);
+    }
+    .totals-line.strong{
+      color:#0f3b54;
+    }
+    .footer-note{
+      background:linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%);
+    }
+    .cover-section{
+      position:relative;
+      overflow:hidden;
+      background:linear-gradient(135deg, #071c28 0%, #0e3044 42%, #185571 100%);
+      color:#fff;
+      border:1px solid rgba(103, 215, 244, .18);
+      box-shadow:0 28px 64px rgba(9, 31, 43, .18);
+    }
+    .cover-section::before{
+      content:"";
+      position:absolute;
+      inset:auto -90px -110px auto;
+      width:260px;
+      height:260px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(116, 222, 247, .22) 0%, rgba(116, 222, 247, 0) 72%);
+      pointer-events:none;
+    }
+    .cover-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);
+      gap:24px;
+      position:relative;
+      z-index:1;
+      align-items:stretch;
+    }
+    .cover-title{
+      font-size:34px;
+      line-height:1.08;
+      color:#fff;
+      margin:8px 0 14px 0;
+      max-width:700px;
+    }
+    .cover-client-name{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 16px;
+      border-radius:999px;
+      margin:4px 0 14px 0;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(116, 222, 247, .18);
+      color:#ffffff;
+      font-size:14px;
+      font-weight:700;
+      letter-spacing:.02em;
+    }
+    .cover-client-name strong{color:#9feafb}
+    .cover-lead{
+      font-size:15px;
+      line-height:1.65;
+      color:#d8eef5;
+      max-width:720px;
+    }
+    .cover-badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .cover-badge{
+      display:inline-flex;
+      align-items:center;
+      padding:7px 12px;
+      border-radius:999px;
+      background:rgba(116, 222, 247, .12);
+      border:1px solid rgba(116, 222, 247, .18);
+      color:#a9ecfb;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .cover-panel{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:22px;
+      padding:18px;
+      backdrop-filter:blur(10px);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .cover-panel h3,
+    .site-cta h3,
+    .institutional-section h3,
+    .methodology-section h3{color:#10344a}
+    .cover-panel h3{color:#fff; margin-bottom:12px}
+    .cover-meta-list{display:grid; gap:10px}
+    .cover-meta-item{
+      padding-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .cover-meta-item:last-child{border-bottom:none; padding-bottom:0}
+    .cover-meta-label{
+      display:block;
+      font-size:11px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:#9adff1;
+      margin-bottom:3px;
+      font-weight:700;
+    }
+    .cover-meta-value{font-size:14px; color:#fff}
+    .institutional-section{
+      background:linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+    }
+    .institutional-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+      margin-top:14px;
+    }
+    .institutional-card{
+      border:1px solid #d9e6ec;
+      border-radius:20px;
+      padding:18px;
+      background:linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%);
+      box-shadow:0 10px 22px rgba(13, 44, 61, .04);
+    }
+    .institutional-card h3{
+      margin-bottom:8px;
+      font-size:16px;
+    }
+    .institutional-card p,
+    .institutional-card li{font-size:14px; line-height:1.55}
+    .methodology-steps{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+    .step-card{
+      position:relative;
+      border:1px solid #d9e6ec;
+      border-radius:20px;
+      padding:18px 16px 16px;
+      background:#fff;
+      box-shadow:0 10px 22px rgba(13, 44, 61, .04);
+    }
+    .step-number{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      background:linear-gradient(135deg, #6bdcf6 0%, #36badf 100%);
+      color:#07202d;
+      font-weight:700;
+      margin-bottom:10px;
+    }
+    .step-card h4{
+      margin:0 0 8px 0;
+      color:#10344a;
+      font-size:15px;
+    }
+    .step-card p{margin:0; font-size:13px; line-height:1.55}
+    .site-cta{
+      display:grid;
+      grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);
+      gap:18px;
+      align-items:center;
+      background:linear-gradient(135deg, rgba(13, 44, 61, .98) 0%, rgba(25, 85, 113, .96) 100%);
+      color:#fff;
+      border:1px solid rgba(103, 215, 244, .18);
+    }
+    .site-cta p{color:#d9eff6; line-height:1.65}
+    .site-cta h2,.site-cta h3{color:#fff; border-bottom:none; padding-bottom:0; margin-bottom:8px}
+    .cta-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:12px;
+    }
+    .site-button{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:12px 18px;
+      border-radius:999px;
+      text-decoration:none;
+      font-weight:700;
+      font-size:13px;
+      transition:all .2s ease;
+    }
+    .site-button.primary{
+      background:linear-gradient(135deg, #78e1f8 0%, #42bddf 100%);
+      color:#07202d;
+      box-shadow:0 12px 24px rgba(34, 172, 209, .22);
+    }
+    .site-button.secondary{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .site-button:hover{transform:translateY(-1px)}
+    .toast{
+      border-radius:16px;
+      box-shadow:0 18px 40px rgba(9, 31, 43, .18);
+    }
+    @media (max-width: 880px){
+      body{padding:108px 18px 30px}
+      .grid-2,.grid-3,.grid-4,.service-card-grid,.preview-grid,.totals,.cover-grid,.institutional-grid,.methodology-steps,.site-cta{
+        grid-template-columns:1fr;
+      }
+      .selection-intro{
+        flex-direction:column;
+      }
+      .brand-hero{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      .brand-signature{
+        width:100%;
+        min-width:0;
+      }
+      .action-row{align-items:flex-start}
+      .action-status{width:100%}
+    }
+    @media print{
+      body{
+        max-width:none;
+        padding:0;
+        background:#fff;
+      }
+      .action-bar, .toast, .editor-only{display:none !important}
+      #client-preview{
+        display:block !important;
+        border:none;
+        padding:0;
+      }
+      @page{
+        size:A4;
+        margin:16mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="action-bar editor-only">
+    <div class="action-row">
+      <div class="action-left">
+        <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
+        <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
+        <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
+        <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
+      </div>
+      <div class="action-right">
+        <div class="action-status">Fluxo sugerido: preencher &gt; arquivar rascunho &gt; gerar versão cliente/PDF</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <section class="link-output-panel editor-only" id="clientLinkPanel">
+    <div class="link-output-copy">
+      <div class="link-output-title">Link da versão cliente gerado</div>
+      <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
+      <div class="link-output-row">
+        <input type="text" id="clientViewLink" class="link-output-input" readonly="" value="">
+        <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
+        <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
+      </div>
+    </div>
+  </section>
+
+  <header class="editor-only">
+    <div class="brand-hero">
+      <div class="brand-signature">
+        <span class="brand-signature-name">Expert Energy Performance em Energia</span>
+      </div>
+      <div class="brand-copy">
+        <div class="brand-kicker">Identidade comercial | proposta premium interativa</div>
+        <h1>Modelo Interativo de Proposta Comercial Especializada</h1>
+        <div class="site-link">EXPERT ENERGY PERFORMANCE EM ENERGIA • www.expertenergy.com.br</div>
+        <div class="doc-subtitle">Ambiente profissional para montagem de propostas técnicas e comerciais, com narrativa executiva, composição financeira automática, condições contratuais dinâmicas e apresentação alinhada à identidade da marca.</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="summary-note editor-only">
+    <p><strong>Como usar este modelo:</strong> selecione um ou mais serviços, contextualize a necessidade do cliente, complete as linhas comerciais e revise a minuta contratual. Ao final, utilize <strong>“Gerar versão cliente / PDF”</strong> para obter uma visualização somente leitura adequada para impressão ou envio em PDF.</p>
+    <ul class="instruction-list">
+      <li>Os blocos técnicos aparecem automaticamente conforme a atividade selecionada.</li>
+      <li>As estimativas de ganhos são referenciais e devem ser validadas conforme diagnóstico, baseline e contexto operacional.</li>
+      <li>O botão de arquivamento salva no navegador e também baixa um arquivo JSON do rascunho.</li>
+    </ul>
+  </section>
+
+  <section class="editor-only cover-section">
+    <div class="cover-grid">
+      <div>
+        <div class="cover-badges">
+          <span class="cover-badge">Proposta institucional</span>
+          <span class="cover-badge">Consultoria premium</span>
+          <span class="cover-badge">Energia e performance</span>
+        </div>
+        <h2 class="cover-title">Estrutura executiva para propostas comerciais de alta credibilidade, com posicionamento consultivo e comunicação institucional.</h2>
+        <div class="cover-client-name">Proposta direcionada para <strong id="coverClientName">[Nome do cliente]</strong></div>
+        <p class="cover-lead">Este ambiente foi refinado para que a Expert Energy Performance em Energia apresente suas soluções com narrativa executiva, clareza técnica, racional financeiro, condições contratuais consistentes e forte percepção de valor perante diretoria, compras, engenharia e operação.</p>
+      </div>
+      <div class="cover-panel">
+        <h3>Posicionamento desta proposta</h3>
+        <div class="cover-meta-list">
+          <div class="cover-meta-item">
+            <span class="cover-meta-label">Foco</span>
+            <div class="cover-meta-value">Eficiência, governança energética, redução de riscos e geração de valor operacional.</div>
+          </div>
+          <div class="cover-meta-item">
+            <span class="cover-meta-label">Público-alvo</span>
+            <div class="cover-meta-value">Diretoria, gestores industriais, utilidades, suprimentos, financeiro e áreas regulatórias.</div>
+          </div>
+          <div class="cover-meta-item">
+            <span class="cover-meta-label">Tom de apresentação</span>
+            <div class="cover-meta-value">Consultivo, técnico-comercial, premium e orientado a decisão.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only institutional-section">
+    <h2>Por que a Expert Energy</h2>
+    <p>A Expert Energy Performance em Energia atua com visão integrada entre engenharia, inteligência operacional, performance econômica e aderência regulatória. A proposta institucional deve comunicar não apenas o escopo técnico, mas a capacidade de transformar dados, ativos e decisões energéticas em vantagem competitiva para o cliente.</p>
+    <div class="institutional-grid">
+      <article class="institutional-card">
+        <h3>Visão estratégica de ponta a ponta</h3>
+        <p>Conecta diagnóstico, implantação, monitoramento, governança, eficiência, mercado livre e requisitos regulatórios em uma mesma lógica de performance.</p>
+      </article>
+      <article class="institutional-card">
+        <h3>Diferenciais competitivos</h3>
+        <ul>
+          <li>Leitura técnica com impacto econômico e operacional.</li>
+          <li>Estruturação de propostas aderentes à realidade do cliente.</li>
+          <li>Capacidade de combinar serviço, tecnologia e gestão em uma entrega coerente.</li>
+        </ul>
+      </article>
+      <article class="institutional-card">
+        <h3>Confiança para decisão</h3>
+        <p>Apresenta linguagem executiva, estimativas referenciais responsáveis, clareza contratual e documentação pronta para suportar análise técnica e comercial.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="editor-only methodology-section">
+    <h2>Metodologia de atuação</h2>
+    <p>Utilize este bloco institucional para reforçar que a abordagem da Expert Energy é estruturada, replicável e personalizada conforme maturidade, escopo e criticidade da planta ou operação do cliente.</p>
+    <div class="methodology-steps">
+      <article class="step-card">
+        <div class="step-number">1</div>
+        <h4>Diagnosticar</h4>
+        <p>Leitura do contexto energético, operacional, contratual e regulatório, com identificação de riscos, gargalos e oportunidades.</p>
+      </article>
+      <article class="step-card">
+        <div class="step-number">2</div>
+        <h4>Estruturar</h4>
+        <p>Definição de escopo, premissas, arquitetura técnica, plano de ação, critérios de medição e racional econômico.</p>
+      </article>
+      <article class="step-card">
+        <div class="step-number">3</div>
+        <h4>Implementar</h4>
+        <p>Execução, coordenação, comissionamento, integração, treinamento e acompanhamento dos marcos críticos da entrega.</p>
+      </article>
+      <article class="step-card">
+        <div class="step-number">4</div>
+        <h4>Comprovar valor</h4>
+        <p>Consolidação de resultados, governança dos indicadores, ajustes de rota e suporte à continuidade da performance.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="editor-only site-cta">
+    <div>
+      <h2>Explore o ambiente institucional da marca</h2>
+      <p>Ao apresentar a proposta ao cliente, estimule também o acesso ao ambiente digital da Expert Energy. O site pode complementar a percepção de autoridade, detalhar frentes de atuação e reforçar a confiança na capacidade técnica e consultiva da empresa.</p>
+      <div class="cta-actions">
+        <a class="site-button primary" href="https://www.expertenergy.com.br/" target="_blank" rel="noopener noreferrer">Acessar expertenergy.com.br</a>
+        <a class="site-button secondary" href="https://www.expertenergy.com.br/" target="_blank" rel="noopener noreferrer">Conhecer a Expert Energy</a>
+      </div>
+    </div>
+    <div class="cover-panel">
+      <h3>Uso recomendado</h3>
+      <div class="cover-meta-list">
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">Durante a apresentação</span>
+          <div class="cover-meta-value">Reforce cases, posicionamento técnico e consistência institucional.</div>
+        </div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">No pós-envio</span>
+          <div class="cover-meta-value">Convide o cliente a navegar no site para aprofundar o entendimento sobre soluções e especialidades.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="cliente-section">
+    <h2>1. Dados do cliente</h2>
+    <div class="grid-2">
+      <div class="field">
+        <label for="cliente_empresa">Empresa</label>
+        <input type="text" id="cliente_empresa" placeholder="Razão social do cliente">
+      </div>
+      <div class="field">
+        <label for="cliente_cnpj">CNPJ</label>
+        <input type="text" id="cliente_cnpj" placeholder="00.000.000/0000-00">
+      </div>
+      <div class="field">
+        <label for="cliente_contato">Contato principal</label>
+        <input type="text" id="cliente_contato" placeholder="Nome do responsável no cliente">
+      </div>
+      <div class="field">
+        <label for="cliente_cargo">Cargo / área</label>
+        <input type="text" id="cliente_cargo" placeholder="Ex.: Gerente de Utilidades">
+      </div>
+      <div class="field">
+        <label for="cliente_email">E-mail</label>
+        <input type="email" id="cliente_email" placeholder="contato@empresa.com.br">
+      </div>
+      <div class="field">
+        <label for="cliente_telefone">Telefone</label>
+        <input type="text" id="cliente_telefone" placeholder="(00) 00000-0000">
+      </div>
+      <div class="field">
+        <label for="cliente_endereco">Endereço / unidade</label>
+        <input type="text" id="cliente_endereco" placeholder="Endereço, cidade, UF ou unidade operacional">
+      </div>
+      <div class="field">
+        <label for="cliente_segmento">Segmento / operação</label>
+        <input type="text" id="cliente_segmento" placeholder="Ex.: indústria alimentícia, shopping, hospital">
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="comercial-section">
+    <h2>2. Dados do responsável comercial</h2>
+    <div class="grid-2">
+      <div class="field">
+        <label for="resp_nome">Nome</label>
+        <input type="text" id="resp_nome" placeholder="Nome do responsável comercial">
+      </div>
+      <div class="field">
+        <label for="resp_cargo">Cargo</label>
+        <input type="text" id="resp_cargo" placeholder="Ex.: Consultor de Energia">
+      </div>
+      <div class="field">
+        <label for="resp_email">E-mail</label>
+        <input type="email" id="resp_email" placeholder="comercial@expertenergy.com.br">
+      </div>
+      <div class="field">
+        <label for="resp_telefone">Telefone</label>
+        <input type="text" id="resp_telefone" placeholder="(00) 00000-0000">
+      </div>
+      <div class="field">
+        <label for="resp_validade">Validade da proposta</label>
+        <input type="text" id="resp_validade" placeholder="Ex.: 15 dias">
+      </div>
+      <div class="field">
+        <label for="resp_codigo">Código / versão</label>
+        <input type="text" id="resp_codigo" placeholder="Ex.: PRO-2026-001 / v1">
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="enquadramento-section">
+    <h2>3. Enquadramento da proposta</h2>
+    <div class="grid-2">
+      <div class="field full">
+        <label>Serviços selecionados (resumo automático)</label>
+        <div class="summary-box" id="selectedServicesSummary">Nenhum serviço selecionado.</div>
+      </div>
+      <div class="field full">
+        <label for="obj_principal">Objetivo principal da proposta</label>
+        <textarea id="obj_principal" placeholder="Descreva o objetivo central da contratação e o resultado que o cliente busca atingir."></textarea>
+      </div>
+      <div class="field full">
+        <label for="contexto_dor">Contexto / dor do cliente</label>
+        <textarea id="contexto_dor" placeholder="Detalhe o problema, oportunidade ou motivação do cliente."></textarea>
+      </div>
+      <div class="field">
+        <label for="unidades_atendidas">Unidades atendidas</label>
+        <input type="text" id="unidades_atendidas" placeholder="Ex.: planta A, centro de distribuição B">
+      </div>
+      <div class="field">
+        <label for="premissas_relevantes">Premissas relevantes</label>
+        <input type="text" id="premissas_relevantes" placeholder="Ex.: parada programada, acesso restrito, rede existente">
+      </div>
+      <div class="field full">
+        <label for="necessidades_custom">Necessidades específicas / customizações</label>
+        <textarea id="necessidades_custom" placeholder="Informe requisitos especiais, integrações, relatórios, SLAs ou outras customizações."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="services-selection-section">
+    <h2>4. Seleção de atividades / serviços</h2>
+    <div class="selection-intro">
+      <div>
+        <strong>Escolha um ou mais serviços para compor a proposta.</strong>
+        <p style="margin:8px 0 0 0;">Cada opção apresenta um resumo executivo da finalidade da solução e um destaque técnico-comercial para facilitar a seleção correta antes da personalização detalhada.</p>
+      </div>
+      <div class="muted">Ao selecionar uma atividade, o documento libera automaticamente o bloco técnico completo, as condições específicas e o anexo contratual correspondente.</div>
+    </div>
+    <div class="service-card-grid" id="serviceCards">
+        <label class="service-card" id="card_smart_meter">
+          <input type="checkbox" data-service-checkbox="smart_meter">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Setup de instalações de smart meter</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">SM-01</div>
+            </div>
+            <div class="service-card-summary">Amplia a visibilidade sobre consumo, demanda, perfil de carga e eventos elétricos.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Levantamento técnico da instalação e definição dos pontos de medição.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_reativo_svg">
+          <input type="checkbox" data-service-checkbox="reativo_svg">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Correção de consumo reativo - modelo SVG e Smart Var</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">RV-02</div>
+            </div>
+            <div class="service-card-summary">Melhora o fator de potência e reduz exposição a multas e penalidades por energia reativa.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Diagnóstico elétrico, levantamento de cargas e análise de histórico de reativos.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_controle_demanda">
+          <input type="checkbox" data-service-checkbox="controle_demanda">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Controle de demanda</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">CD-03</div>
+            </div>
+            <div class="service-card-summary">Evita ultrapassagens de demanda contratada e melhora a previsibilidade de custos.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Análise do histórico de demanda, curvas de carga e contratos vigentes.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_digitalizacao_planta">
+          <input type="checkbox" data-service-checkbox="digitalizacao_planta">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Digitalização de planta energética</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">DP-04</div>
+            </div>
+            <div class="service-card-summary">Consolida dados técnicos e operacionais em ambiente digital estruturado.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Mapeamento da planta, ativos, documentos e fluxos de informação.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_gerenciamento_projeto">
+          <input type="checkbox" data-service-checkbox="gerenciamento_projeto">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Elaboração e gerenciamento de projeto da planta energética</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">GP-05</div>
+            </div>
+            <div class="service-card-summary">Estrutura a implantação com visão técnica, econômica, cronograma e governança.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Diagnóstico inicial, definição de escopo, premissas e metas do projeto.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_eficiencia_energetica">
+          <input type="checkbox" data-service-checkbox="eficiencia_energetica">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Projeto e consultoria em eficiência energética</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">EE-06</div>
+            </div>
+            <div class="service-card-summary">Atua diretamente na redução de consumo, desperdícios e custo global de energia.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Diagnóstico energético, levantamento de usos finais e oportunidades.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_acl">
+          <input type="checkbox" data-service-checkbox="acl">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Gestão e representação no Ambiente de Contratação Livre (ACL)</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">ACL-07</div>
+            </div>
+            <div class="service-card-summary">Permite captura de oportunidades de mercado e gestão estratégica de energia.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Análise de elegibilidade, perfil de consumo e estratégia de migração/permanência.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_treinamento">
+          <input type="checkbox" data-service-checkbox="treinamento">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Treinamento de Gestão de Energia</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">TR-08</div>
+            </div>
+            <div class="service-card-summary">Desenvolve competência interna para sustentar resultados energéticos ao longo do tempo.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Levantamento do público-alvo, maturidade e objetivos do treinamento.</div>
+          </div>
+        </label>
+      
+        <label class="service-card" id="card_regulatoria">
+          <input type="checkbox" data-service-checkbox="regulatoria">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">Consultoria Regulatória - matriz energética</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">CR-09</div>
+            </div>
+            <div class="service-card-summary">Apoia o cliente na interpretação e aplicação de requisitos regulatórios energéticos.</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> Diagnóstico regulatório do contexto do cliente e levantamento documental.</div>
+          </div>
+        </label>
+      </div>
+  </section>
+
+  <section class="editor-only" id="services-dynamic-section">
+    <h2>5. Blocos especializados por atividade</h2>
+    <p class="muted">Os blocos abaixo ficam ocultos por padrão e são exibidos conforme os serviços selecionados.</p>
+    <div id="serviceBlocks">
+        <div class="service-block" id="block_smart_meter">
+          <h3>Setup de instalações de smart meter</h3>
+          <div class="service-meta">Código de referência: SM-01 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Amplia a visibilidade sobre consumo, demanda, perfil de carga e eventos elétricos.</li><li>Cria base confiável para gestão energética, medições setoriais, rateios e auditoria de dados.</li><li>Permite decisões mais rápidas sobre perdas, anomalias e oportunidades de eficiência.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Levantamento técnico da instalação e definição dos pontos de medição.</li><li>Especificação do medidor, comunicação, integração e arquitetura de dados.</li><li>Instalação, parametrização, comissionamento, testes e validação das leituras.</li><li>Treinamento operacional e relatório de implantação.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Medição confiável e rastreável por ponto, setor ou processo.</li><li>Redução de erros de leitura e maior agilidade na análise operacional.</li><li>Base para controle de demanda, fator de potência, M&amp;V e gestão de energia.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Ganho operacional referencial de 10% a 30% em redução de tempo de análise e resposta.</li><li>Ganho econômico indireto referencial de 3% a 8% por identificação de desvios, perdas e oportunidades.</li><li>Faixas condicionadas a diagnóstico, porte da instalação, processo e maturidade de dados.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_smart_meter_current">Situação atual do cliente</label>
+              <textarea id="srv_smart_meter_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_smart_meter_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_smart_meter_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_smart_meter_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_smart_meter_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_smart_meter_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_smart_meter_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_smart_meter_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_smart_meter_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_smart_meter">
+                
+        <tr>
+          <td><input type="text" data-mini="smart_meter" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="smart_meter" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="smart_meter">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="smart_meter" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="smart_meter" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="smart_meter">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="smart_meter" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="smart_meter" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="smart_meter" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="smart_meter">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="smart_meter">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>O aceite fica vinculado ao comissionamento, à estabilidade da comunicação e à validação das leituras nos pontos implantados.</li><li>Premissas de acesso, janelas de parada, infraestrutura elétrica e disponibilidade de rede de dados devem ser confirmadas previamente pelo cliente.</li><li>Calibração, inspeção e manutenção posterior observarão o escopo contratado e a disciplina operacional definida entre as partes.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_reativo_svg">
+          <h3>Correção de consumo reativo - modelo SVG e Smart Var</h3>
+          <div class="service-meta">Código de referência: RV-02 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Melhora o fator de potência e reduz exposição a multas e penalidades por energia reativa.</li><li>Aumenta a estabilidade elétrica e a qualidade da energia em instalações críticas.</li><li>Contribui para melhor utilização da infraestrutura elétrica instalada.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Diagnóstico elétrico, levantamento de cargas e análise de histórico de reativos.</li><li>Dimensionamento técnico da solução SVG/Smart Var e memorial descritivo.</li><li>Fornecimento, instalação, parametrização, testes e comissionamento.</li><li>Relatório comparativo antes/depois e orientação operacional.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Elevação do fator de potência para patamar aderente ao objetivo técnico-operacional.</li><li>Mitigação de penalidades e redução de efeitos de compensação inadequada.</li><li>Melhor desempenho do sistema frente a variações de carga.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Economia referencial de 5% a 15% sobre custos associados a reativos e ineficiências correlatas.</li><li>Meta técnica típica de fator de potência igual ou superior a 0,98, conforme diagnóstico.</li><li>O ganho real depende do histórico tarifário, perfil de carga e tecnologia aplicada.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_reativo_svg_current">Situação atual do cliente</label>
+              <textarea id="srv_reativo_svg_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_reativo_svg_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_reativo_svg_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_reativo_svg_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_reativo_svg_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_reativo_svg_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_reativo_svg_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_reativo_svg_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_reativo_svg_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_reativo_svg">
+                
+        <tr>
+          <td><input type="text" data-mini="reativo_svg" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="reativo_svg" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="reativo_svg">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="reativo_svg" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="reativo_svg" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="reativo_svg">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="reativo_svg" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="reativo_svg" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="reativo_svg" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="reativo_svg">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="reativo_svg">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>Critérios de desempenho dependem do perfil de carga, regime operacional e condições da instalação do cliente.</li><li>Adequações civis, térmicas, ventilação, espaço em painel e integrações necessárias devem ser previamente validadas.</li><li>Resultados financeiros projetados dependem do comportamento tarifário, da operação e da continuidade das condições de carga.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_controle_demanda">
+          <h3>Controle de demanda</h3>
+          <div class="service-meta">Código de referência: CD-03 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Evita ultrapassagens de demanda contratada e melhora a previsibilidade de custos.</li><li>Suporta despacho operacional, alarmes e priorização de cargas.</li><li>Aumenta disciplina energética em processos intensivos em consumo.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Análise do histórico de demanda, curvas de carga e contratos vigentes.</li><li>Definição de lógica de controle, metas, alarmes e pontos de intervenção.</li><li>Implantação de monitoramento e, quando aplicável, automação de cargas.</li><li>Treinamento e rotina de acompanhamento com indicadores.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Redução de eventos de ultrapassagem de demanda.</li><li>Melhor aderência entre demanda contratada e demanda utilizada.</li><li>Maior previsibilidade orçamentária e governança operacional.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Economia referencial de 5% a 20% sobre a parcela de demanda, conforme perfil e disciplina operacional.</li><li>Redução relevante do risco de multas por ultrapassagem.</li><li>O resultado depende da flexibilidade de cargas e da aderência operacional do cliente.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_controle_demanda_current">Situação atual do cliente</label>
+              <textarea id="srv_controle_demanda_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_controle_demanda_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_controle_demanda_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_controle_demanda_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_controle_demanda_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_controle_demanda_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_controle_demanda_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_controle_demanda_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_controle_demanda_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_controle_demanda">
+                
+        <tr>
+          <td><input type="text" data-mini="controle_demanda" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="controle_demanda" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="controle_demanda">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="controle_demanda" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="controle_demanda" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="controle_demanda">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="controle_demanda" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="controle_demanda" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="controle_demanda" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="controle_demanda">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="controle_demanda">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>As metas dependem da disponibilidade de cargas controláveis e da efetiva adoção das rotinas definidas.</li><li>Janelas de ajuste, contingências e responsabilidades de atuação devem ser formalizadas entre as partes.</li><li>Mudanças relevantes no processo produtivo podem demandar revisão dos parâmetros de controle.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_digitalizacao_planta">
+          <h3>Digitalização de planta energética</h3>
+          <div class="service-meta">Código de referência: DP-04 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Consolida dados técnicos e operacionais em ambiente digital estruturado.</li><li>Melhora rastreabilidade, governança e velocidade na gestão de ativos energéticos.</li><li>Facilita auditorias, expansão da planta e integração com indicadores corporativos.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Mapeamento da planta, ativos, documentos e fluxos de informação.</li><li>Modelagem da estrutura digital, base cadastral e critérios de atualização.</li><li>Digitalização, organização, padronização e disponibilização de informações.</li><li>Entrega de ambiente estruturado e procedimento de manutenção documental.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Base única de consulta para planta, ativos e informações energéticas.</li><li>Menor dependência de arquivos dispersos e controles paralelos.</li><li>Melhor qualidade de dados para projetos, operação e tomada de decisão.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Ganho operacional referencial de 20% a 40% em produtividade administrativa e técnica.</li><li>Ganho econômico indireto referencial de 2% a 6% por redução de retrabalho, falhas e atrasos.</li><li>Benefícios tendem a ampliar-se quando integrados a monitoramento e gestão contínua.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_digitalizacao_planta_current">Situação atual do cliente</label>
+              <textarea id="srv_digitalizacao_planta_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_digitalizacao_planta_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_digitalizacao_planta_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_digitalizacao_planta_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_digitalizacao_planta_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_digitalizacao_planta_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_digitalizacao_planta_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_digitalizacao_planta_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_digitalizacao_planta_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_digitalizacao_planta">
+                
+        <tr>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="digitalizacao_planta">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="digitalizacao_planta">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="digitalizacao_planta" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="digitalizacao_planta" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="digitalizacao_planta">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="digitalizacao_planta">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>Regras de confidencialidade, acesso, classificação e guarda documental devem ser observadas.</li><li>A qualidade e a completude do acervo fornecido influenciam diretamente prazo e profundidade da entrega.</li><li>A governança de atualização após a entrega deve ser definida entre as partes.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_gerenciamento_projeto">
+          <h3>Elaboração e gerenciamento de projeto da planta energética</h3>
+          <div class="service-meta">Código de referência: GP-05 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Estrutura a implantação com visão técnica, econômica, cronograma e governança.</li><li>Reduz riscos de escopo, prazo, compatibilidade e retrabalho.</li><li>Conecta objetivos energéticos com orçamento, CAPEX/OPEX e resultados esperados.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Diagnóstico inicial, definição de escopo, premissas e metas do projeto.</li><li>Plano executivo com cronograma, riscos, marcos, responsabilidades e comunicação.</li><li>Gerenciamento da implantação, diligenciamento e controle de mudanças.</li><li>Relatórios periódicos, status executivo e termo de encerramento.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Maior previsibilidade de prazo, custo e desempenho do projeto.</li><li>Redução de conflitos entre disciplinas e fornecedores.</li><li>Melhor rastreabilidade técnica e gerencial ao longo do ciclo do projeto.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Ganho referencial de 5% a 12% por redução de retrabalhos, desvios e atrasos.</li><li>Melhoria qualitativa da governança, do compliance técnico e da tomada de decisão.</li><li>Economias dependem da complexidade, maturidade e criticidade do empreendimento.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_gerenciamento_projeto_current">Situação atual do cliente</label>
+              <textarea id="srv_gerenciamento_projeto_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_gerenciamento_projeto_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_gerenciamento_projeto_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_gerenciamento_projeto_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_gerenciamento_projeto_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_gerenciamento_projeto_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_gerenciamento_projeto_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_gerenciamento_projeto_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_gerenciamento_projeto_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_gerenciamento_projeto">
+                
+        <tr>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="gerenciamento_projeto">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="gerenciamento_projeto">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="gerenciamento_projeto" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="gerenciamento_projeto" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="gerenciamento_projeto">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="gerenciamento_projeto">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>Escopo e limites de responsabilidade por suprimentos, obras e terceiros devem estar claramente definidos.</li><li>Alterações de escopo, atraso de terceiros e indisponibilidade de informações impactam o cronograma.</li><li>Aprovações intermediárias do cliente constituem condição para avanço entre fases.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_eficiencia_energetica">
+          <h3>Projeto e consultoria em eficiência energética</h3>
+          <div class="service-meta">Código de referência: EE-06 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Atua diretamente na redução de consumo, desperdícios e custo global de energia.</li><li>Prioriza oportunidades com base técnica, financeira e operacional.</li><li>Contribui para competitividade, sustentabilidade e melhoria contínua.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Diagnóstico energético, levantamento de usos finais e oportunidades.</li><li>Estudos técnico-econômicos, priorização, payback e plano de ação.</li><li>Projeto conceitual ou executivo das medidas aprovadas e apoio à implantação.</li><li>Medição e verificação, relatórios de performance e recomendações.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Redução sustentada do consumo e melhor uso de recursos energéticos.</li><li>Hierarquização de investimentos com racional técnico e financeiro.</li><li>Base para decisões de CAPEX, OPEX e metas de ESG/eficiência.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Economia referencial de 8% a 25% no consumo ou custo energético, conforme escopo e baseline.</li><li>Payback referencial variável conforme medida, tarifa, regime operacional e investimento.</li><li>Os ganhos dependem da implementação integral das recomendações e da rotina do cliente.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_eficiencia_energetica_current">Situação atual do cliente</label>
+              <textarea id="srv_eficiencia_energetica_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_eficiencia_energetica_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_eficiencia_energetica_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_eficiencia_energetica_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_eficiencia_energetica_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_eficiencia_energetica_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_eficiencia_energetica_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_eficiencia_energetica_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_eficiencia_energetica_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_eficiencia_energetica">
+                
+        <tr>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="eficiencia_energetica">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="eficiencia_energetica">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="eficiencia_energetica" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="eficiencia_energetica" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="eficiencia_energetica">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="eficiencia_energetica">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>Resultados econômicos projetados dependem de baseline, sazonalidade e execução das medidas propostas.</li><li>Quando houver fornecimento de equipamentos, garantias devem ser especificadas por item e fabricante.</li><li>Medição e verificação devem seguir metodologia e período previamente acordados.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_acl">
+          <h3>Gestão e representação no Ambiente de Contratação Livre (ACL)</h3>
+          <div class="service-meta">Código de referência: ACL-07 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Permite captura de oportunidades de mercado e gestão estratégica de energia.</li><li>Aumenta previsibilidade contratual e governança sobre compras de energia.</li><li>Reduz riscos operacionais e regulatórios ligados ao mercado livre.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Análise de elegibilidade, perfil de consumo e estratégia de migração/permanência.</li><li>Suporte em modelagem contratual, representação e rotinas de mercado.</li><li>Acompanhamento de medições, contratos, sazonalização e exposições.</li><li>Relatórios gerenciais e orientação executiva sobre decisões no ACL.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Melhor posicionamento comercial na compra de energia.</li><li>Acompanhamento estruturado de contratos, obrigações e performance do portfólio.</li><li>Maior segurança na gestão das rotinas regulatórias e operacionais.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Economia referencial de 10% a 35% em comparação ao ambiente cativo, conforme perfil e mercado.</li><li>Melhor capacidade de planejamento orçamentário e hedge energético.</li><li>Ganhos dependem do momento de mercado, do perfil de carga e da estratégia contratual.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_acl_current">Situação atual do cliente</label>
+              <textarea id="srv_acl_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_acl_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_acl_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_acl_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_acl_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_acl_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_acl_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_acl_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_acl_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_acl">
+                
+        <tr>
+          <td><input type="text" data-mini="acl" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="acl" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="acl" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="acl" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="acl">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="acl" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="acl" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="acl" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="acl" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="acl">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="acl" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="acl" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="acl" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="acl" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="acl">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="acl">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>O desempenho econômico está sujeito às condições de mercado, à estratégia e à disciplina contratual adotada.</li><li>Responsabilidades entre consultoria, comercializadora, varejista e cliente devem estar claramente delimitadas.</li><li>Exposição, multas e eventos regulatórios extraordinários observarão as regras vigentes e os contratos correlatos.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_treinamento">
+          <h3>Treinamento de Gestão de Energia</h3>
+          <div class="service-meta">Código de referência: TR-08 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Desenvolve competência interna para sustentar resultados energéticos ao longo do tempo.</li><li>Padroniza linguagem, indicadores, rituais e boas práticas entre áreas.</li><li>Fortalece cultura de eficiência, monitoramento e responsabilidade operacional.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Levantamento do público-alvo, maturidade e objetivos do treinamento.</li><li>Conteúdo programático, material didático, exercícios práticos e casos aplicados.</li><li>Execução do treinamento presencial ou remoto e avaliação de aprendizagem.</li><li>Relatório de conclusão com recomendações de continuidade.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Equipe mais preparada para analisar indicadores e agir sobre desvios.</li><li>Maior aderência a rotinas de controle, monitoramento e eficiência.</li><li>Redução de dependência exclusiva de terceiros para a gestão diária.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Ganho operacional referencial de 2% a 7% por melhoria de disciplina energética e resposta a desvios.</li><li>Aumento de maturidade organizacional e retenção de conhecimento crítico.</li><li>Os resultados dependem da aplicação prática do conteúdo e do suporte da liderança.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_treinamento_current">Situação atual do cliente</label>
+              <textarea id="srv_treinamento_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_treinamento_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_treinamento_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_treinamento_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_treinamento_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_treinamento_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_treinamento_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_treinamento_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_treinamento_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_treinamento">
+                
+        <tr>
+          <td><input type="text" data-mini="treinamento" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="treinamento" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="treinamento">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="treinamento" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="treinamento" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="treinamento">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="treinamento" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="treinamento" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="treinamento" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="treinamento">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="treinamento">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>Carga horária, formato, materiais, turmas e critérios de certificação devem estar definidos na proposta.</li><li>Alterações de agenda, ausências e remarcações observarão a política comercial pactuada.</li><li>O conteúdo poderá ser customizado conforme setor, maturidade e objetivos do cliente.</li></ul>
+          </div>
+        </div>
+      
+        <div class="service-block" id="block_regulatoria">
+          <h3>Consultoria Regulatória - matriz energética</h3>
+          <div class="service-meta">Código de referência: CR-09 | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul><li>Apoia o cliente na interpretação e aplicação de requisitos regulatórios energéticos.</li><li>Reduz riscos de não conformidade, contingências e decisões inadequadas.</li><li>Orienta estratégias ligadas à matriz energética, contratos e obrigações setoriais.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul><li>Diagnóstico regulatório do contexto do cliente e levantamento documental.</li><li>Pareceres, notas técnicas, matriz de obrigações e plano de adequação.</li><li>Apoio em tratativas, representações técnicas e acompanhamentos específicos.</li><li>Relatórios executivos e recomendações de encaminhamento.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul><li>Maior segurança jurídico-operacional na tomada de decisão energética.</li><li>Melhor rastreabilidade de obrigações, riscos e alternativas de enquadramento.</li><li>Suporte qualificado para discussões internas e externas.</li></ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul><li>Ganho econômico indireto por mitigação de contingências, autuações e decisões ineficientes.</li><li>Faixa referencial de preservação ou evitação de custos entre 3% e 10%, conforme criticidade do caso.</li><li>Resultados dependem do tema regulatório, da documentação disponível e da tempestividade das ações.</li></ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_regulatoria_current">Situação atual do cliente</label>
+              <textarea id="srv_regulatoria_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_regulatoria_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_regulatoria_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_regulatoria_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_regulatoria_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_regulatoria_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_regulatoria_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_regulatoria_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_regulatoria_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_regulatoria">
+                
+        <tr>
+          <td><input type="text" data-mini="regulatoria" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="regulatoria" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="regulatoria">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="regulatoria" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="regulatoria" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="regulatoria">Remover</button></td>
+        </tr>
+      
+                
+        <tr>
+          <td><input type="text" data-mini="regulatoria" data-key="type" placeholder="Serviço ou material" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="description" placeholder="Descreva o item aplicável à atividade."></textarea></td>
+          <td><input type="text" data-mini="regulatoria" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value=""></td>
+          <td><textarea data-mini="regulatoria" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição."></textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="regulatoria">Remover</button></td>
+        </tr>
+      
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="regulatoria">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul><li>A consultoria não substitui parecer jurídico formal, salvo previsão expressa e escopo específico.</li><li>Prazos e conclusões dependem da disponibilidade documental e da complexidade do tema.</li><li>Mudanças regulatórias supervenientes podem exigir atualização do escopo e das recomendações.</li></ul>
+          </div>
+        </div>
+      </div>
+  </section>
+
+  <section class="editor-only" id="pricing-section">
+    <h2>6. Planilha comercial consolidada</h2>
+    <p class="muted">Preencha as linhas comerciais. Os totais são recalculados automaticamente com base nas quantidades, valores unitários, desconto e impostos/taxas/encargos.</p>
+    <table class="pricing-table">
+      <thead>
+        <tr>
+          <th style="width:48px">Item</th>
+          <th style="width:130px">Categoria</th>
+          <th>Descrição do serviço/material</th>
+          <th style="width:90px">Quantidade</th>
+          <th style="width:90px">Unidade</th>
+          <th style="width:140px">Valor unitário (R$)</th>
+          <th style="width:140px">Valor total (R$)</th>
+          <th style="width:80px">Ação</th>
+        </tr>
+      </thead>
+      <tbody id="pricingBody"><tr>
+        <td class="item-number">1</td>
+        <td><input type="text" class="price-category" placeholder="Serviço / material" value=""></td>
+        <td><textarea class="price-description" placeholder="Descreva o item comercial e sua aplicação."></textarea></td>
+        <td><input type="text" class="price-qty" placeholder="0,00" value=""></td>
+        <td><input type="text" class="price-unit" placeholder="un, h, m, lote" value=""></td>
+        <td><input type="text" class="price-unitvalue" placeholder="0,00" value=""></td>
+        <td class="money line-total">R$&nbsp;0,00</td>
+        <td class="align-right"><button type="button" class="remove-btn remove-pricing-row">Remover</button></td>
+      </tr><tr>
+        <td class="item-number">2</td>
+        <td><input type="text" class="price-category" placeholder="Serviço / material" value=""></td>
+        <td><textarea class="price-description" placeholder="Descreva o item comercial e sua aplicação."></textarea></td>
+        <td><input type="text" class="price-qty" placeholder="0,00" value=""></td>
+        <td><input type="text" class="price-unit" placeholder="un, h, m, lote" value=""></td>
+        <td><input type="text" class="price-unitvalue" placeholder="0,00" value=""></td>
+        <td class="money line-total">R$&nbsp;0,00</td>
+        <td class="align-right"><button type="button" class="remove-btn remove-pricing-row">Remover</button></td>
+      </tr><tr>
+        <td class="item-number">3</td>
+        <td><input type="text" class="price-category" placeholder="Serviço / material" value=""></td>
+        <td><textarea class="price-description" placeholder="Descreva o item comercial e sua aplicação."></textarea></td>
+        <td><input type="text" class="price-qty" placeholder="0,00" value=""></td>
+        <td><input type="text" class="price-unit" placeholder="un, h, m, lote" value=""></td>
+        <td><input type="text" class="price-unitvalue" placeholder="0,00" value=""></td>
+        <td class="money line-total">R$&nbsp;0,00</td>
+        <td class="align-right"><button type="button" class="remove-btn remove-pricing-row">Remover</button></td>
+      </tr></tbody>
+    </table>
+    <div class="table-action">
+      <button type="button" id="addPricingRowBtn">Adicionar linha</button>
+    </div>
+    <div class="totals">
+      <div class="totals-box">
+        <div class="field">
+          <label for="pricing_discount">Desconto (R$)</label>
+          <input type="text" id="pricing_discount" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label for="pricing_taxes">Impostos / taxas / encargos (R$)</label>
+          <input type="text" id="pricing_taxes" placeholder="0,00">
+        </div>
+      </div>
+      <div class="totals-box">
+        <div class="totals-line"><span>Subtotal</span><strong id="subtotalValue">R$&nbsp;0,00</strong></div>
+        <div class="totals-line"><span>Desconto</span><strong id="discountValue">R$&nbsp;0,00</strong></div>
+        <div class="totals-line"><span>Impostos / taxas / encargos</span><strong id="taxesValue">R$&nbsp;0,00</strong></div>
+        <div class="totals-line strong"><span>Total geral da proposta</span><strong id="totalValue">R$&nbsp;0,00</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="condicoes-section">
+    <h2>7. Condições comerciais</h2>
+    <div class="grid-2">
+      <div class="field full">
+        <label for="cond_pagamento">Condição de pagamento</label>
+        <textarea id="cond_pagamento" class="small-textarea" placeholder="Ex.: 40% na aprovação, 40% na entrega principal e 20% no aceite final."></textarea>
+      </div>
+      <div class="field">
+        <label for="cond_cronograma">Prazo de execução / cronograma</label>
+        <input type="text" id="cond_cronograma" placeholder="Ex.: 45 dias após aprovação e mobilização">
+      </div>
+      <div class="field">
+        <label for="cond_mobilizacao">Prazo de mobilização</label>
+        <input type="text" id="cond_mobilizacao" placeholder="Ex.: até 10 dias úteis">
+      </div>
+      <div class="field">
+        <label for="cond_validade">Validade comercial</label>
+        <input type="text" id="cond_validade" placeholder="Ex.: 15 dias corridos">
+      </div>
+      <div class="field full">
+        <label for="cond_adicionais">Condições adicionais</label>
+        <textarea id="cond_adicionais" placeholder="Informar condições complementares, documentos prévios, janela de parada, acesso, deslocamento, hospedagem, exclusões, etc."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="assinaturas-section">
+    <h2>8. Assinaturas e aprovações</h2>
+    <div class="grid-2">
+      <div class="field">
+        <label for="ass_resp_comercial">Responsável comercial - contratada</label>
+        <input type="text" id="ass_resp_comercial" placeholder="Nome e assinatura / aprovação">
+      </div>
+      <div class="field">
+        <label for="ass_aprovador_interno">Aprovador interno - contratada</label>
+        <input type="text" id="ass_aprovador_interno" placeholder="Nome e cargo">
+      </div>
+      <div class="field">
+        <label for="ass_cliente">Representante do cliente</label>
+        <input type="text" id="ass_cliente" placeholder="Nome, cargo e aceite">
+      </div>
+      <div class="field">
+        <label for="ass_data_local">Data / local</label>
+        <input type="text" id="ass_data_local" placeholder="Cidade/UF, dd/mm/aaaa">
+      </div>
+    </div>
+  </section>
+
+  <section class="editor-only" id="contrato-section">
+    <h2>9. Minuta de contrato padrão</h2>
+    <p class="contract-clause"><strong>Partes:</strong> de um lado, <strong>Expert Energy Performance em Energia</strong>, doravante denominada <strong>CONTRATADA</strong>; e, de outro lado, <strong>o cliente identificado nesta proposta</strong>, doravante denominado <strong>CLIENTE/CONTRATANTE</strong>, celebram o presente instrumento particular de prestação de serviços especializados, conforme as condições abaixo.</p>
+    <p class="contract-clause"><strong>1. Partes e objeto.</strong> A CONTRATADA prestará os serviços especializados descritos na presente proposta comercial, em seus anexos e no escopo final aprovado entre as partes, observadas as premissas, exclusões, prazos e condições comerciais aplicáveis.</p>
+    <p class="contract-clause"><strong>2. Escopo e entregáveis.</strong> O escopo incluirá os serviços, estudos, fornecimentos, instalações, parametrizações, treinamentos, relatórios, projetos, representações, análises e demais entregáveis expressamente discriminados na proposta aprovada, prevalecendo a versão final validada pelas partes.</p>
+    <p class="contract-clause"><strong>3. Obrigações da contratada.</strong> Executar o objeto com diligência técnica e observância das boas práticas profissionais; manter comunicação adequada com o cliente; produzir os entregáveis contratados; e resguardar a confidencialidade das informações recebidas no contexto da execução.</p>
+    <p class="contract-clause"><strong>4. Obrigações do cliente.</strong> Disponibilizar acesso, documentos, informações, interlocutores, infraestrutura, permissões e aprovações necessárias; observar os prazos de retorno; garantir condições de segurança no local; e comunicar fatos que possam impactar a execução, o cronograma ou o desempenho esperado.</p>
+    <p class="contract-clause"><strong>5. Premissas e exclusões.</strong> Todo item não expressamente indicado como incluído será considerado fora de escopo. Demandas adicionais, mudanças relevantes de premissa, fornecimentos extraordinários, interfaces com terceiros ou ampliações de cobertura técnica poderão ser objeto de aditivo comercial e/ou contratual.</p>
+    <p class="contract-clause"><strong>6. Prazo e cronograma.</strong> O cronograma de execução terá início após o aceite comercial, assinatura contratual, emissão da ordem de compra e/ou pagamento inicial, quando aplicável. Atrasos provocados por indisponibilidade de acesso, documentos, aprovações, terceiros ou fatos alheios à CONTRATADA poderão ensejar reprogramação.</p>
+    <p class="contract-clause"><strong>7. Preço, impostos e reajustes.</strong> Os valores observarão a composição indicada na proposta, incluindo, quando aplicável, serviços, materiais, mobilização, impostos, taxas e encargos. Tributos incidentes seguirão a legislação vigente e o enquadramento fiscal aplicável à operação.</p>
+    <p class="contract-clause"><strong>8. Faturamento e pagamento.</strong> O faturamento seguirá a condição comercial aprovada. O inadimplemento poderá implicar suspensão da execução até regularização, sem prejuízo de atualização monetária, encargos legais e cobrança dos valores vencidos.</p>
+    <p class="contract-clause"><strong>9. Aceite e medição.</strong> O aceite ocorrerá conforme critérios do escopo contratado, podendo envolver validação documental, comissionamento, entrega de relatórios, conclusão de treinamento, homologação técnica, medição de marcos ou outras evidências de conclusão previstas para a atividade contratada.</p>
+    <p class="contract-clause"><strong>10. Confidencialidade e LGPD.</strong> As partes comprometem-se a tratar como confidenciais as informações técnicas, comerciais, operacionais e estratégicas a que tiverem acesso, bem como a observar a legislação aplicável em relação a eventuais dados pessoais tratados durante a execução do objeto.</p>
+    <p class="contract-clause"><strong>11. Propriedade intelectual.</strong> Metodologias, templates, ferramentas, relatórios, pareceres, modelos, parametrizações e demais materiais produzidos observarão a disciplina de uso prevista na proposta e na legislação aplicável, preservados os direitos pré-existentes de cada parte.</p>
+    <p class="contract-clause"><strong>12. Garantias e limitações.</strong> Garantias técnicas, quando aplicáveis, observarão o escopo contratado, os fabricantes envolvidos, as condições de instalação e operação e os limites expressamente informados. Estimativas econômicas e operacionais possuem caráter referencial e não constituem promessa de resultado absoluto ou incondicional.</p>
+    <p class="contract-clause"><strong>13. Rescisão.</strong> O instrumento poderá ser rescindido por descumprimento contratual, inadimplemento, força maior ou conveniência, observados os serviços efetivamente executados, os custos incorridos, os compromissos assumidos e as disposições específicas eventualmente pactuadas entre as partes.</p>
+    <p class="contract-clause"><strong>14. Disposições gerais.</strong> A proposta comercial, seus anexos, a ordem de compra, eventuais aditivos e o contrato firmado compõem o conjunto documental do negócio. Qualquer modificação somente terá validade se formalizada por escrito entre as partes.</p>
+  </section>
+
+  <section class="editor-only" id="anexo-section">
+    <h2>10. Anexo contratual - condições específicas por atividade</h2>
+    <p class="muted">Este anexo é preenchido automaticamente conforme os serviços selecionados.</p>
+    <div id="annexDynamic"><p class="muted">Selecione uma ou mais atividades para compor o anexo contratual específico.</p></div>
+  </section>
+
+  <div id="client-preview"></div>
+
+  <div class="footer-note">
+    Estimativas de ganhos, eficiência, redução de custos, mitigação de penalidades e melhorias operacionais apresentadas neste modelo possuem caráter referencial e dependem de diagnóstico, baseline, perfil tarifário, condições de mercado, regime operacional, qualidade dos dados, disponibilidade de infraestrutura e efetiva implementação das recomendações e soluções adotadas.
+  </div>
+
+  <script>
+    const servicesData = [
+      {
+        id: "smart_meter",
+        code: "SM-01",
+        title: "Setup de instalações de smart meter",
+        importance: [
+          "Amplia a visibilidade sobre consumo, demanda, perfil de carga e eventos elétricos.",
+          "Cria base confiável para gestão energética, medições setoriais, rateios e auditoria de dados.",
+          "Permite decisões mais rápidas sobre perdas, anomalias e oportunidades de eficiência."
+        ],
+        deliverables: [
+          "Levantamento técnico da instalação e definição dos pontos de medição.",
+          "Especificação do medidor, comunicação, integração e arquitetura de dados.",
+          "Instalação, parametrização, comissionamento, testes e validação das leituras.",
+          "Treinamento operacional e relatório de implantação."
+        ],
+        results: [
+          "Medição confiável e rastreável por ponto, setor ou processo.",
+          "Redução de erros de leitura e maior agilidade na análise operacional.",
+          "Base para controle de demanda, fator de potência, M&V e gestão de energia."
+        ],
+        gains: [
+          "Ganho operacional referencial de 10% a 30% em redução de tempo de análise e resposta.",
+          "Ganho econômico indireto referencial de 3% a 8% por identificação de desvios, perdas e oportunidades.",
+          "Faixas condicionadas a diagnóstico, porte da instalação, processo e maturidade de dados."
+        ],
+        contract: [
+          "O aceite fica vinculado ao comissionamento, à estabilidade da comunicação e à validação das leituras nos pontos implantados.",
+          "Premissas de acesso, janelas de parada, infraestrutura elétrica e disponibilidade de rede de dados devem ser confirmadas previamente pelo cliente.",
+          "Calibração, inspeção e manutenção posterior observarão o escopo contratado e a disciplina operacional definida entre as partes."
+        ]
+      },
+      {
+        id: "reativo_svg",
+        code: "RV-02",
+        title: "Correção de consumo reativo - modelo SVG e Smart Var",
+        importance: [
+          "Melhora o fator de potência e reduz exposição a multas e penalidades por energia reativa.",
+          "Aumenta a estabilidade elétrica e a qualidade da energia em instalações críticas.",
+          "Contribui para melhor utilização da infraestrutura elétrica instalada."
+        ],
+        deliverables: [
+          "Diagnóstico elétrico, levantamento de cargas e análise de histórico de reativos.",
+          "Dimensionamento técnico da solução SVG/Smart Var e memorial descritivo.",
+          "Fornecimento, instalação, parametrização, testes e comissionamento.",
+          "Relatório comparativo antes/depois e orientação operacional."
+        ],
+        results: [
+          "Elevação do fator de potência para patamar aderente ao objetivo técnico-operacional.",
+          "Mitigação de penalidades e redução de efeitos de compensação inadequada.",
+          "Melhor desempenho do sistema frente a variações de carga."
+        ],
+        gains: [
+          "Economia referencial de 5% a 15% sobre custos associados a reativos e ineficiências correlatas.",
+          "Meta técnica típica de fator de potência igual ou superior a 0,98, conforme diagnóstico.",
+          "O ganho real depende do histórico tarifário, perfil de carga e tecnologia aplicada."
+        ],
+        contract: [
+          "Critérios de desempenho dependem do perfil de carga, regime operacional e condições da instalação do cliente.",
+          "Adequações civis, térmicas, ventilação, espaço em painel e integrações necessárias devem ser previamente validadas.",
+          "Resultados financeiros projetados dependem do comportamento tarifário, da operação e da continuidade das condições de carga."
+        ]
+      },
+      {
+        id: "controle_demanda",
+        code: "CD-03",
+        title: "Controle de demanda",
+        importance: [
+          "Evita ultrapassagens de demanda contratada e melhora a previsibilidade de custos.",
+          "Suporta despacho operacional, alarmes e priorização de cargas.",
+          "Aumenta disciplina energética em processos intensivos em consumo."
+        ],
+        deliverables: [
+          "Análise do histórico de demanda, curvas de carga e contratos vigentes.",
+          "Definição de lógica de controle, metas, alarmes e pontos de intervenção.",
+          "Implantação de monitoramento e, quando aplicável, automação de cargas.",
+          "Treinamento e rotina de acompanhamento com indicadores."
+        ],
+        results: [
+          "Redução de eventos de ultrapassagem de demanda.",
+          "Melhor aderência entre demanda contratada e demanda utilizada.",
+          "Maior previsibilidade orçamentária e governança operacional."
+        ],
+        gains: [
+          "Economia referencial de 5% a 20% sobre a parcela de demanda, conforme perfil e disciplina operacional.",
+          "Redução relevante do risco de multas por ultrapassagem.",
+          "O resultado depende da flexibilidade de cargas e da aderência operacional do cliente."
+        ],
+        contract: [
+          "As metas dependem da disponibilidade de cargas controláveis e da efetiva adoção das rotinas definidas.",
+          "Janelas de ajuste, contingências e responsabilidades de atuação devem ser formalizadas entre as partes.",
+          "Mudanças relevantes no processo produtivo podem demandar revisão dos parâmetros de controle."
+        ]
+      },
+      {
+        id: "digitalizacao_planta",
+        code: "DP-04",
+        title: "Digitalização de planta energética",
+        importance: [
+          "Consolida dados técnicos e operacionais em ambiente digital estruturado.",
+          "Melhora rastreabilidade, governança e velocidade na gestão de ativos energéticos.",
+          "Facilita auditorias, expansão da planta e integração com indicadores corporativos."
+        ],
+        deliverables: [
+          "Mapeamento da planta, ativos, documentos e fluxos de informação.",
+          "Modelagem da estrutura digital, base cadastral e critérios de atualização.",
+          "Digitalização, organização, padronização e disponibilização de informações.",
+          "Entrega de ambiente estruturado e procedimento de manutenção documental."
+        ],
+        results: [
+          "Base única de consulta para planta, ativos e informações energéticas.",
+          "Menor dependência de arquivos dispersos e controles paralelos.",
+          "Melhor qualidade de dados para projetos, operação e tomada de decisão."
+        ],
+        gains: [
+          "Ganho operacional referencial de 20% a 40% em produtividade administrativa e técnica.",
+          "Ganho econômico indireto referencial de 2% a 6% por redução de retrabalho, falhas e atrasos.",
+          "Benefícios tendem a ampliar-se quando integrados a monitoramento e gestão contínua."
+        ],
+        contract: [
+          "Regras de confidencialidade, acesso, classificação e guarda documental devem ser observadas.",
+          "A qualidade e a completude do acervo fornecido influenciam diretamente prazo e profundidade da entrega.",
+          "A governança de atualização após a entrega deve ser definida entre as partes."
+        ]
+      },
+      {
+        id: "gerenciamento_projeto",
+        code: "GP-05",
+        title: "Elaboração e gerenciamento de projeto da planta energética",
+        importance: [
+          "Estrutura a implantação com visão técnica, econômica, cronograma e governança.",
+          "Reduz riscos de escopo, prazo, compatibilidade e retrabalho.",
+          "Conecta objetivos energéticos com orçamento, CAPEX/OPEX e resultados esperados."
+        ],
+        deliverables: [
+          "Diagnóstico inicial, definição de escopo, premissas e metas do projeto.",
+          "Plano executivo com cronograma, riscos, marcos, responsabilidades e comunicação.",
+          "Gerenciamento da implantação, diligenciamento e controle de mudanças.",
+          "Relatórios periódicos, status executivo e termo de encerramento."
+        ],
+        results: [
+          "Maior previsibilidade de prazo, custo e desempenho do projeto.",
+          "Redução de conflitos entre disciplinas e fornecedores.",
+          "Melhor rastreabilidade técnica e gerencial ao longo do ciclo do projeto."
+        ],
+        gains: [
+          "Ganho referencial de 5% a 12% por redução de retrabalhos, desvios e atrasos.",
+          "Melhoria qualitativa da governança, do compliance técnico e da tomada de decisão.",
+          "Economias dependem da complexidade, maturidade e criticidade do empreendimento."
+        ],
+        contract: [
+          "Escopo e limites de responsabilidade por suprimentos, obras e terceiros devem estar claramente definidos.",
+          "Alterações de escopo, atraso de terceiros e indisponibilidade de informações impactam o cronograma.",
+          "Aprovações intermediárias do cliente constituem condição para avanço entre fases."
+        ]
+      },
+      {
+        id: "eficiencia_energetica",
+        code: "EE-06",
+        title: "Projeto e consultoria em eficiência energética",
+        importance: [
+          "Atua diretamente na redução de consumo, desperdícios e custo global de energia.",
+          "Prioriza oportunidades com base técnica, financeira e operacional.",
+          "Contribui para competitividade, sustentabilidade e melhoria contínua."
+        ],
+        deliverables: [
+          "Diagnóstico energético, levantamento de usos finais e oportunidades.",
+          "Estudos técnico-econômicos, priorização, payback e plano de ação.",
+          "Projeto conceitual ou executivo das medidas aprovadas e apoio à implantação.",
+          "Medição e verificação, relatórios de performance e recomendações."
+        ],
+        results: [
+          "Redução sustentada do consumo e melhor uso de recursos energéticos.",
+          "Hierarquização de investimentos com racional técnico e financeiro.",
+          "Base para decisões de CAPEX, OPEX e metas de ESG/eficiência."
+        ],
+        gains: [
+          "Economia referencial de 8% a 25% no consumo ou custo energético, conforme escopo e baseline.",
+          "Payback referencial variável conforme medida, tarifa, regime operacional e investimento.",
+          "Os ganhos dependem da implementação integral das recomendações e da rotina do cliente."
+        ],
+        contract: [
+          "Resultados econômicos projetados dependem de baseline, sazonalidade e execução das medidas propostas.",
+          "Quando houver fornecimento de equipamentos, garantias devem ser especificadas por item e fabricante.",
+          "Medição e verificação devem seguir metodologia e período previamente acordados."
+        ]
+      },
+      {
+        id: "acl",
+        code: "ACL-07",
+        title: "Gestão e representação no Ambiente de Contratação Livre (ACL)",
+        importance: [
+          "Permite captura de oportunidades de mercado e gestão estratégica de energia.",
+          "Aumenta previsibilidade contratual e governança sobre compras de energia.",
+          "Reduz riscos operacionais e regulatórios ligados ao mercado livre."
+        ],
+        deliverables: [
+          "Análise de elegibilidade, perfil de consumo e estratégia de migração/permanência.",
+          "Suporte em modelagem contratual, representação e rotinas de mercado.",
+          "Acompanhamento de medições, contratos, sazonalização e exposições.",
+          "Relatórios gerenciais e orientação executiva sobre decisões no ACL."
+        ],
+        results: [
+          "Melhor posicionamento comercial na compra de energia.",
+          "Acompanhamento estruturado de contratos, obrigações e performance do portfólio.",
+          "Maior segurança na gestão das rotinas regulatórias e operacionais."
+        ],
+        gains: [
+          "Economia referencial de 10% a 35% em comparação ao ambiente cativo, conforme perfil e mercado.",
+          "Melhor capacidade de planejamento orçamentário e hedge energético.",
+          "Ganhos dependem do momento de mercado, do perfil de carga e da estratégia contratual."
+        ],
+        contract: [
+          "O desempenho econômico está sujeito às condições de mercado, à estratégia e à disciplina contratual adotada.",
+          "Responsabilidades entre consultoria, comercializadora, varejista e cliente devem estar claramente delimitadas.",
+          "Exposição, multas e eventos regulatórios extraordinários observarão as regras vigentes e os contratos correlatos."
+        ]
+      },
+      {
+        id: "treinamento",
+        code: "TR-08",
+        title: "Treinamento de Gestão de Energia",
+        importance: [
+          "Desenvolve competência interna para sustentar resultados energéticos ao longo do tempo.",
+          "Padroniza linguagem, indicadores, rituais e boas práticas entre áreas.",
+          "Fortalece cultura de eficiência, monitoramento e responsabilidade operacional."
+        ],
+        deliverables: [
+          "Levantamento do público-alvo, maturidade e objetivos do treinamento.",
+          "Conteúdo programático, material didático, exercícios práticos e casos aplicados.",
+          "Execução do treinamento presencial ou remoto e avaliação de aprendizagem.",
+          "Relatório de conclusão com recomendações de continuidade."
+        ],
+        results: [
+          "Equipe mais preparada para analisar indicadores e agir sobre desvios.",
+          "Maior aderência a rotinas de controle, monitoramento e eficiência.",
+          "Redução de dependência exclusiva de terceiros para a gestão diária."
+        ],
+        gains: [
+          "Ganho operacional referencial de 2% a 7% por melhoria de disciplina energética e resposta a desvios.",
+          "Aumento de maturidade organizacional e retenção de conhecimento crítico.",
+          "Os resultados dependem da aplicação prática do conteúdo e do suporte da liderança."
+        ],
+        contract: [
+          "Carga horária, formato, materiais, turmas e critérios de certificação devem estar definidos na proposta.",
+          "Alterações de agenda, ausências e remarcações observarão a política comercial pactuada.",
+          "O conteúdo poderá ser customizado conforme setor, maturidade e objetivos do cliente."
+        ]
+      },
+      {
+        id: "regulatoria",
+        code: "CR-09",
+        title: "Consultoria Regulatória - matriz energética",
+        importance: [
+          "Apoia o cliente na interpretação e aplicação de requisitos regulatórios energéticos.",
+          "Reduz riscos de não conformidade, contingências e decisões inadequadas.",
+          "Orienta estratégias ligadas à matriz energética, contratos e obrigações setoriais."
+        ],
+        deliverables: [
+          "Diagnóstico regulatório do contexto do cliente e levantamento documental.",
+          "Pareceres, notas técnicas, matriz de obrigações e plano de adequação.",
+          "Apoio em tratativas, representações técnicas e acompanhamentos específicos.",
+          "Relatórios executivos e recomendações de encaminhamento."
+        ],
+        results: [
+          "Maior segurança jurídico-operacional na tomada de decisão energética.",
+          "Melhor rastreabilidade de obrigações, riscos e alternativas de enquadramento.",
+          "Suporte qualificado para discussões internas e externas."
+        ],
+        gains: [
+          "Ganho econômico indireto por mitigação de contingências, autuações e decisões ineficientes.",
+          "Faixa referencial de preservação ou evitação de custos entre 3% e 10%, conforme criticidade do caso.",
+          "Resultados dependem do tema regulatório, da documentação disponível e da tempestividade das ações."
+        ],
+        contract: [
+          "A consultoria não substitui parecer jurídico formal, salvo previsão expressa e escopo específico.",
+          "Prazos e conclusões dependem da disponibilidade documental e da complexidade do tema.",
+          "Mudanças regulatórias supervenientes podem exigir atualização do escopo e das recomendações."
+        ]
+      }
+    ];
+
+    const staticFields = [
+      "cliente_empresa","cliente_cnpj","cliente_contato","cliente_cargo","cliente_email","cliente_telefone","cliente_endereco","cliente_segmento",
+      "resp_nome","resp_cargo","resp_email","resp_telefone","resp_validade","resp_codigo",
+      "obj_principal","contexto_dor","unidades_atendidas","premissas_relevantes","necessidades_custom",
+      "pricing_discount","pricing_taxes",
+      "cond_pagamento","cond_cronograma","cond_mobilizacao","cond_validade","cond_adicionais",
+      "ass_resp_comercial","ass_aprovador_interno","ass_cliente","ass_data_local"
+    ];
+
+    function escapeHtml(text){
+      return String(text || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#39;");
+    }
+
+    function nl2br(text){
+      return escapeHtml(text || "").replace(/\n/g,"<br>");
+    }
+
+    function formatCurrencyBR(value){
+      const num = isNaN(value) ? 0 : Number(value);
+      return num.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    }
+
+    function formatNumberBR(value){
+      const num = isNaN(value) ? 0 : Number(value);
+      return num.toLocaleString("pt-BR",{minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    function parseBrazilNumber(value){
+      if(value === null || value === undefined) return 0;
+      let v = String(value).trim();
+      if(!v) return 0;
+      v = v.replace(/\s/g,"");
+      if(v.includes(",") && v.includes(".")){
+        v = v.replace(/\./g,"").replace(",",".");
+      }else if(v.includes(",")){
+        v = v.replace(",",".");
+      }
+      v = v.replace(/[^\d.-]/g,"");
+      const n = parseFloat(v);
+      return isNaN(n) ? 0 : n;
+    }
+
+    function showToast(message, type="success"){
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "toast " + type;
+      toast.style.display = "block";
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(()=>{ toast.style.display = "none"; }, 2800);
+    }
+
+    function renderServiceCards(){
+      const container = document.getElementById("serviceCards");
+      container.innerHTML = servicesData.map(service => {
+        const resumo = service.importance && service.importance.length ? service.importance[0] : "Descrição executiva do serviço.";
+        const destaque = service.deliverables && service.deliverables.length ? service.deliverables[0] : "Escopo base conforme proposta.";
+        return `
+        <label class="service-card" id="card_${service.id}">
+          <input type="checkbox" data-service-checkbox="${service.id}">
+          <div class="service-card-main">
+            <div class="service-card-head">
+              <div>
+                <div class="service-card-title">${escapeHtml(service.title)}</div>
+                <div class="service-card-code">Atividade especializada para proposta técnica e comercial</div>
+              </div>
+              <div class="service-card-badge">${escapeHtml(service.code)}</div>
+            </div>
+            <div class="service-card-summary">${escapeHtml(resumo)}</div>
+            <div class="service-card-highlight"><strong>Destaque do escopo:</strong> ${escapeHtml(destaque)}</div>
+          </div>
+        </label>
+      `;
+      }).join("");
+    }
+
+    function createMiniTableRow(serviceId, data = {}){
+      return `
+        <tr>
+          <td><input type="text" data-mini="${serviceId}" data-key="type" placeholder="Serviço ou material" value="${escapeHtml(data.type || "")}"></td>
+          <td><textarea data-mini="${serviceId}" data-key="description" placeholder="Descreva o item aplicável à atividade.">${escapeHtml(data.description || "")}</textarea></td>
+          <td><input type="text" data-mini="${serviceId}" data-key="qtyunit" placeholder="Ex.: 2 un, 40 m, 16 h" value="${escapeHtml(data.qtyunit || "")}"></td>
+          <td><textarea data-mini="${serviceId}" data-key="obs" placeholder="Observações técnicas, local, padrão, interface ou restrição.">${escapeHtml(data.obs || "")}</textarea></td>
+          <td class="align-right"><button type="button" class="remove-btn" data-remove-mini="${serviceId}">Remover</button></td>
+        </tr>
+      `;
+    }
+
+    function renderServiceBlocks(){
+      const container = document.getElementById("serviceBlocks");
+      container.innerHTML = servicesData.map(service => `
+        <div class="service-block" id="block_${service.id}">
+          <h3>${escapeHtml(service.title)}</h3>
+          <div class="service-meta">Código de referência: ${escapeHtml(service.code)} | Exibir este bloco apenas quando a atividade fizer parte do escopo final.</div>
+
+          <div class="subsection">
+            <h4>Importância estratégica</h4>
+            <ul>${service.importance.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Escopo base / entregáveis</h4>
+            <ul>${service.deliverables.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Resultados esperados</h4>
+            <ul>${service.results.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+
+          <div class="subsection">
+            <h4>Estimativas referenciais de ganhos</h4>
+            <ul>${service.gains.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+
+          <div class="grid-2">
+            <div class="field full">
+              <label for="srv_${service.id}_current">Situação atual do cliente</label>
+              <textarea id="srv_${service.id}_current" placeholder="Descreva a condição atual, o histórico, a dor ou a oportunidade identificada."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_${service.id}_objective">Objetivo específico da contratação</label>
+              <textarea id="srv_${service.id}_objective" placeholder="Informe o objetivo técnico, operacional, econômico ou regulatório desta atividade."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_${service.id}_scope">Escopo detalhado / local de aplicação</label>
+              <textarea id="srv_${service.id}_scope" placeholder="Detalhe os ambientes, quadros, processos, unidades, ativos ou frentes abrangidas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_${service.id}_restrictions">Restrições, premissas e exclusões</label>
+              <textarea id="srv_${service.id}_restrictions" placeholder="Indique limitações, dependências, interfaces com terceiros, indisponibilidades, exclusões e premissas."></textarea>
+            </div>
+            <div class="field full">
+              <label for="srv_${service.id}_custom">Necessidades específicas / customizações</label>
+              <textarea id="srv_${service.id}_custom" placeholder="Descreva integrações, relatórios, requisitos de compliance, customizações ou condicionantes especiais."></textarea>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Linhas sugeridas do serviço/material desta atividade</h4>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Qtd / un</th>
+                  <th>Observações</th>
+                  <th style="width:86px">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="mini_tbody_${service.id}">
+                ${createMiniTableRow(service.id)}
+                ${createMiniTableRow(service.id)}
+                ${createMiniTableRow(service.id)}
+              </tbody>
+            </table>
+            <div class="table-action">
+              <button type="button" data-add-mini="${service.id}">Adicionar linha da atividade</button>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h4>Condições contratuais específicas da atividade</h4>
+            <ul>${service.contract.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function attachServiceEvents(){
+      document.querySelectorAll("[data-service-checkbox]").forEach(cb=>{
+        cb.addEventListener("change", ()=>{
+          updateServiceSelectionUI();
+          updateSelectedServicesSummary();
+          updateAnnex();
+        });
+      });
+
+      document.addEventListener("click", (e)=>{
+        if(e.target.matches("[data-add-mini]")){
+          const id = e.target.getAttribute("data-add-mini");
+          document.getElementById("mini_tbody_" + id).insertAdjacentHTML("beforeend", createMiniTableRow(id));
+        }
+        if(e.target.matches("[data-remove-mini]")){
+          const id = e.target.getAttribute("data-remove-mini");
+          const tbody = document.getElementById("mini_tbody_" + id);
+          if(tbody.querySelectorAll("tr").length > 1){
+            e.target.closest("tr").remove();
+          } else {
+            e.target.closest("tr").querySelectorAll("input,textarea").forEach(el => el.value = "");
+          }
+        }
+      });
+    }
+
+    function updateServiceSelectionUI(){
+      servicesData.forEach(service=>{
+        const checked = document.querySelector(`[data-service-checkbox="${service.id}"]`).checked;
+        const card = document.getElementById("card_" + service.id);
+        const block = document.getElementById("block_" + service.id);
+        card.classList.toggle("selected", checked);
+        block.classList.toggle("active", checked);
+      });
+    }
+
+    function getSelectedServices(){
+      return servicesData.filter(service=>{
+        const cb = document.querySelector(`[data-service-checkbox="${service.id}"]`);
+        return cb && cb.checked;
+      });
+    }
+
+    function updateSelectedServicesSummary(){
+      const selected = getSelectedServices();
+      const box = document.getElementById("selectedServicesSummary");
+      if(!selected.length){
+        box.textContent = "Nenhum serviço selecionado.";
+      } else {
+        box.innerHTML = selected.map(s => `${escapeHtml(s.code)} - ${escapeHtml(s.title)}`).join("<br>");
+      }
+    }
+
+    function updateAnnex(){
+      const container = document.getElementById("annexDynamic");
+      const selected = getSelectedServices();
+      if(!selected.length){
+        container.innerHTML = '<p class="muted">Selecione uma ou mais atividades para compor o anexo contratual específico.</p>';
+        return;
+      }
+      container.innerHTML = selected.map(service => `
+        <div class="annex-block">
+          <h3>${escapeHtml(service.code)} - ${escapeHtml(service.title)}</h3>
+          <ul>${service.contract.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </div>
+      `).join("");
+    }
+
+    function createPricingRow(data = {}){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="item-number"></td>
+        <td><input type="text" class="price-category" placeholder="Serviço / material" value="${escapeHtml(data.category || "")}"></td>
+        <td><textarea class="price-description" placeholder="Descreva o item comercial e sua aplicação.">${escapeHtml(data.description || "")}</textarea></td>
+        <td><input type="text" class="price-qty" placeholder="0,00" value="${escapeHtml(data.qty || "")}"></td>
+        <td><input type="text" class="price-unit" placeholder="un, h, m, lote" value="${escapeHtml(data.unit || "")}"></td>
+        <td><input type="text" class="price-unitvalue" placeholder="0,00" value="${escapeHtml(data.unitValue || "")}"></td>
+        <td class="money line-total">R$ 0,00</td>
+        <td class="align-right"><button type="button" class="remove-btn remove-pricing-row">Remover</button></td>
+      `;
+      return tr;
+    }
+
+    function renumberPricingRows(){
+      document.querySelectorAll("#pricingBody tr").forEach((tr, idx)=>{
+        const cell = tr.querySelector(".item-number");
+        if(cell) cell.textContent = String(idx + 1);
+      });
+    }
+
+    function calculatePricing(){
+      let subtotal = 0;
+      document.querySelectorAll("#pricingBody tr").forEach(tr=>{
+        const qty = parseBrazilNumber(tr.querySelector(".price-qty")?.value || 0);
+        const unitValue = parseBrazilNumber(tr.querySelector(".price-unitvalue")?.value || 0);
+        const lineTotal = qty * unitValue;
+        subtotal += lineTotal;
+        const totalCell = tr.querySelector(".line-total");
+        if(totalCell) totalCell.textContent = formatCurrencyBR(lineTotal);
+      });
+      const discount = parseBrazilNumber(document.getElementById("pricing_discount")?.value || 0);
+      const taxes = parseBrazilNumber(document.getElementById("pricing_taxes")?.value || 0);
+      const total = subtotal - discount + taxes;
+
+      document.getElementById("subtotalValue").textContent = formatCurrencyBR(subtotal);
+      document.getElementById("discountValue").textContent = formatCurrencyBR(discount);
+      document.getElementById("taxesValue").textContent = formatCurrencyBR(taxes);
+      document.getElementById("totalValue").textContent = formatCurrencyBR(total);
+
+      return { subtotal, discount, taxes, total };
+    }
+
+    function addPricingRow(data = {}){
+      const tbody = document.getElementById("pricingBody");
+      const tr = createPricingRow(data);
+      tbody.appendChild(tr);
+      renumberPricingRows();
+      calculatePricing();
+    }
+
+    function ensureMinimumPricingRows(minRows = 3){
+      const tbody = document.getElementById("pricingBody");
+      while(tbody.querySelectorAll("tr").length < minRows){
+        addPricingRow();
+      }
+      renumberPricingRows();
+      calculatePricing();
+    }
+
+    function attachPricingEvents(){
+      document.getElementById("addPricingRowBtn").addEventListener("click", ()=> addPricingRow());
+      document.getElementById("pricing_discount").addEventListener("input", calculatePricing);
+      document.getElementById("pricing_taxes").addEventListener("input", calculatePricing);
+
+      document.addEventListener("input", (e)=>{
+        if(e.target.matches(".price-qty, .price-unitvalue")){
+          calculatePricing();
+        }
+      });
+
+      document.addEventListener("click", (e)=>{
+        if(e.target.matches(".remove-pricing-row")){
+          const tbody = document.getElementById("pricingBody");
+          const rows = tbody.querySelectorAll("tr");
+          if(rows.length > 1){
+            e.target.closest("tr").remove();
+          } else {
+            e.target.closest("tr").querySelectorAll("input,textarea").forEach(el => el.value = "");
+          }
+          renumberPricingRows();
+          calculatePricing();
+        }
+      });
+    }
+
+    function collectPricingRows(){
+      return Array.from(document.querySelectorAll("#pricingBody tr")).map(tr=>({
+        category: tr.querySelector(".price-category")?.value || "",
+        description: tr.querySelector(".price-description")?.value || "",
+        qty: tr.querySelector(".price-qty")?.value || "",
+        unit: tr.querySelector(".price-unit")?.value || "",
+        unitValue: tr.querySelector(".price-unitvalue")?.value || ""
+      }));
+    }
+
+    function restorePricingRows(rows){
+      const tbody = document.getElementById("pricingBody");
+      tbody.innerHTML = "";
+      if(Array.isArray(rows) && rows.length){
+        rows.forEach(row => addPricingRow(row));
+      } else {
+        ensureMinimumPricingRows(3);
+      }
+      renumberPricingRows();
+      calculatePricing();
+    }
+
+    function collectMiniTableData(serviceId){
+      return Array.from(document.querySelectorAll(`#mini_tbody_${serviceId} tr`)).map(tr=>({
+        type: tr.querySelector('[data-key="type"]')?.value || "",
+        description: tr.querySelector('[data-key="description"]')?.value || "",
+        qtyunit: tr.querySelector('[data-key="qtyunit"]')?.value || "",
+        obs: tr.querySelector('[data-key="obs"]')?.value || ""
+      }));
+    }
+
+    function restoreMiniTableData(serviceId, rows){
+      const tbody = document.getElementById(`mini_tbody_${serviceId}`);
+      if(!tbody) return;
+      const safeRows = Array.isArray(rows) && rows.length ? rows : [{},{},{}];
+      tbody.innerHTML = safeRows.map(row => createMiniTableRow(serviceId, row)).join("");
+    }
+
+    function collectServiceState(){
+      const state = {};
+      servicesData.forEach(service=>{
+        const checked = document.querySelector(`[data-service-checkbox="${service.id}"]`)?.checked || false;
+        state[service.id] = {
+          checked,
+          current: document.getElementById(`srv_${service.id}_current`)?.value || "",
+          objective: document.getElementById(`srv_${service.id}_objective`)?.value || "",
+          scope: document.getElementById(`srv_${service.id}_scope`)?.value || "",
+          restrictions: document.getElementById(`srv_${service.id}_restrictions`)?.value || "",
+          custom: document.getElementById(`srv_${service.id}_custom`)?.value || "",
+          miniRows: collectMiniTableData(service.id)
+        };
+      });
+      return state;
+    }
+
+    function restoreServiceState(state = {}){
+      servicesData.forEach(service=>{
+        const data = state[service.id] || {};
+        const checkbox = document.querySelector(`[data-service-checkbox="${service.id}"]`);
+        if(checkbox) checkbox.checked = !!data.checked;
+        if(document.getElementById(`srv_${service.id}_current`)) document.getElementById(`srv_${service.id}_current`).value = data.current || "";
+        if(document.getElementById(`srv_${service.id}_objective`)) document.getElementById(`srv_${service.id}_objective`).value = data.objective || "";
+        if(document.getElementById(`srv_${service.id}_scope`)) document.getElementById(`srv_${service.id}_scope`).value = data.scope || "";
+        if(document.getElementById(`srv_${service.id}_restrictions`)) document.getElementById(`srv_${service.id}_restrictions`).value = data.restrictions || "";
+        if(document.getElementById(`srv_${service.id}_custom`)) document.getElementById(`srv_${service.id}_custom`).value = data.custom || "";
+        restoreMiniTableData(service.id, data.miniRows || [{},{},{}]);
+      });
+      updateServiceSelectionUI();
+      updateSelectedServicesSummary();
+      updateAnnex();
+    }
+
+    function collectFormData(){
+      const data = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        fields: {},
+        serviceState: collectServiceState(),
+        pricingRows: collectPricingRows()
+      };
+      staticFields.forEach(id=>{
+        const el = document.getElementById(id);
+        data.fields[id] = el ? el.value : "";
+      });
+      return data;
+    }
+
+    function restoreFormData(data){
+      if(!data || typeof data !== "object") return;
+      staticFields.forEach(id=>{
+        const el = document.getElementById(id);
+        if(el && data.fields && Object.prototype.hasOwnProperty.call(data.fields, id)){
+          el.value = data.fields[id] || "";
+        }
+      });
+      restorePricingRows(data.pricingRows || []);
+      restoreServiceState(data.serviceState || {});
+      calculatePricing();
+      updateCoverClientName();
+    }
+
+    function encodeProposalState(data){
+      const json = JSON.stringify(data || {});
+      return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+
+    function decodeProposalState(payload){
+      const normalized = (payload || "").replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized + "===".slice((normalized.length + 3) % 4);
+      return JSON.parse(decodeURIComponent(escape(atob(padded))));
+    }
+
+    function buildClientViewLink(){
+      const payload = encodeProposalState(collectFormData());
+      const baseUrl = window.location.href.split("#")[0].split("?")[0];
+      return `${baseUrl}?modo=cliente#proposta=${payload}`;
+    }
+
+    function updateClientLinkPanel(link){
+      const panel = document.getElementById("clientLinkPanel");
+      const input = document.getElementById("clientViewLink");
+      if(!panel || !input) return;
+      input.value = link;
+      panel.classList.add("visible");
+    }
+
+    async function copyClientLink(){
+      const input = document.getElementById("clientViewLink");
+      if(!input || !input.value) {
+        showToast("Gere a versão cliente antes de copiar o link.", "error");
+        return;
+      }
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(input.value);
+        }else{
+          input.focus();
+          input.select();
+          document.execCommand("copy");
+        }
+        showToast("Link da versão cliente copiado com sucesso.", "success");
+      }catch(error){
+        showToast("Não foi possível copiar o link automaticamente.", "error");
+      }
+    }
+
+    function openClientLink(){
+      const input = document.getElementById("clientViewLink");
+      if(!input || !input.value) {
+        showToast("Gere a versão cliente antes de abrir o link.", "error");
+        return;
+      }
+      const previewWindow = window.open(input.value, "_blank");
+      if(!previewWindow){
+        showToast("Link gerado. Permita pop-ups para abrir automaticamente a visualização.", "error");
+        return;
+      }
+      window.__lastPreviewWindow = previewWindow;
+      showToast("Versão cliente aberta em modo somente leitura.", "success");
+    }
+
+    function renderClientModeError(message){
+      document.body.innerHTML = `<div style="max-width:760px;margin:60px auto;padding:28px;border:1px solid #d9e6ec;border-radius:22px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#123d56;box-shadow:0 18px 40px rgba(13,44,61,.08)"><h1 style="margin:0 0 12px 0;font-size:28px;color:#123d56">Versão cliente indisponível</h1><p style="margin:0 0 10px 0;line-height:1.6;color:#355468">${escapeHtml(message)}</p><p style="margin:0;line-height:1.6;color:#355468">Solicite um novo link gerado diretamente pela proposta editável.</p></div>`;
+    }
+
+    function maybeRenderClientViewFromURL(){
+      const params = new URLSearchParams(window.location.search);
+      if(params.get("modo") !== "cliente") return;
+      const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+      const payload = hashParams.get("proposta");
+      if(!payload){
+        renderClientModeError("Este link não contém os dados da proposta para visualização.");
+        return;
+      }
+      try{
+        const data = decodeProposalState(payload);
+        restoreFormData(data);
+        updateSelectedServicesSummary();
+        updateAnnex();
+        const previewHTML = buildPreviewHTML();
+        document.open();
+        document.write(previewHTML);
+        document.close();
+      }catch(error){
+        renderClientModeError("O conteúdo do link está inválido ou corrompido.");
+      }
+    }
+
+    function saveDraft(){
+      try{
+        const data = collectFormData();
+        localStorage.setItem("expert_energy_proposta_html_draft", JSON.stringify(data));
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const code = (document.getElementById("resp_codigo")?.value || "rascunho").replace(/[^a-zA-Z0-9_-]+/g, "_");
+        link.href = url;
+        link.download = `proposta_expert_energy_${code}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
+      }catch(error){
+        showToast("Não foi possível arquivar o rascunho.", "error");
+      }
+    }
+
+    function restoreDraft(){
+      try{
+        const raw = localStorage.getItem("expert_energy_proposta_html_draft");
+        if(!raw){
+          showToast("Nenhum rascunho salvo no navegador.", "error");
+          return;
+        }
+        const data = JSON.parse(raw);
+        restoreFormData(data);
+        showToast("Rascunho restaurado com sucesso.", "success");
+      }catch(error){
+        showToast("Não foi possível restaurar o rascunho salvo.", "error");
+      }
+    }
+
+    function getFieldValue(id){
+      return document.getElementById(id)?.value?.trim() || "";
+    }
+
+    function getClientDisplayName(){
+      return getFieldValue("cliente_empresa") || "[Nome do cliente]";
+    }
+
+    function updateCoverClientName(){
+      const target = document.getElementById("coverClientName");
+      if(target) target.textContent = getClientDisplayName();
+    }
+
+    function getFieldOrDash(id){
+      return escapeHtml(getFieldValue(id) || "-");
+    }
+
+    function buildReadOnlyField(label, value){
+      return `
+        <div class="ro-field">
+          <div class="ro-label">${escapeHtml(label)}</div>
+          <div class="ro-value">${value && String(value).trim() ? nl2br(value) : "-"}</div>
+        </div>
+      `;
+    }
+
+    function buildPreviewHTML(){
+      const selected = getSelectedServices();
+      const totals = calculatePricing();
+      const pricingRows = collectPricingRows();
+      const emission = new Date();
+      const emissionText = emission.toLocaleString("pt-BR");
+
+      const pricingRowsHTML = pricingRows.map((row, index)=>{
+        const qty = parseBrazilNumber(row.qty);
+        const unitValue = parseBrazilNumber(row.unitValue);
+        const total = qty * unitValue;
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(row.category || "-")}</td>
+            <td>${nl2br(row.description || "-")}</td>
+            <td class="right">${escapeHtml(row.qty || "0")}</td>
+            <td>${escapeHtml(row.unit || "-")}</td>
+            <td class="right">${formatCurrencyBR(unitValue)}</td>
+            <td class="right">${formatCurrencyBR(total)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const serviceBlocksHTML = selected.length ? selected.map(service=>{
+        const current = getFieldValue(`srv_${service.id}_current`);
+        const objective = getFieldValue(`srv_${service.id}_objective`);
+        const scope = getFieldValue(`srv_${service.id}_scope`);
+        const restrictions = getFieldValue(`srv_${service.id}_restrictions`);
+        const custom = getFieldValue(`srv_${service.id}_custom`);
+        const miniRows = collectMiniTableData(service.id).filter(row => Object.values(row).some(v => String(v || "").trim()));
+
+        return `
+          <section class="ro-section">
+            <h2>${escapeHtml(service.code)} - ${escapeHtml(service.title)}</h2>
+            <h3>Importância estratégica</h3>
+            <ul>${service.importance.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            <h3>Escopo base / entregáveis</h3>
+            <ul>${service.deliverables.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            <h3>Resultados esperados</h3>
+            <ul>${service.results.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            <h3>Estimativas referenciais de ganhos</h3>
+            <ul>${service.gains.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            <div class="ro-grid">
+              ${buildReadOnlyField("Situação atual do cliente", current)}
+              ${buildReadOnlyField("Objetivo específico da contratação", objective)}
+              ${buildReadOnlyField("Escopo detalhado / local de aplicação", scope)}
+              ${buildReadOnlyField("Restrições, premissas e exclusões", restrictions)}
+              ${buildReadOnlyField("Necessidades específicas / customizações", custom)}
+            </div>
+            <h3>Linhas sugeridas desta atividade</h3>
+            <table class="ro-table">
+              <thead>
+                <tr><th>Tipo</th><th>Descrição</th><th>Qtd / un</th><th>Observações</th></tr>
+              </thead>
+              <tbody>
+                ${miniRows.length ? miniRows.map(row=>`
+                  <tr>
+                    <td>${escapeHtml(row.type || "-")}</td>
+                    <td>${nl2br(row.description || "-")}</td>
+                    <td>${escapeHtml(row.qtyunit || "-")}</td>
+                    <td>${nl2br(row.obs || "-")}</td>
+                  </tr>
+                `).join("") : '<tr><td colspan="4">Sem linhas específicas preenchidas.</td></tr>'}
+              </tbody>
+            </table>
+            <h3>Condições contratuais específicas</h3>
+            <ul>${service.contract.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </section>
+        `;
+      }).join("") : '<section class="ro-section"><h2>Serviços selecionados</h2><p>Nenhum serviço foi selecionado.</p></section>';
+
+      const annexHTML = selected.length ? selected.map(service=>`
+        <section class="ro-section compact">
+          <h2>${escapeHtml(service.code)} - ${escapeHtml(service.title)}</h2>
+          <ul>${service.contract.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </section>
+      `).join("") : '<section class="ro-section compact"><p>Nenhuma cláusula específica foi incluída porque não há atividade selecionada.</p></section>';
+
+      return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Versão Cliente - Proposta Especializada</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif; color:#1f2b33; margin:0; background:linear-gradient(180deg, #f1f7fa 0%, #edf4f7 100%);}
+  .wrap{max-width:1020px; margin:0 auto; background:transparent; padding:28px 28px 40px;}
+  .top{
+    background:linear-gradient(135deg, #071c28 0%, #10344a 46%, #174f6d 100%);
+    border:1px solid rgba(103, 215, 244, .18);
+    border-radius:28px;
+    padding:24px 26px;
+    margin-bottom:20px;
+    color:#fff;
+    box-shadow:0 26px 58px rgba(8, 31, 43, .18);
+  }
+  .top-hero{display:flex; gap:18px; align-items:flex-start;}
+  .brand-badge{display:inline-block; margin-bottom:10px; padding:6px 12px; border-radius:999px; background:rgba(116, 222, 247, .12); border:1px solid rgba(116, 222, 247, .22); color:#a6ecfb; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;}
+  .brand{font-size:24px; font-weight:700; color:#fff;}
+  .site{font-size:12px; color:#97e2f5; margin-top:6px; letter-spacing:.12em; text-transform:uppercase;}
+  .doc-title{font-size:18px; font-weight:700; color:#fff; margin-top:14px;}
+  .meta{font-size:12px; color:#d3edf5; margin-top:8px;}
+  .ro-section{margin-top:20px; border:1px solid #d8e5eb; padding:16px 18px; border-radius:22px; background:#fff; box-shadow:0 14px 32px rgba(12, 41, 56, .06);}
+  .ro-section.compact{padding:14px 16px;}
+  h1,h2,h3{color:#123d56; margin:0 0 10px 0;}
+  h1{font-size:24px}
+  h2{font-size:18px; border-bottom:1px solid #d8e5eb; padding-bottom:6px;}
+  h3{font-size:14px; margin-top:16px;}
+  p{margin:0 0 10px 0; line-height:1.45;}
+  ul{margin:8px 0 12px 18px; padding:0;}
+  li{margin:0 0 6px 0;}
+  .ro-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:10px;}
+  .ro-field{border:1px solid #d9e6ec; background:linear-gradient(180deg, #fbfdfe 0%, #f5fafc 100%); padding:10px 12px; min-height:84px; border-radius:18px;}
+  .ro-label{font-size:12px; font-weight:700; color:#123d56; margin-bottom:6px;}
+  .ro-value{font-size:14px; white-space:normal; line-height:1.45;}
+  .ro-table{width:100%; border-collapse:collapse; margin-top:8px;}
+  .ro-table th,.ro-table td{border:1px solid #d5e0e6; padding:8px 10px; font-size:13px; vertical-align:top;}
+  .ro-table th{background:linear-gradient(180deg, #e9f6fb 0%, #d9eef7 100%); text-align:left; color:#10344a;}
+  .right{text-align:right;}
+  .totals{max-width:420px; margin-left:auto; margin-top:12px; border:1px solid #d5e0e6; border-radius:18px; overflow:hidden; background:#fff;}
+  .totals div{display:flex; justify-content:space-between; gap:16px; padding:8px 12px; border-bottom:1px solid #e7edf1;}
+  .totals div:last-child{border-bottom:none; font-weight:700; background:#f0f7fa; color:#123d56;}
+  .muted{color:#5b6971; font-size:12px;}
+  .contract-clause{margin-bottom:10px;}
+  .footer-note{margin-top:24px; font-size:12px; color:#5b6971; border-top:1px solid #d5e0e6; padding-top:12px;}
+  .ro-cover{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg, #071c28 0%, #0e3044 42%, #185571 100%);
+    color:#fff;
+    border:1px solid rgba(103, 215, 244, .18);
+  }
+  .ro-cover::before{
+    content:"";
+    position:absolute;
+    inset:auto -90px -110px auto;
+    width:240px;
+    height:240px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(116, 222, 247, .22) 0%, rgba(116, 222, 247, 0) 72%);
+  }
+  .ro-cover h2,.ro-cover h3{color:#fff; border-bottom:none; padding-bottom:0;}
+  .ro-cover-grid{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:22px; position:relative; z-index:1;}
+  .ro-cover-title{font-size:30px; line-height:1.08; margin:8px 0 12px 0; color:#fff;}
+  .ro-cover-lead{color:#d8eef5; font-size:15px; line-height:1.65;}
+  .ro-badges{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+  .ro-badge{display:inline-flex; padding:7px 12px; border-radius:999px; background:rgba(116, 222, 247, .12); border:1px solid rgba(116, 222, 247, .18); color:#a9ecfb; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;}
+  .ro-cover-panel{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:20px; padding:18px; backdrop-filter:blur(10px);}
+  .ro-cover-panel h3{margin-bottom:12px;}
+  .ro-meta-list{display:grid; gap:10px;}
+  .ro-meta-item{padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,.10);}
+  .ro-meta-item:last-child{border-bottom:none; padding-bottom:0;}
+  .ro-meta-label{display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#9adff1; margin-bottom:3px; font-weight:700;}
+  .ro-meta-value{font-size:14px; color:#fff;}
+  .ro-institutional-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:14px;}
+  .ro-card{border:1px solid #d9e6ec; border-radius:20px; padding:18px; background:linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%); box-shadow:0 10px 22px rgba(13, 44, 61, .04);}
+  .ro-card h3{font-size:16px; margin-bottom:8px;}
+  .ro-steps{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:14px;}
+  .ro-step{border:1px solid #d9e6ec; border-radius:20px; padding:18px 16px 16px; background:#fff; box-shadow:0 10px 22px rgba(13, 44, 61, .04);}
+  .ro-step-number{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, #6bdcf6 0%, #36badf 100%); color:#07202d; font-weight:700; margin-bottom:10px;}
+  .ro-step h4{margin:0 0 8px 0; color:#10344a; font-size:15px;}
+  .ro-site-cta{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr); gap:18px; align-items:center; background:linear-gradient(135deg, rgba(13, 44, 61, .98) 0%, rgba(25, 85, 113, .96) 100%); color:#fff; border:1px solid rgba(103, 215, 244, .18);}
+  .ro-site-cta h2,.ro-site-cta h3{color:#fff; border-bottom:none; padding-bottom:0;}
+  .ro-site-cta p{color:#d9eff6; line-height:1.65;}
+  .ro-cta-actions{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;}
+  .ro-site-button{display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:999px; text-decoration:none; font-weight:700; font-size:13px;}
+  .ro-site-button.primary{background:linear-gradient(135deg, #78e1f8 0%, #42bddf 100%); color:#07202d;}
+  .ro-site-button.secondary{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.12);}
+  @media (max-width:760px){
+    .wrap{padding:18px;}
+    .top-hero,.ro-cover-grid,.ro-site-cta{flex-direction:column; grid-template-columns:1fr; align-items:flex-start;}
+    .brand-mark-preview{width:100%; min-width:0;}
+    .ro-grid,.ro-institutional-grid,.ro-steps{grid-template-columns:1fr;}
+  }
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none; margin:0; padding:0}
+    .ro-section{break-inside:avoid-page; box-shadow:none;}
+    .top{box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="top-hero">
+        <div>
+          <div class="brand-badge">Versão cliente | visual somente leitura</div>
+          <div class="brand">Expert Energy Performance em Energia</div>
+          <div class="site">www.expertenergy.com.br</div>
+          <div class="doc-title">Proposta Comercial Especializada</div>
+          <div class="meta">Emissão da visualização: ${escapeHtml(emissionText)} | Código/versão: ${getFieldOrDash("resp_codigo")}</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="ro-section ro-cover">
+      <div class="ro-cover-grid">
+        <div>
+          <div class="ro-badges">
+            <span class="ro-badge">Proposta institucional</span>
+            <span class="ro-badge">Consultoria premium</span>
+            <span class="ro-badge">Energia e performance</span>
+          </div>
+          <h2 class="ro-cover-title">Estrutura executiva para apresentação de soluções com visão estratégica, profundidade técnica e comunicação institucional.</h2>
+          <p class="ro-cover-lead">Esta versão cliente foi organizada para demonstrar valor de forma clara e consistente, conectando contexto, escopo, resultados esperados, racional econômico e segurança contratual em uma narrativa compatível com decisões de gestão, engenharia e diretoria.</p>
+        </div>
+        <div class="ro-cover-panel">
+          <h3>Posicionamento desta proposta</h3>
+          <div class="ro-meta-list">
+            <div class="ro-meta-item">
+              <span class="ro-meta-label">Foco</span>
+              <div class="ro-meta-value">Eficiência, governança energética, mitigação de riscos e geração de valor operacional.</div>
+            </div>
+            <div class="ro-meta-item">
+              <span class="ro-meta-label">Perfil de decisão</span>
+              <div class="ro-meta-value">Diretoria, operação, utilidades, suprimentos, financeiro e áreas técnicas correlatas.</div>
+            </div>
+            <div class="ro-meta-item">
+              <span class="ro-meta-label">Abordagem</span>
+              <div class="ro-meta-value">Consultiva, estruturada, tecnicamente consistente e orientada a performance.</div>
+            </div>
+            <div class="ro-meta-item">
+              <span class="ro-meta-label">Cliente em destaque</span>
+              <div class="ro-meta-value">${escapeHtml(getClientDisplayName())}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Por que a Expert Energy</h2>
+      <p>A Expert Energy Performance em Energia combina leitura técnica, racional econômico, estruturação operacional e aderência regulatória para transformar energia em uma frente de competitividade, previsibilidade e governança para seus clientes.</p>
+      <div class="ro-institutional-grid">
+        <article class="ro-card">
+          <h3>Visão integrada</h3>
+          <p>Atuação conectando medição, correção, controle, eficiência, gestão de contratos, digitalização e inteligência energética em um fluxo coerente.</p>
+        </article>
+        <article class="ro-card">
+          <h3>Diferenciais competitivos</h3>
+          <ul>
+            <li>Leitura técnica orientada a impacto econômico e operacional.</li>
+            <li>Propostas personalizadas com narrativa executiva clara.</li>
+            <li>Combinação consistente entre serviço, tecnologia e gestão.</li>
+          </ul>
+        </article>
+        <article class="ro-card">
+          <h3>Segurança para decisão</h3>
+          <p>Estimativas referenciais responsáveis, condições contratuais claras e comunicação institucional compatível com processos decisórios mais exigentes.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Metodologia de atuação</h2>
+      <p>A metodologia da Expert Energy prioriza diagnóstico consistente, estruturação adequada do escopo, implantação disciplinada e comprovação do valor entregue ao longo do ciclo do projeto.</p>
+      <div class="ro-steps">
+        <article class="ro-step">
+          <div class="ro-step-number">1</div>
+          <h4>Diagnosticar</h4>
+          <p>Levantamento do contexto energético, operacional, contratual e regulatório.</p>
+        </article>
+        <article class="ro-step">
+          <div class="ro-step-number">2</div>
+          <h4>Estruturar</h4>
+          <p>Definição de escopo, premissas, arquitetura técnica, metas e racional econômico.</p>
+        </article>
+        <article class="ro-step">
+          <div class="ro-step-number">3</div>
+          <h4>Implementar</h4>
+          <p>Execução, integração, treinamento, diligenciamento e controle dos marcos críticos.</p>
+        </article>
+        <article class="ro-step">
+          <div class="ro-step-number">4</div>
+          <h4>Comprovar valor</h4>
+          <p>Consolidação de resultados, governança de indicadores e suporte à continuidade da performance.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="ro-section ro-site-cta">
+      <div>
+        <h2>Conheça mais sobre a Expert Energy</h2>
+        <p>Para aprofundar o entendimento sobre posicionamento institucional, especialidades e soluções complementares, recomendamos visitar o ambiente digital oficial da marca. Esse acesso amplia a percepção de autoridade e reforça a confiança na proposta apresentada.</p>
+        <div class="ro-cta-actions">
+          <a class="ro-site-button primary" href="https://www.expertenergy.com.br" target="_blank" rel="noopener noreferrer">Acessar expertenergy.com.br</a>
+          <a class="ro-site-button secondary" href="https://www.expertenergy.com.br" target="_blank" rel="noopener noreferrer">Explorar o site institucional</a>
+        </div>
+      </div>
+      <div class="ro-cover-panel">
+        <h3>Momento recomendado</h3>
+        <div class="ro-meta-list">
+          <div class="ro-meta-item">
+            <span class="ro-meta-label">Durante a análise</span>
+            <div class="ro-meta-value">Complementar visão institucional, credenciais e especialidades.</div>
+          </div>
+          <div class="ro-meta-item">
+            <span class="ro-meta-label">No pós-envio</span>
+            <div class="ro-meta-value">Ampliar o contato com a marca e aprofundar o entendimento da solução.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Dados do cliente</h2>
+      <div class="ro-grid">
+        ${buildReadOnlyField("Empresa", getFieldValue("cliente_empresa"))}
+        ${buildReadOnlyField("CNPJ", getFieldValue("cliente_cnpj"))}
+        ${buildReadOnlyField("Contato principal", getFieldValue("cliente_contato"))}
+        ${buildReadOnlyField("Cargo / área", getFieldValue("cliente_cargo"))}
+        ${buildReadOnlyField("E-mail", getFieldValue("cliente_email"))}
+        ${buildReadOnlyField("Telefone", getFieldValue("cliente_telefone"))}
+        ${buildReadOnlyField("Endereço / unidade", getFieldValue("cliente_endereco"))}
+        ${buildReadOnlyField("Segmento / operação", getFieldValue("cliente_segmento"))}
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Dados do responsável comercial</h2>
+      <div class="ro-grid">
+        ${buildReadOnlyField("Responsável comercial", getFieldValue("resp_nome"))}
+        ${buildReadOnlyField("Cargo", getFieldValue("resp_cargo"))}
+        ${buildReadOnlyField("E-mail", getFieldValue("resp_email"))}
+        ${buildReadOnlyField("Telefone", getFieldValue("resp_telefone"))}
+        ${buildReadOnlyField("Validade da proposta", getFieldValue("resp_validade"))}
+        ${buildReadOnlyField("Código / versão", getFieldValue("resp_codigo"))}
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Enquadramento da proposta</h2>
+      <div class="ro-grid">
+        ${buildReadOnlyField("Serviços selecionados", selected.map(s => `${s.code} - ${s.title}`).join("\n") || "-")}
+        ${buildReadOnlyField("Objetivo principal da proposta", getFieldValue("obj_principal"))}
+        ${buildReadOnlyField("Contexto / dor do cliente", getFieldValue("contexto_dor"))}
+        ${buildReadOnlyField("Unidades atendidas", getFieldValue("unidades_atendidas"))}
+        ${buildReadOnlyField("Premissas relevantes", getFieldValue("premissas_relevantes"))}
+        ${buildReadOnlyField("Necessidades específicas / customizações", getFieldValue("necessidades_custom"))}
+      </div>
+    </section>
+
+    ${serviceBlocksHTML}
+
+    <section class="ro-section">
+      <h2>Planilha comercial consolidada</h2>
+      <table class="ro-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Categoria</th>
+            <th>Descrição do serviço/material</th>
+            <th>Quantidade</th>
+            <th>Unidade</th>
+            <th>Valor unitário (R$)</th>
+            <th>Valor total (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pricingRowsHTML || '<tr><td colspan="7">Nenhum item comercial preenchido.</td></tr>'}
+        </tbody>
+      </table>
+      <div class="totals">
+        <div><span>Subtotal</span><strong>${formatCurrencyBR(totals.subtotal)}</strong></div>
+        <div><span>Desconto</span><strong>${formatCurrencyBR(totals.discount)}</strong></div>
+        <div><span>Impostos / taxas / encargos</span><strong>${formatCurrencyBR(totals.taxes)}</strong></div>
+        <div><span>Total geral da proposta</span><strong>${formatCurrencyBR(totals.total)}</strong></div>
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Condições comerciais</h2>
+      <div class="ro-grid">
+        ${buildReadOnlyField("Condição de pagamento", getFieldValue("cond_pagamento"))}
+        ${buildReadOnlyField("Prazo de execução / cronograma", getFieldValue("cond_cronograma"))}
+        ${buildReadOnlyField("Prazo de mobilização", getFieldValue("cond_mobilizacao"))}
+        ${buildReadOnlyField("Validade comercial", getFieldValue("cond_validade"))}
+        ${buildReadOnlyField("Condições adicionais", getFieldValue("cond_adicionais"))}
+      </div>
+    </section>
+
+    <section class="ro-section">
+      <h2>Minuta de contrato padrão</h2>
+      <p class="contract-clause"><strong>1. Partes e objeto.</strong> A CONTRATADA prestará os serviços especializados descritos nesta proposta comercial, conforme atividade(s) selecionada(s), escopo, premissas, exclusões e cronograma aprovados entre as partes.</p>
+      <p class="contract-clause"><strong>2. Escopo e entregáveis.</strong> O escopo detalhado, os relatórios, projetos, treinamentos, fornecimentos, instalações e demais entregas constam desta proposta e de seus anexos, prevalecendo a versão final aprovada entre as partes.</p>
+      <p class="contract-clause"><strong>3. Obrigações da contratada.</strong> Executar os serviços com diligência técnica, apresentar os entregáveis previstos, manter comunicação adequada e observar sigilo, segurança e boas práticas compatíveis com o objeto contratado.</p>
+      <p class="contract-clause"><strong>4. Obrigações do cliente.</strong> Disponibilizar acesso, documentos, informações, responsáveis, infraestrutura e aprovações necessárias, bem como assegurar as condições mínimas para execução do escopo no prazo acordado.</p>
+      <p class="contract-clause"><strong>5. Premissas e exclusões.</strong> Tudo o que não estiver expressamente indicado como incluído será considerado fora de escopo, podendo ser tratado por aditivo comercial e/ou contratual.</p>
+      <p class="contract-clause"><strong>6. Prazo e cronograma.</strong> O cronograma terá início conforme aceite comercial, contratação, liberação de acessos, fornecimento de informações e demais condições precedentes aplicáveis ao caso concreto.</p>
+      <p class="contract-clause"><strong>7. Preço, impostos e reajustes.</strong> Os valores são apresentados com discriminação de itens, descontos, impostos, taxas e condições de pagamento, observada a legislação vigente e o enquadramento aplicável ao negócio.</p>
+      <p class="contract-clause"><strong>8. Faturamento e pagamento.</strong> O faturamento seguirá a condição comercial aprovada. O inadimplemento poderá implicar suspensão da execução até regularização, sem prejuízo de atualização monetária, encargos legais e cobrança dos valores vencidos.</p>
+      <p class="contract-clause"><strong>9. Aceite e medição.</strong> O aceite ocorrerá conforme critérios do escopo contratado, podendo envolver validação documental, comissionamento, entrega de relatórios, conclusão de treinamento, homologação técnica, medição de marcos ou outras evidências de conclusão previstas para a atividade contratada.</p>
+      <p class="contract-clause"><strong>10. Confidencialidade e LGPD.</strong> As partes comprometem-se a tratar como confidenciais as informações técnicas, comerciais, operacionais e estratégicas a que tiverem acesso, bem como a observar a legislação aplicável em relação a eventuais dados pessoais tratados durante a execução do objeto.</p>
+      <p class="contract-clause"><strong>11. Propriedade intelectual.</strong> Metodologias, templates, ferramentas, relatórios, pareceres, modelos, parametrizações e demais materiais produzidos observarão a disciplina de uso prevista na proposta e na legislação aplicável, preservados os direitos pré-existentes de cada parte.</p>
+      <p class="contract-clause"><strong>12. Garantias e limitações.</strong> Garantias técnicas, quando aplicáveis, observarão o escopo contratado, os fabricantes envolvidos, as condições de instalação e operação e os limites expressamente informados. Estimativas econômicas e operacionais possuem caráter referencial e não constituem promessa de resultado absoluto ou incondicional.</p>
+      <p class="contract-clause"><strong>13. Rescisão.</strong> O instrumento poderá ser rescindido por descumprimento contratual, inadimplemento, força maior ou conveniência, observados os serviços efetivamente executados, os custos incorridos, os compromissos assumidos e as disposições específicas eventualmente pactuadas entre as partes.</p>
+      <p class="contract-clause"><strong>14. Disposições gerais.</strong> A proposta comercial, seus anexos, a ordem de compra, eventuais aditivos e o contrato firmado compõem o conjunto documental do negócio. Qualquer modificação somente terá validade se formalizada por escrito entre as partes.</p>
+    </section>
+
+    <section class="ro-section">
+      <h2>Anexo contratual - condições específicas por atividade</h2>
+      ${annexHTML}
+    </section>
+
+    <section class="ro-section">
+      <h2>Assinaturas e aprovações</h2>
+      <div class="ro-grid">
+        ${buildReadOnlyField("Responsável comercial - contratada", getFieldValue("ass_resp_comercial"))}
+        ${buildReadOnlyField("Aprovador interno - contratada", getFieldValue("ass_aprovador_interno"))}
+        ${buildReadOnlyField("Representante do cliente", getFieldValue("ass_cliente"))}
+        ${buildReadOnlyField("Data / local", getFieldValue("ass_data_local"))}
+      </div>
+    </section>
+
+    <div class="footer-note">Estimativas de ganhos, eficiência, economia, redução de penalidades ou mitigação de riscos apresentadas nesta versão cliente possuem caráter referencial e dependem de diagnóstico, baseline, condições de mercado, perfil tarifário, disponibilidade de dados, regime operacional e efetiva implementação das medidas propostas.</div>
+  </div>
+</body>
+</html>`;
+    }
+
+    function generateClientPreview(){
+      try{
+        const link = buildClientViewLink();
+        updateClientLinkPanel(link);
+        const previewWindow = window.open(link, "_blank");
+        if(!previewWindow){
+          showToast("Link gerado. Permita pop-ups para abrir automaticamente a visualização cliente.", "error");
+          return;
+        }
+        window.__lastPreviewWindow = previewWindow;
+        showToast("Link da versão cliente gerado com sucesso.", "success");
+      }catch(error){
+        showToast("Não foi possível gerar o link da versão cliente.", "error");
+      }
+    }
+
+    function returnToEditMode(){
+      if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
+        window.__lastPreviewWindow.close();
+      }
+      showToast("Modo edição ativo nesta página.", "success");
+    }
+
+    function bindTopActions(){
+      document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
+      document.getElementById("restoreDraftBtn").addEventListener("click", restoreDraft);
+      document.getElementById("generatePdfBtn").addEventListener("click", generateClientPreview);
+      document.getElementById("editModeBtn").addEventListener("click", returnToEditMode);
+      document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
+      document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
+    }
+
+    function initialize(){
+      renderServiceCards();
+      renderServiceBlocks();
+      attachServiceEvents();
+      attachPricingEvents();
+      bindTopActions();
+      ensureMinimumPricingRows(3);
+      updateServiceSelectionUI();
+      updateSelectedServicesSummary();
+      updateAnnex();
+      updateCoverClientName();
+      const clienteEmpresaInput = document.getElementById("cliente_empresa");
+      if(clienteEmpresaInput){
+        clienteEmpresaInput.addEventListener("input", updateCoverClientName);
+      }
+      maybeRenderClientViewFromURL();
+    }
+
+    initialize();
+  </script>
+<script defer="" src="./index_files/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;4edd5f8ec12a48cfa682ab8261b80a79&quot;,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
+</body></html>
