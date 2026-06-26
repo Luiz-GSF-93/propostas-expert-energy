@@ -932,13 +932,16 @@
         margin:16mm;
       }
     }
- html, body {
+html {
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 body {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
   color: var(--texto);
 }
 
@@ -973,35 +976,66 @@ textarea::placeholder {
 .service-card,
 .summary-note,
 section,
-.footer-note {
+.footer-note,
+#client-preview {
   overflow: visible;
 }
+
+header,
+section,
+.footer-note,
+.link-output-panel,
+#client-preview {
+  position: relative;
+  z-index: 1;
+}
+
   </style>
 </head>
 <body>
   <div class="action-bar editor-only">
     <div class="action-row">
-<div class="action-left">
-  <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
-  <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
-  <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
-  <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
-  <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
-</div>
+      <div class="action-left">
+        <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
+        <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
+        <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
+        <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
+        <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
+      </div>
+
+      <div class="action-right">
+        <div class="action-status">Preencha os campos, salve a proposta e gere a versão cliente.</div>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
   <section class="link-output-panel editor-only" id="clientLinkPanel">
     <div class="link-output-copy">
-      <div class="link-output-title">Link da versão cliente gerado</div>
+      <div class="link-output-title">Versão cliente gerada para visualização local</div>
       <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
       <div class="link-output-row">
-        <input type="text" id="clientViewLink" class="link-output-input" readonly="" value="">
+        <input type="text" id="clientViewLink" class="link-output-input" readonly value="">
         <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
         <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
       </div>
     </div>
   </section>
+
+  <header class="editor-only">
+    <div class="brand-hero">
+      <div class="brand-signature">
+        <span class="brand-signature-name">Expert Energy Performance em Energia</span>
+      </div>
+      <div class="brand-copy">
+        <div class="brand-kicker">Identidade comercial | proposta premium interativa</div>
+        <h1>Modelo Interativo de Proposta Comercial Especializada</h1>
+        <div class="site-link">EXPERT ENERGY PERFORMANCE EM ENERGIA • www.expertenergy.com.br</div>
+        <div class="doc-subtitle">Ambiente profissional para montagem de propostas técnicas e comerciais, com narrativa executiva, composição financeira automática, condições contratuais dinâmicas e apresentação alinhada à identidade da marca.</div>
+      </div>
+    </div>
+  </header>
 
   <header class="editor-only">
     <div class="brand-hero">
@@ -3229,39 +3263,6 @@ section,
       }
     }
 
-  async function saveDraft(){
-  try{
-    const data = collectFormData();
-
-    localStorage.setItem("expert_energy_proposta_html_draft", JSON.stringify(data));
-
-    const response = await fetch("/api/proposals", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        client_name: data.fields?.cliente_empresa || "Sem nome",
-        title: data.fields?.obj_principal || "Proposta sem título",
-        status: "draft",
-        editable_json: data
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("Falha ao salvar no backend");
-    }
-
-    const result = await response.json();
-
-    showToast("Proposta salva com sucesso.", "success");
-    console.log("Proposta salva:", result);
-  } catch(error){
-    console.error(error);
-    showToast("Rascunho salvo localmente, mas falhou no backend.", "error");
-  }
-}
-
     function getFieldValue(id){
       return document.getElementById(id)?.value?.trim() || "";
     }
@@ -3756,73 +3757,8 @@ section,
       showToast("Modo edição ativo nesta página.", "success");
     }
 
+const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
 const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
-
-function getSupabaseAccessToken() {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-
-        try {
-          const parsed = JSON.parse(raw);
-
-          if (parsed?.access_token) {
-            return parsed.access_token;
-          }
-
-          if (parsed?.currentSession?.access_token) {
-            return parsed.currentSession.access_token;
-          }
-
-          if (Array.isArray(parsed)) {
-            for (const item of parsed) {
-              if (item?.access_token) return item.access_token;
-              if (item?.currentSession?.access_token) return item.currentSession.access_token;
-            }
-          }
-        } catch (err) {
-          const tokenMatch = raw.match(/"access_token":"([^"]+)"/);
-          if (tokenMatch && tokenMatch[1]) {
-            return tokenMatch[1];
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Erro ao buscar token do Supabase:", error);
-  }
-
-  return null;
-}
-
-function buildProposalPayload() {
-  const formData = collectFormData();
-  const selected = getSelectedServices();
-
-  const clientName =
-    getFieldValue("cliente_empresa") ||
-    getFieldValue("cliente_contato") ||
-    "Cliente não informado";
-
-  const title =
-    getFieldValue("obj_principal") ||
-    (selected.length
-      ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
-      : "Proposta comercial");
-
-  return {
-    client_name: clientName,
-    title,
-    status: "draft",
-    editable_json: formData
-  };
-}
-
 const API_BASE_URL = "https://cuddly-parakeet-974r47g7v9r4h97xp-4000.app.github.dev";
 
 function getSupabaseAccessToken() {
@@ -3839,16 +3775,12 @@ function getSupabaseAccessToken() {
           const parsed = JSON.parse(raw);
 
           if (parsed?.access_token) return parsed.access_token;
-          if (parsed?.currentSession?.access_token) {
-            return parsed.currentSession.access_token;
-          }
+          if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
 
           if (Array.isArray(parsed)) {
             for (const item of parsed) {
               if (item?.access_token) return item.access_token;
-              if (item?.currentSession?.access_token) {
-                return item.currentSession.access_token;
-              }
+              if (item?.currentSession?.access_token) return item.currentSession.access_token;
             }
           }
         } catch (error) {
@@ -3883,7 +3815,7 @@ function buildProposalPayload() {
     client_name: clientName,
     title,
     status: "draft",
-    editable_json: formData,
+    editable_json: formData
   };
 }
 
@@ -3910,9 +3842,9 @@ async function saveProposalToBackend() {
       mode: "cors",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload)
     });
 
     let result = {};
@@ -3937,11 +3869,7 @@ async function saveProposalToBackend() {
       localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, savedId);
     }
 
-    localStorage.setItem(
-      LOCAL_DRAFT_KEY,
-      JSON.stringify(collectFormData())
-    );
-
+    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(collectFormData()));
     showToast("Proposta salva com sucesso no sistema.", "success");
   } catch (error) {
     console.error(error);
@@ -3955,7 +3883,7 @@ function saveDraft() {
     localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
 
     const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
+      type: "application/json"
     });
 
     const url = URL.createObjectURL(blob);
