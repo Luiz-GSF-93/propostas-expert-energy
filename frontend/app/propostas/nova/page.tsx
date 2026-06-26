@@ -86,7 +86,7 @@ export default function NovaPropostaPage() {
 
       <iframe
         ref={iframeRef}
-        src="/proposta-base.html"
+        src="/proposta-base.html?v=debug-save-3"
         title="Proposta base"
         className="block w-full border-0 bg-white"
         style={{ minHeight: "1400px" }}

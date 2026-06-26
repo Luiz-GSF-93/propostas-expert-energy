@@ -993,7 +993,7 @@ section,
   </style>
 </head>
 <body>
-<div class="action-bar editor-only">
+  <div class="action-bar editor-only">
   <div class="action-row">
     <div class="action-left">
       <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
@@ -3731,51 +3731,129 @@ section,
 const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
 const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
 
-async function saveProposalToBackend() {
-  try {
-    const sessionRaw = Object.keys(localStorage)
-      .map((key) => localStorage.getItem(key))
-      .find((value) => value && value.includes("access_token"));
+function getSupabaseAccessToken(){
+  const sessionRaw = Object.keys(localStorage)
+    .map((key)=> localStorage.getItem(key))
+    .find((value)=> value && value.includes("access_token"));
 
-    if (!sessionRaw) {
+  if(!sessionRaw) return null;
+
+  try{
+    const parsed = JSON.parse(sessionRaw);
+    return parsed?.access_token || parsed?.currentSession?.access_token || null;
+  }catch(error){
+    const match = sessionRaw.match(/"access_token":"([^"]+)"/);
+    return match ? match[1] : null;
+  }
+}
+
+function getCurrentProposalId(){
+  return localStorage.getItem(LOCAL_PROPOSAL_ID_KEY) || "";
+}
+
+function setCurrentProposalId(id){
+  if(id){
+    localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, id);
+  }
+}
+
+function clearCurrentProposalId(){
+  localStorage.removeItem(LOCAL_PROPOSAL_ID_KEY);
+}
+
+function getTrimmedFieldValue(id){
+  return document.getElementById(id)?.value?.trim() || "";
+}
+
+function buildProposalTitle(selectedServices){
+  const objective = getTrimmedFieldValue("obj_principal");
+  if(objective) return objective;
+
+  if(Array.isArray(selectedServices) && selectedServices.length){
+    return selectedServices
+      .map((item)=> `${item.code} - ${item.title}`)
+      .join(" | ");
+  }
+
+  return "Proposta comercial";
+}
+
+function buildClientName(){
+  return (
+    getTrimmedFieldValue("cliente_empresa") ||
+    getTrimmedFieldValue("cliente_contato") ||
+    "Cliente não informado"
+  );
+}
+
+function updateSaveButtonState(){
+  const button = document.getElementById("saveProposalBtn");
+  if(!button) return;
+
+  if(getCurrentProposalId()){
+    button.textContent = "Atualizar proposta";
+  }else{
+    button.textContent = "Salvar proposta";
+  }
+}
+
+async function saveProposalToBackend(){
+  try{
+    const token = getSupabaseAccessToken();
+
+    if(!token){
       showToast("Faça login novamente para salvar a proposta.", "error");
-      return;
-    }
-
-    let token = null;
-
-    try {
-      const parsed = JSON.parse(sessionRaw);
-      token =
-        parsed?.access_token ||
-        parsed?.currentSession?.access_token ||
-        null;
-    } catch (error) {
-      const match = sessionRaw.match(/"access_token":"([^"]+)"/);
-      token = match ? match[1] : null;
-    }
-
-    if (!token) {
-      showToast("Token de autenticação não encontrado. Faça login novamente.", "error");
       return;
     }
 
     const data = collectFormData();
     const selected = getSelectedServices();
-    const proposalId = localStorage.getItem(LOCAL_PROPOSAL_ID_KEY);
+    const proposalId = getCurrentProposalId();
+
+    const compactFields = Object.fromEntries(
+      Object.entries(data.fields || {}).filter(([, value]) => String(value || "").trim() !== "")
+    );
+
+    const compactServiceState = Object.fromEntries(
+      Object.entries(data.serviceState || {}).filter(([, service]) => {
+        if(!service || typeof service !== "object") return false;
+
+        const miniRows = Array.isArray(service.miniRows)
+          ? service.miniRows.filter((row) =>
+              row && Object.values(row).some((value) => String(value || "").trim() !== "")
+            )
+          : [];
+
+        service.miniRows = miniRows;
+
+        return Boolean(service.selected)
+          || String(service.current || "").trim() !== ""
+          || String(service.goal || "").trim() !== ""
+          || String(service.scope || "").trim() !== ""
+          || String(service.restrictions || "").trim() !== ""
+          || String(service.custom || "").trim() !== ""
+          || miniRows.length > 0;
+      })
+    );
+
+    const compactPricingRows = (data.pricingRows || []).filter((row) =>
+      row && Object.values(row).some((value) => String(value || "").trim() !== "")
+    );
+
+    const editableData = {
+      version: data.version || 1,
+      savedAt: new Date().toISOString(),
+      fields: compactFields,
+      serviceState: compactServiceState,
+      pricingRows: compactPricingRows,
+      selectedServices: Array.isArray(selected) ? selected : []
+    };
 
     const payload = {
-      client_name:
-        data.fields?.cliente_empresa ||
-        data.fields?.cliente_contato ||
-        "Cliente não informado",
-      title:
-        data.fields?.obj_principal ||
-        (selected.length
-          ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
-          : "Proposta comercial"),
+      client_name: buildClientName(),
+      title: buildProposalTitle(selected),
       status: "draft",
-      editable_json: data,
+      editable_json: editableData
     };
 
     const response = await fetch(
@@ -3784,39 +3862,123 @@ async function saveProposalToBackend() {
         method: proposalId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       }
     );
 
+    const rawText = await response.text();
     let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {}
 
-    if (!response.ok) {
-      console.error("Erro ao salvar proposta:", result);
-      showToast("Não foi possível salvar a proposta no sistema.", "error");
+    try{
+      result = rawText ? JSON.parse(rawText) : {};
+    }catch(error){
+      result = { rawText };
+    }
+
+    if(!response.ok){
+      const detail = result?.detail || result?.error || result?.message || `HTTP ${response.status}`;
+      console.error("Falha ao salvar proposta:", {
+        status: response.status,
+        result
+      });
+      showToast(`Não foi possível salvar a proposta: ${detail}`, "error");
       return;
     }
 
-    const savedId =
-      result?.id ||
-      result?.data?.id ||
-      result?.proposal?.id ||
-      proposalId ||
-      null;
+    const savedId = result?.id || result?.data?.id || result?.proposal?.id || proposalId || null;
 
-    if (savedId) {
-      localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, savedId);
+    if(savedId){
+      setCurrentProposalId(savedId);
     }
 
     localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
-    showToast("Proposta salva com sucesso no sistema.", "success");
-  } catch (error) {
-    console.error(error);
-    showToast("Erro ao salvar a proposta.", "error");
+    updateSaveButtonState();
+
+    showToast(
+      proposalId
+        ? "Proposta atualizada com sucesso."
+        : "Proposta salva com sucesso no sistema.",
+      "success"
+    );
+  }catch(error){
+    console.error("Erro inesperado ao salvar proposta:", error);
+    showToast(`Erro ao salvar a proposta: ${error.message || "falha inesperada"}`, "error");
+  }
+}
+
+async function loadProposalFromBackend(){
+  try{
+    const proposalId = getCurrentProposalId();
+    if(!proposalId) return false;
+
+    const token = getSupabaseAccessToken();
+    if(!token) return false;
+
+    const response = await fetch(`/api/proposals/${proposalId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const rawText = await response.text();
+    let result = {};
+
+    try{
+      result = rawText ? JSON.parse(rawText) : {};
+    }catch(error){
+      result = { rawText };
+    }
+
+    if(!response.ok){
+      console.error("Falha ao carregar proposta:", {
+        status: response.status,
+        result
+      });
+      return false;
+    }
+
+    const proposal = result?.data || result?.proposal || result;
+    const editableData = proposal?.editable_json;
+
+    if(!editableData || typeof editableData !== "object"){
+      return false;
+    }
+
+    restoreFormData(editableData);
+    calculatePricing();
+    updateServiceSelectionUI();
+    updateSelectedServicesSummary();
+    updateAnnex();
+    updateCoverClientName();
+    updateSaveButtonState();
+
+    return true;
+  }catch(error){
+    console.error("Erro ao carregar proposta salva:", error);
+    return false;
+  }
+}
+
+async function restoreInitialProposalState(){
+  const restoredFromBackend = await loadProposalFromBackend();
+  if(restoredFromBackend) return;
+
+  const rawDraft = localStorage.getItem(LOCAL_DRAFT_KEY);
+  if(!rawDraft) return;
+
+  try{
+    const data = JSON.parse(rawDraft);
+    restoreFormData(data);
+    calculatePricing();
+    updateServiceSelectionUI();
+    updateSelectedServicesSummary();
+    updateAnnex();
+    updateCoverClientName();
+  }catch(error){
+    console.error("Não foi possível restaurar rascunho inicial:", error);
   }
 }
 
@@ -3950,24 +4112,27 @@ function bindTopActions() {
     .getElementById("openClientLinkBtn")
     ?.addEventListener("click", openClientLink);
 }
-    function initialize(){
-      renderServiceCards();
-      renderServiceBlocks();
-      attachServiceEvents();
-      attachPricingEvents();
-      bindTopActions();
-      ensureMinimumPricingRows(3);
-      updateServiceSelectionUI();
-      updateSelectedServicesSummary();
-      updateAnnex();
-      updateCoverClientName();
-      const clienteEmpresaInput = document.getElementById("cliente_empresa");
-      if(clienteEmpresaInput){
-        clienteEmpresaInput.addEventListener("input", updateCoverClientName);
-      }
-      maybeRenderClientViewFromURL();
-    }
+    async function initialize(){
+  renderServiceCards();
+  renderServiceBlocks();
+  attachServiceEvents();
+  attachPricingEvents();
+  bindTopActions();
+  ensureMinimumPricingRows(3);
+  updateServiceSelectionUI();
+  updateSelectedServicesSummary();
+  updateAnnex();
+  updateCoverClientName();
+  updateSaveButtonState();
 
+  const clienteEmpresaInput = document.getElementById("cliente_empresa");
+  if(clienteEmpresaInput){
+    clienteEmpresaInput.addEventListener("input", updateCoverClientName);
+  }
+
+  await restoreInitialProposalState();
+  maybeRenderClientViewFromURL();
+}
     initialize();
   </script>
 

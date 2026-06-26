@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    proxyClientMaxBodySize: 10 * 1024 * 1024, // 10 MB
+  },
+
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination:
-          "https://cuddly-parakeet-974r47g7v9r4h97xp-4000.app.github.dev/api/:path*",
+        destination: "http://127.0.0.1:4000/api/:path*",
       },
     ];
   },

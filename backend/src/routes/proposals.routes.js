@@ -15,6 +15,9 @@ function normalizePagination(query) {
 
 router.post("/", authMiddleware, async (req, res) => {
   try {
+    console.log("BODY recebido em POST /api/proposals:", req.body);
+    console.log("USER autenticado:", req.user);
+
     const {
       title,
       client_name,
@@ -34,6 +37,7 @@ router.post("/", authMiddleware, async (req, res) => {
       await adminSupabase.rpc("generate_proposal_code");
 
     if (proposalCodeError) {
+      console.error("Erro ao gerar código da proposta:", proposalCodeError);
       return res.status(500).json({
         message: "Erro ao gerar código da proposta.",
         error: proposalCodeError.message
@@ -55,33 +59,43 @@ router.post("/", authMiddleware, async (req, res) => {
       updated_by: req.user.id
     };
 
+    console.log("Payload enviado ao Supabase:", payload);
+
     const { data, error } = await adminSupabase
       .from("proposals")
-      .insert(payload)
+      .insert([payload])
       .select("*")
       .single();
 
     if (error) {
+      console.error("Erro ao criar proposta no Supabase:", error);
       return res.status(500).json({
         message: "Erro ao criar proposta.",
         error: error.message
       });
     }
 
-    await adminSupabase.from("proposal_events").insert({
-      proposal_id: data.id,
-      event_type: "created",
-      actor_id: req.user.id,
-      payload: {
-        proposal_code: data.proposal_code
-      }
-    });
+    const { error: eventError } = await adminSupabase
+      .from("proposal_events")
+      .insert({
+        proposal_id: data.id,
+        event_type: "created",
+        actor_id: req.user.id,
+        payload: {
+          proposal_code: data.proposal_code
+        }
+      });
+
+    if (eventError) {
+      console.error("Erro ao registrar evento da proposta:", eventError);
+    }
 
     return res.status(201).json({
       message: "Proposta criada com sucesso.",
       data
     });
   } catch (error) {
+    console.error("Erro interno ao criar proposta:", error);
     return res.status(500).json({
       message: "Erro interno ao criar proposta.",
       error: error.message
@@ -100,6 +114,7 @@ router.get("/", authMiddleware, async (req, res) => {
         "id, proposal_code, title, client_name, status, current_version, html_url, pdf_url, public_slug, public_enabled, created_at, updated_at",
         { count: "exact" }
       )
+      .eq("created_by", req.user.id)
       .order("created_at", { ascending: false })
       .range(from, to);
 
@@ -117,6 +132,7 @@ router.get("/", authMiddleware, async (req, res) => {
     const { data, error, count } = await query;
 
     if (error) {
+      console.error("Erro ao listar propostas:", error);
       return res.status(500).json({
         message: "Erro ao listar propostas.",
         error: error.message
@@ -132,6 +148,7 @@ router.get("/", authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("Erro interno ao listar propostas:", error);
     return res.status(500).json({
       message: "Erro interno ao listar propostas.",
       error: error.message
@@ -147,6 +164,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
       .from("proposals")
       .select("*")
       .eq("id", id)
+      .eq("created_by", req.user.id)
       .single();
 
     if (error || !data) {
@@ -156,10 +174,9 @@ router.get("/:id", authMiddleware, async (req, res) => {
       });
     }
 
-    return res.json({
-      data
-    });
+    return res.json({ data });
   } catch (error) {
+    console.error("Erro interno ao buscar proposta:", error);
     return res.status(500).json({
       message: "Erro interno ao buscar proposta.",
       error: error.message
@@ -196,30 +213,45 @@ router.put("/:id", authMiddleware, async (req, res) => {
       .from("proposals")
       .update(updatePayload)
       .eq("id", id)
+      .eq("created_by", req.user.id)
       .select("*")
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({
+    if (error) {
+      console.error("Erro ao atualizar proposta:", error);
+      return res.status(500).json({
         message: "Erro ao atualizar proposta.",
-        error: error?.message
+        error: error.message
       });
     }
 
-    await adminSupabase.from("proposal_events").insert({
-      proposal_id: data.id,
-      event_type: "updated",
-      actor_id: req.user.id,
-      payload: {
-        updated_fields: Object.keys(updatePayload)
-      }
-    });
+    if (!data) {
+      return res.status(404).json({
+        message: "Proposta não encontrada."
+      });
+    }
+
+    const { error: eventError } = await adminSupabase
+      .from("proposal_events")
+      .insert({
+        proposal_id: data.id,
+        event_type: "updated",
+        actor_id: req.user.id,
+        payload: {
+          updated_fields: Object.keys(updatePayload)
+        }
+      });
+
+    if (eventError) {
+      console.error("Erro ao registrar evento de atualização:", eventError);
+    }
 
     return res.json({
       message: "Proposta atualizada com sucesso.",
       data
     });
   } catch (error) {
+    console.error("Erro interno ao atualizar proposta:", error);
     return res.status(500).json({
       message: "Erro interno ao atualizar proposta.",
       error: error.message

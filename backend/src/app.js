@@ -1,42 +1,36 @@
 const express = require("express");
-const env = require("./config/env");
+const cors = require("cors");
 
+const env = require("./config/env");
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 const proposalsRoutes = require("./routes/proposals.routes");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://cuddly-parakeet-974r47g7v9r4h97xp-3000.app.github.dev"
-];
+console.log("=== APP VERSION DEBUG CORS LIBERADO ===");
+
+app.use(cors({
+  origin: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 204,
+}));
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-
-  res.header("Vary", "Origin");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log("Origin recebida:", req.headers.origin);
   next();
 });
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
-
 app.get("/", (req, res) => {
-  return res.json({
-    message: "API Proposta Expert Energy online."
+  res.status(200).json({
+    status: "ok",
+    message: "API Expert Energy online",
   });
 });
 
@@ -45,8 +39,28 @@ app.use("/api/auth", authRoutes);
 app.use("/api/proposals", proposalsRoutes);
 
 app.use((req, res) => {
-  return res.status(404).json({
-    message: "Rota não encontrada."
+  res.status(404).json({
+    status: "error",
+    message: "Rota não encontrada",
+    path: req.originalUrl,
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Erro global da aplicação:", err);
+
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      status: "error",
+      message: "Payload muito grande para o servidor.",
+      detail: err.message,
+    });
+  }
+
+  return res.status(500).json({
+    status: "error",
+    message: "Erro interno do servidor",
+    detail: env.nodeEnv === "development" ? err.message : undefined,
   });
 });
 

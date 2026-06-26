@@ -1,0 +1,16 @@
+{
+  "name": "propostas-expert-energy",
+  "forwardPorts": [3000, 4000],
+  "portsAttributes": {
+    "3000": {
+      "label": "frontend",
+      "onAutoForward": "openPreview",
+      "visibility": "public"
+    },
+    "4000": {
+      "label": "backend",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    }
+  }
+}
