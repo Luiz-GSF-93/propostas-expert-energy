@@ -3711,6 +3711,136 @@
       showToast("Modo edição ativo nesta página.", "success");
     }
 
+const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
+
+function getSupabaseAccessToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        try {
+          const parsed = JSON.parse(raw);
+
+          if (parsed?.access_token) {
+            return parsed.access_token;
+          }
+
+          if (parsed?.currentSession?.access_token) {
+            return parsed.currentSession.access_token;
+          }
+
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (item?.access_token) return item.access_token;
+              if (item?.currentSession?.access_token) return item.currentSession.access_token;
+            }
+          }
+        } catch (err) {
+          const tokenMatch = raw.match(/"access_token":"([^"]+)"/);
+          if (tokenMatch && tokenMatch[1]) {
+            return tokenMatch[1];
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao buscar token do Supabase:", error);
+  }
+
+  return null;
+}
+
+function buildProposalPayload() {
+  const formData = collectFormData();
+  const selected = getSelectedServices();
+
+  const clientName =
+    getFieldValue("cliente_empresa") ||
+    getFieldValue("cliente_contato") ||
+    "Cliente não informado";
+
+  const title =
+    getFieldValue("obj_principal") ||
+    (selected.length
+      ? selected.map((item) => `${item.code} - ${item.title}`).join(" | ")
+      : "Proposta comercial");
+
+  return {
+    client_name: clientName,
+    title,
+    status: "draft",
+    editable_json: formData
+  };
+}
+
+async function saveProposalToBackend() {
+  try {
+    const token = getSupabaseAccessToken();
+
+    if (!token) {
+      showToast("Faça login novamente para salvar a proposta.", "error");
+      return;
+    }
+
+    const payload = buildProposalPayload();
+    const proposalId = localStorage.getItem(LOCAL_PROPOSAL_ID_KEY);
+
+    const endpoint = proposalId
+      ? `/api/proposals/${proposalId}`
+      : `/api/proposals`;
+
+    const method = proposalId ? "PUT" : "POST";
+
+    const response = await fetch(endpoint, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (err) {
+      result = {};
+    }
+
+    if (!response.ok) {
+      console.error("Erro ao salvar proposta:", result);
+      showToast("Não foi possível salvar a proposta no sistema.", "error");
+      return;
+    }
+
+    const savedId =
+      result?.id ||
+      result?.data?.id ||
+      result?.proposal?.id ||
+      proposalId ||
+      null;
+
+    if (savedId) {
+      localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, savedId);
+    }
+
+    localStorage.setItem(
+      "expert_energy_proposta_html_draft",
+      JSON.stringify(collectFormData())
+    );
+
+    showToast("Proposta salva com sucesso no sistema.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Erro ao salvar a proposta.", "error");
+  }
+}
+    
     function bindTopActions(){
       document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
       document.getElementById("restoreDraftBtn").addEventListener("click", restoreDraft);
