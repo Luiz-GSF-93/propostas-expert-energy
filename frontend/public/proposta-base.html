@@ -3842,13 +3842,14 @@ async function saveProposalToBackend() {
 }
     
     function bindTopActions(){
-      document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
-      document.getElementById("restoreDraftBtn").addEventListener("click", restoreDraft);
-      document.getElementById("generatePdfBtn").addEventListener("click", generateClientPreview);
-      document.getElementById("editModeBtn").addEventListener("click", returnToEditMode);
-      document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
-      document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
-    }
+  document.getElementById("saveProposalBtn")?.addEventListener("click", saveProposalToBackend);
+  document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
+  document.getElementById("restoreDraftBtn").addEventListener("click", restoreDraft);
+  document.getElementById("generatePdfBtn").addEventListener("click", generateClientPreview);
+  document.getElementById("editModeBtn").addEventListener("click", returnToEditMode);
+  document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
+  document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
+}
 
     function initialize(){
       renderServiceCards();
