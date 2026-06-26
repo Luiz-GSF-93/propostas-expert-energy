@@ -4008,29 +4008,6 @@ async function saveProposalToBackend() {
   }
 }
 
-function saveDraft(){
-  try{
-    const data = collectFormData();
-    localStorage.setItem("expert_energy_proposta_html_draft", JSON.stringify(data));
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const code = (document.getElementById("resp_codigo")?.value || "rascunho").replace(/[^a-zA-Z0-9_-]+/g, "_");
-    link.href = url;
-    link.download = `proposta_expert_energy_${code}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
-  }catch(error){
-    console.error(error);
-    showToast("Não foi possível arquivar o rascunho.", "error");
-  }
-}
-
 function restoreDraft(){
   try{
     const raw = localStorage.getItem("expert_energy_proposta_html_draft");
