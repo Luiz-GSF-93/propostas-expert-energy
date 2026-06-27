@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/yJRSW28C -->
+<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/tIMYwpJE -->
 <html lang="pt-BR" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -986,10 +986,11 @@
       <div class="action-left">
         <button type="button" id="backDashboardBtn" class="secondary">Voltar ao dashboard</button>
         <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
-        <button type="button" id="openClientHtmlBtn" class="secondary">Abrir versão cliente HTML</button>
+        <button type="button" id="openClientHtmlBtn" class="secondary">Download HTML</button>
+        <button type="button" id="printClientPdfBtn" class="secondary">Imprimir / Salvar PDF</button>
       </div>
       <div class="action-right">
-        <div class="action-status">Barra simplificada: salvar, voltar e abrir a versão cliente em HTML.</div>
+        <div class="action-status">Salve a proposta, baixe a versão HTML para envio por e-mail e use a impressão para salvar a versão final em PDF.</div>
       </div>
     </div>
   </div>
@@ -998,8 +999,8 @@
 
   <section class="link-output-panel editor-only" id="clientLinkPanel">
     <div class="link-output-copy">
-      <div class="link-output-title">Versão cliente gerada para visualização local</div>
-      <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
+      <div class="link-output-title">Link da versão cliente</div>
+      <p class="link-output-help">Este link abre a proposta em HTML somente leitura e pode ser enviado ao cliente para visualização no navegador.</p>
       <div class="link-output-row">
         <input type="text" id="clientViewLink" class="link-output-input" readonly="" value="">
         <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
@@ -1009,11 +1010,11 @@
   </section>
 
   <section class="summary-note editor-only">
-    <p><strong>Como usar este modelo:</strong> selecione os serviços aplicáveis, preencha os campos principais, clique em <strong>Salvar proposta</strong> e depois use <strong>Abrir versão cliente HTML</strong> para visualizar a versão somente leitura.</p>
+    <p><strong>Como usar este modelo:</strong> selecione os serviços aplicáveis, preencha os campos principais, clique em <strong>Salvar proposta</strong>, use <strong>Download HTML</strong> para baixar a versão somente leitura e envie esse arquivo ao cliente por e-mail. Utilize <strong>Imprimir / Salvar PDF</strong> para gerar a versão final em PDF.</p>
     <ul class="instruction-list">
       <li>Os blocos técnicos aparecem automaticamente conforme a atividade selecionada.</li>
       <li>As estimativas de ganhos são referenciais e devem ser validadas conforme diagnóstico, baseline e contexto operacional.</li>
-      <li>A barra superior foi simplificada para reduzir ruído visual durante a edição.</li>
+      <li>O arquivo HTML baixado abre a proposta em modo somente leitura, sem permitir edição dos dados.</li>
     </ul>
   </section>
 
@@ -3178,21 +3179,65 @@
       }
     }
 
-    function openClientLink(){
-      const input = document.getElementById("clientViewLink");
-      const link = buildClientViewLink();
-
-      if(input){
-        input.value = link;
-      }
-      updateClientLinkPanel(link);
-
-      const previewWindow = window.open(link, "_blank");
+    function openClientPreviewWindow(previewHTML, autoPrint = false){
+      const previewWindow = window.open("", "_blank");
       if(!previewWindow){
         showToast("Permita pop-ups para abrir automaticamente a versão cliente.", "error");
+        return null;
+      }
+
+      previewWindow.document.open();
+      previewWindow.document.write(previewHTML);
+      previewWindow.document.close();
+
+      window.__lastPreviewWindow = previewWindow;
+      previewWindow.onload = function(){
+        try{
+          previewWindow.focus();
+          if(autoPrint){
+            setTimeout(()=>{
+              try{ previewWindow.print(); }catch(error){}
+            }, 500);
+          }
+        }catch(error){}
+      };
+
+      return previewWindow;
+    }
+
+    function renderClientModeDocument(previewHTML){
+      const parsed = new DOMParser().parseFromString(previewHTML, "text/html");
+      document.title = parsed.title || document.title;
+      document.head.innerHTML = parsed.head.innerHTML;
+      document.body.innerHTML = parsed.body.innerHTML;
+    }
+
+    function downloadClientHtml(){
+      try{
+        const previewHTML = buildPreviewHTML();
+        const blob = new Blob([previewHTML], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const code = (document.getElementById("resp_codigo")?.value || "proposta").replace(/[^a-zA-Z0-9_-]+/g, "_");
+        link.href = url;
+        link.download = `proposta_cliente_${code}.html`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 1000);
+        showToast("Arquivo HTML da versão cliente baixado com sucesso.", "success");
+      }catch(error){
+        console.error(error);
+        showToast("Não foi possível baixar a versão cliente em HTML.", "error");
+      }
+    }
+
+    function openClientLink(){
+      const previewHTML = buildPreviewHTML();
+      const previewWindow = openClientPreviewWindow(previewHTML, false);
+      if(!previewWindow){
         return;
       }
-      window.__lastPreviewWindow = previewWindow;
       showToast("Versão cliente aberta em modo somente leitura.", "success");
     }
 
@@ -3203,6 +3248,10 @@
     function maybeRenderClientViewFromURL(){
       const params = new URLSearchParams(window.location.search);
       if(params.get("modo") !== "cliente") return;
+
+      document.documentElement.classList.add("readonly-mode");
+      document.body.classList.add("readonly-mode");
+
       const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
       const payload = hashParams.get("proposta");
       if(!payload){
@@ -3212,12 +3261,13 @@
       try{
         const data = decodeProposalState(payload);
         restoreFormData(data);
+        calculatePricing();
+        updateServiceSelectionUI();
         updateSelectedServicesSummary();
         updateAnnex();
+        updateCoverClientName();
         const previewHTML = buildPreviewHTML();
-        document.open();
-        document.write(previewHTML);
-        document.close();
+        renderClientModeDocument(previewHTML);
       }catch(error){
         renderClientModeError("O conteúdo do link está inválido ou corrompido.");
       }
@@ -4084,31 +4134,13 @@
 
     function generateClientPreview(){
       try{
-        const link = buildClientViewLink();
-        updateClientLinkPanel(link);
-
         const previewHTML = buildPreviewHTML();
-        const previewWindow = window.open("", "_blank");
+        const previewWindow = openClientPreviewWindow(previewHTML, true);
         if(!previewWindow){
-          showToast("Permita pop-ups para abrir a versão cliente.", "error");
           return;
         }
 
-        previewWindow.document.open();
-        previewWindow.document.write(previewHTML);
-        previewWindow.document.close();
-
-        window.__lastPreviewWindow = previewWindow;
-        previewWindow.onload = function(){
-          try{
-            previewWindow.focus();
-            setTimeout(()=>{
-              try{ previewWindow.print(); }catch(error){}
-            }, 500);
-          }catch(error){}
-        };
-
-        showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
+        showToast("Versão pronta para impressão. Use a janela aberta para imprimir ou salvar em PDF.", "success");
       }catch(error){
         console.error(error);
         showToast("Não foi possível gerar a versão cliente.", "error");
@@ -4129,7 +4161,8 @@
     function bindTopActions(){
       document.getElementById("backDashboardBtn")?.addEventListener("click", goBackToDashboard);
       document.getElementById("saveProposalBtn")?.addEventListener("click", saveProposalToBackend);
-      document.getElementById("openClientHtmlBtn")?.addEventListener("click", openClientLink);
+      document.getElementById("openClientHtmlBtn")?.addEventListener("click", downloadClientHtml);
+      document.getElementById("printClientPdfBtn")?.addEventListener("click", generateClientPreview);
       document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
       document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
     }
