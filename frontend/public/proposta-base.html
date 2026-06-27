@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/fZOE1Ak9 -->
+<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/yJRSW28C -->
 <html lang="pt-BR" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
     body{
       max-width: 1080px;
       margin: 0 auto;
-      padding: 92px 52px 40px;
+      padding: 130px 52px 40px;
       position: relative;
       box-sizing: border-box;
       font-family: Arial, Helvetica, sans-serif;
@@ -53,14 +53,14 @@
       max-width:1080px;
       margin:0 auto;
       display:flex;
-      gap:8px;
+      gap:10px;
       flex-wrap:wrap;
       align-items:center;
-      justify-content:space-between;
+      justify-content:flex-start;
     }
     .action-left,.action-right{
       display:flex;
-      gap:8px;
+      gap:10px;
       flex-wrap:wrap;
       align-items:center;
     }
@@ -68,8 +68,9 @@
       background:#fff;
       color:var(--azul-escuro);
       border:1px solid #d8e2e8;
-      padding:8px 12px;
+      padding:10px 14px;
       font-size:13px;
+      border-radius:999px;
       cursor:pointer;
     }
     .action-bar .secondary{
@@ -932,102 +933,87 @@
         margin:16mm;
       }
     }
-   html {
-  min-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
 
-body {
-  min-height: 100%;
-  overflow-x: hidden;
-  overflow-y: visible;
-  color: var(--texto);
-}
+    html, body {
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
 
-.summary-note,
-.summary-note p,
-.summary-note li,
-.summary-note strong {
-  color: var(--texto) !important;
-}
+    body {
+      color: var(--texto);
+    }
 
-.action-bar button,
-button,
-input,
-textarea,
-select {
-  font-family: Arial, Helvetica, sans-serif;
-}
+    .summary-note,
+    .summary-note p,
+    .summary-note li,
+    .summary-note strong {
+      color: var(--texto) !important;
+    }
 
-input[type="text"],
-input[type="email"],
-textarea,
-select {
-  color: #10212b !important;
-  background: #ffffff !important;
-}
+    .action-bar button,
+    button,
+    input,
+    textarea,
+    select {
+      font-family: Arial, Helvetica, sans-serif;
+    }
 
-input::placeholder,
-textarea::placeholder {
-  color: #64748b !important;
-}
+    input[type="text"],
+    input[type="email"],
+    textarea,
+    select {
+      color: #10212b !important;
+      background: #ffffff !important;
+    }
 
-.service-card,
-.summary-note,
-section,
-.footer-note,
-#client-preview {
-  overflow: visible;
-}
+    input::placeholder,
+    textarea::placeholder {
+      color: #64748b !important;
+    }
 
-header,
-section,
-.footer-note,
-.link-output-panel,
-#client-preview {
-  position: relative;
-  z-index: 1;
-}
-
+    .service-card,
+    .summary-note,
+    section,
+    .footer-note {
+      overflow: visible;
+    }
   </style>
 </head>
 <body>
   <div class="action-bar editor-only">
-  <div class="action-row">
-    <div class="action-left">
-      <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
-      <button type="button" id="saveDraftBtn">Arquivar rascunho editável</button>
-      <button type="button" id="restoreDraftBtn" class="secondary">Restaurar rascunho</button>
-      <button type="button" id="generatePdfBtn" class="primary">Gerar versão cliente / PDF</button>
-      <button type="button" id="editModeBtn" class="secondary">Modo edição</button>
-    </div>
-    <div class="action-right">
-      <div class="action-status">Preencha os campos, salve a proposta e gere a versão cliente.</div>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<section class="link-output-panel editor-only" id="clientLinkPanel">
-  <div class="link-output-copy">
-    <div class="link-output-title">Versão cliente gerada para visualização local</div>
-    <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
-    <div class="link-output-row">
-      <input type="text" id="clientViewLink" class="link-output-input" readonly value="" />
-      <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
-      <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
+    <div class="action-row">
+      <div class="action-left">
+        <button type="button" id="backDashboardBtn" class="secondary">Voltar ao dashboard</button>
+        <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
+        <button type="button" id="openClientHtmlBtn" class="secondary">Abrir versão cliente HTML</button>
+      </div>
+      <div class="action-right">
+        <div class="action-status">Barra simplificada: salvar, voltar e abrir a versão cliente em HTML.</div>
+      </div>
     </div>
   </div>
-</section>
+
+  <div class="toast" id="toast"></div>
+
+  <section class="link-output-panel editor-only" id="clientLinkPanel">
+    <div class="link-output-copy">
+      <div class="link-output-title">Versão cliente gerada para visualização local</div>
+      <p class="link-output-help">Visualização em HTML somente leitura, pronta para abrir no navegador e salvar em PDF.</p>
+      <div class="link-output-row">
+        <input type="text" id="clientViewLink" class="link-output-input" readonly="" value="">
+        <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
+        <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
+      </div>
+    </div>
+  </section>
 
   <section class="summary-note editor-only">
-    <p><strong>Como usar este modelo:</strong> selecione um ou mais serviços, contextualize a necessidade do cliente, complete as linhas comerciais e revise a minuta contratual. Ao final, utilize <strong>“Gerar versão cliente / PDF”</strong> para obter uma visualização somente leitura adequada para impressão ou envio em PDF.</p>
+    <p><strong>Como usar este modelo:</strong> selecione os serviços aplicáveis, preencha os campos principais, clique em <strong>Salvar proposta</strong> e depois use <strong>Abrir versão cliente HTML</strong> para visualizar a versão somente leitura.</p>
     <ul class="instruction-list">
       <li>Os blocos técnicos aparecem automaticamente conforme a atividade selecionada.</li>
       <li>As estimativas de ganhos são referenciais e devem ser validadas conforme diagnóstico, baseline e contexto operacional.</li>
-      <li>O botão de arquivamento salva no navegador e também baixa um arquivo JSON do rascunho.</li>
+      <li>A barra superior foi simplificada para reduzir ruído visual durante a edição.</li>
     </ul>
   </section>
 
@@ -3194,13 +3180,16 @@ section,
 
     function openClientLink(){
       const input = document.getElementById("clientViewLink");
-      if(!input || !input.value) {
-        showToast("Gere a versão cliente antes de abrir o link.", "error");
-        return;
+      const link = buildClientViewLink();
+
+      if(input){
+        input.value = link;
       }
-      const previewWindow = window.open(input.value, "_blank");
+      updateClientLinkPanel(link);
+
+      const previewWindow = window.open(link, "_blank");
       if(!previewWindow){
-        showToast("Link gerado. Permita pop-ups para abrir automaticamente a visualização.", "error");
+        showToast("Permita pop-ups para abrir automaticamente a versão cliente.", "error");
         return;
       }
       window.__lastPreviewWindow = previewWindow;
@@ -3234,6 +3223,416 @@ section,
       }
     }
 
+    const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
+    const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
+
+    function getSupabaseAccessToken(){
+      const directKeys = [
+        "supabase.access_token",
+        "access_token",
+        "sb-access-token"
+      ];
+
+      for(const key of directKeys){
+        const value = localStorage.getItem(key);
+        if(value) return value;
+      }
+
+      for(const key of Object.keys(localStorage)){
+        const raw = localStorage.getItem(key);
+        if(!raw) continue;
+
+        try{
+          const parsed = JSON.parse(raw);
+          if(parsed?.access_token) return parsed.access_token;
+          if(parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
+        }catch(error){
+          const match = raw.match(/"access_token":"([^"]+)"/);
+          if(match) return match[1];
+        }
+      }
+
+      return "";
+    }
+
+    function getCurrentProposalId(){
+      return localStorage.getItem(LOCAL_PROPOSAL_ID_KEY) || "";
+    }
+
+    function setCurrentProposalId(id){
+      if(id){
+        localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, id);
+      }else{
+        localStorage.removeItem(LOCAL_PROPOSAL_ID_KEY);
+      }
+    }
+
+    function clearCurrentProposalState(){
+      localStorage.removeItem(LOCAL_PROPOSAL_ID_KEY);
+      localStorage.removeItem(LOCAL_DRAFT_KEY);
+    }
+
+    function updateSaveProposalButtonLabel(){
+      const button = document.getElementById("saveProposalBtn");
+      if(!button) return;
+      button.textContent = getCurrentProposalId() ? "Atualizar proposta" : "Salvar proposta";
+    }
+
+    function buildEmptyProposalData(){
+      return {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        fields: Object.fromEntries(staticFields.map((id)=> [id, ""])),
+        serviceState: {},
+        pricingRows: []
+      };
+    }
+
+    function resetProposalEditor(){
+      clearCurrentProposalState();
+      restoreFormData(buildEmptyProposalData());
+      restorePricingRows([]);
+      updateServiceSelectionUI();
+      updateSelectedServicesSummary();
+      updateAnnex();
+      updateCoverClientName();
+      updateSaveProposalButtonLabel();
+
+      const clientViewInput = document.getElementById("clientViewLink");
+      if(clientViewInput) clientViewInput.value = "";
+
+      const panel = document.getElementById("clientLinkPanel");
+      if(panel) panel.classList.remove("visible");
+
+      if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
+        window.__lastPreviewWindow.close();
+      }
+    }
+
+    function startNewProposal(){
+      const hasExistingState = Boolean(
+        getCurrentProposalId() || localStorage.getItem(LOCAL_DRAFT_KEY)
+      );
+
+      if(
+        hasExistingState &&
+        !window.confirm("Iniciar uma nova proposta limpa? O rascunho local e o vínculo com a proposta atual serão removidos desta tela.")
+      ){
+        return;
+      }
+
+      resetProposalEditor();
+      window.history.replaceState({}, "", `${window.location.pathname}?new=1`);
+      showToast("Nova proposta iniciada em branco.", "success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function applyRouteStateFromURL(){
+      const params = new URLSearchParams(window.location.search);
+
+      return {
+        isClientView: params.get("modo") === "cliente",
+        isNew: params.get("new") === "1",
+        proposalId: params.get("proposalId") || "",
+        isEdit: params.get("mode") === "edit" && !!params.get("proposalId")
+      };
+    }
+
+    async function loadProposalFromBackend(proposalId = getCurrentProposalId()){
+      if(!proposalId) return false;
+
+      const token = getSupabaseAccessToken();
+      if(!token){
+        showToast("Faça login novamente para carregar a proposta.", "error");
+        return false;
+      }
+
+      try{
+        const response = await fetch(`/api/proposals/${proposalId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        const rawText = await response.text();
+        let result = {};
+        try{
+          result = rawText ? JSON.parse(rawText) : {};
+        }catch(error){
+          result = { rawText };
+        }
+
+        if(!response.ok){
+          const detail = result?.detail || result?.error || result?.message || `HTTP ${response.status}`;
+          showToast(`Não foi possível carregar a proposta: ${detail}`, "error");
+          return false;
+        }
+
+        let editableData =
+          result?.editable_json ||
+          result?.data?.editable_json ||
+          result?.proposal?.editable_json ||
+          null;
+
+        if(typeof editableData === "string"){
+          try{
+            editableData = JSON.parse(editableData);
+          }catch(error){
+            console.error("editable_json inválido:", error);
+            showToast("A proposta retornou dados inválidos para edição.", "error");
+            return false;
+          }
+        }
+
+        if(!editableData || typeof editableData !== "object"){
+          showToast("A proposta não possui conteúdo editável.", "error");
+          return false;
+        }
+
+        restoreFormData(editableData);
+        setCurrentProposalId(
+          result?.id ||
+          result?.data?.id ||
+          result?.proposal?.id ||
+          proposalId
+        );
+
+        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(editableData));
+        updateServiceSelectionUI();
+        updateSelectedServicesSummary();
+        updateAnnex();
+        updateCoverClientName();
+        updateSaveProposalButtonLabel();
+
+        return true;
+      }catch(error){
+        console.error("Erro ao carregar proposta:", error);
+        showToast(`Erro ao carregar a proposta: ${error.message || "falha inesperada"}`, "error");
+        return false;
+      }
+    }
+
+    async function restoreInitialProposalState(){
+      const routeState = applyRouteStateFromURL();
+
+      if(routeState.isClientView){
+        return;
+      }
+
+      if(routeState.isNew){
+        resetProposalEditor();
+        window.history.replaceState({}, "", window.location.pathname);
+        showToast("Nova proposta pronta para edição.", "success");
+        return;
+      }
+
+      if(routeState.isEdit){
+        const loaded = await loadProposalFromBackend(routeState.proposalId);
+        if(loaded){
+          showToast("Proposta carregada para edição.", "success");
+        }
+        return;
+      }
+
+      const currentProposalId = getCurrentProposalId();
+      if(currentProposalId){
+        const loaded = await loadProposalFromBackend(currentProposalId);
+        if(loaded) return;
+      }
+
+      const rawDraft = localStorage.getItem(LOCAL_DRAFT_KEY);
+      if(rawDraft){
+        try{
+          const draftData = JSON.parse(rawDraft);
+          restoreFormData(draftData);
+          updateServiceSelectionUI();
+          updateSelectedServicesSummary();
+          updateAnnex();
+          updateCoverClientName();
+          updateSaveProposalButtonLabel();
+        }catch(error){
+          console.error("Erro ao restaurar rascunho local:", error);
+        }
+      }
+    }
+
+    async function saveProposalToBackend(){
+      try{
+        const token = getSupabaseAccessToken();
+        if(!token){
+          showToast("Faça login novamente para salvar a proposta.", "error");
+          return;
+        }
+
+        const data = collectFormData();
+        const selectedServices = getSelectedServices();
+        const proposalId = getCurrentProposalId();
+
+        const compactFields = Object.fromEntries(
+          Object.entries(data.fields || {}).filter(([, value]) => String(value || "").trim() !== "")
+        );
+
+        const compactServiceEntries = Object.entries(data.serviceState || {}).map(([serviceId, service]) => {
+          if(!service || typeof service !== "object") return null;
+
+          const miniRows = Array.isArray(service.miniRows)
+            ? service.miniRows.filter((row) =>
+                row && Object.values(row).some((value) => String(value || "").trim() !== "")
+              )
+            : [];
+
+          const normalizedService = {
+            checked: !!service.checked,
+            current: service.current || "",
+            objective: service.objective || "",
+            scope: service.scope || "",
+            restrictions: service.restrictions || "",
+            custom: service.custom || "",
+            miniRows
+          };
+
+          const hasContent =
+            normalizedService.checked ||
+            String(normalizedService.current).trim() !== "" ||
+            String(normalizedService.objective).trim() !== "" ||
+            String(normalizedService.scope).trim() !== "" ||
+            String(normalizedService.restrictions).trim() !== "" ||
+            String(normalizedService.custom).trim() !== "" ||
+            normalizedService.miniRows.length > 0;
+
+          return hasContent ? [serviceId, normalizedService] : null;
+        }).filter(Boolean);
+
+        const compactServiceState = Object.fromEntries(compactServiceEntries);
+
+        const compactPricingRows = (data.pricingRows || []).filter((row) =>
+          row && Object.values(row).some((value) => String(value || "").trim() !== "")
+        );
+
+        const editableData = {
+          version: data.version || 1,
+          savedAt: new Date().toISOString(),
+          fields: compactFields,
+          serviceState: compactServiceState,
+          pricingRows: compactPricingRows
+        };
+
+        const payload = {
+          client_name: data.fields?.cliente_empresa || data.fields?.cliente_contato || "Cliente não informado",
+          title: data.fields?.obj_principal
+            || (
+              selectedServices.length
+                ? selectedServices.map((item) => `${item.code} - ${item.title}`).join(" | ")
+                : "Proposta comercial"
+            ),
+          status: "draft",
+          editable_json: editableData
+        };
+
+        const body = JSON.stringify(payload);
+
+        const response = await fetch(
+          proposalId ? `/api/proposals/${proposalId}` : "/api/proposals",
+          {
+            method: proposalId ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body
+          }
+        );
+
+        const rawText = await response.text();
+        let result = {};
+        try{
+          result = rawText ? JSON.parse(rawText) : {};
+        }catch(error){
+          result = { rawText };
+        }
+
+        if(!response.ok){
+          console.error("Erro ao salvar proposta:", {
+            status: response.status,
+            statusText: response.statusText,
+            result
+          });
+          const detail = result?.detail || result?.error || result?.message || `HTTP ${response.status}`;
+          showToast(`Não foi possível salvar a proposta: ${detail}`, "error");
+          return;
+        }
+
+        const savedId =
+          result?.id ||
+          result?.data?.id ||
+          result?.proposal?.id ||
+          proposalId ||
+          null;
+
+        if(savedId){
+          setCurrentProposalId(savedId);
+        }
+
+        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(editableData));
+        updateSaveProposalButtonLabel();
+
+        if(new URLSearchParams(window.location.search).get("new") === "1"){
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+
+        showToast(
+          proposalId ? "Proposta atualizada com sucesso." : "Proposta salva com sucesso no sistema.",
+          "success"
+        );
+      }catch(error){
+        console.error("Erro inesperado ao salvar proposta:", error);
+        showToast(`Erro ao salvar a proposta: ${error.message || "falha inesperada"}`, "error");
+      }
+    }
+
+    function saveDraft(){
+      try{
+        const data = collectFormData();
+        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const code = (document.getElementById("resp_codigo")?.value || "rascunho").replace(/[^a-zA-Z0-9_-]+/g, "_");
+        link.href = url;
+        link.download = `proposta_expert_energy_${code}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
+      }catch(error){
+        console.error(error);
+        showToast("Não foi possível arquivar o rascunho.", "error");
+      }
+    }
+
+    function restoreDraft(){
+      try{
+        const raw = localStorage.getItem(LOCAL_DRAFT_KEY);
+        if(!raw){
+          showToast("Nenhum rascunho salvo no navegador.", "error");
+          return;
+        }
+        const data = JSON.parse(raw);
+        restoreFormData(data);
+        calculatePricing();
+        updateServiceSelectionUI();
+        updateSelectedServicesSummary();
+        updateAnnex();
+        updateCoverClientName();
+        showToast("Rascunho restaurado com sucesso.", "success");
+      }catch(error){
+        console.error(error);
+        showToast("Não foi possível restaurar o rascunho salvo.", "error");
+      }
+    }
 
     function getFieldValue(id){
       return document.getElementById(id)?.value?.trim() || "";
@@ -3683,43 +4082,38 @@ section,
 </html>`;
     }
 
-   function generateClientPreview(){
-  try{
-    const link = buildClientViewLink();
-    updateClientLinkPanel(link);
-
-    const previewHTML = buildPreviewHTML();
-    const previewWindow = window.open("", "_blank");
-
-    if(!previewWindow){
-      showToast("Permita pop-ups para abrir a versão cliente.", "error");
-      return;
-    }
-
-    previewWindow.document.open();
-    previewWindow.document.write(previewHTML);
-    previewWindow.document.close();
-
-    window.__lastPreviewWindow = previewWindow;
-    window.__lastClientLink = link;
-
-    previewWindow.onload = function(){
+    function generateClientPreview(){
       try{
-        previewWindow.focus();
-        setTimeout(() => {
-          try {
-            previewWindow.print();
-          } catch (err) {}
-        }, 500);
-      }catch(error){}
-    };
+        const link = buildClientViewLink();
+        updateClientLinkPanel(link);
 
-    showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
-  }catch(error){
-    console.error(error);
-    showToast("Não foi possível gerar a versão cliente.", "error");
-  }
-}
+        const previewHTML = buildPreviewHTML();
+        const previewWindow = window.open("", "_blank");
+        if(!previewWindow){
+          showToast("Permita pop-ups para abrir a versão cliente.", "error");
+          return;
+        }
+
+        previewWindow.document.open();
+        previewWindow.document.write(previewHTML);
+        previewWindow.document.close();
+
+        window.__lastPreviewWindow = previewWindow;
+        previewWindow.onload = function(){
+          try{
+            previewWindow.focus();
+            setTimeout(()=>{
+              try{ previewWindow.print(); }catch(error){}
+            }, 500);
+          }catch(error){}
+        };
+
+        showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
+      }catch(error){
+        console.error(error);
+        showToast("Não foi possível gerar a versão cliente.", "error");
+      }
+    }
 
     function returnToEditMode(){
       if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
@@ -3728,412 +4122,47 @@ section,
       showToast("Modo edição ativo nesta página.", "success");
     }
 
-const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
-const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
-
-function getSupabaseAccessToken(){
-  const sessionRaw = Object.keys(localStorage)
-    .map((key)=> localStorage.getItem(key))
-    .find((value)=> value && value.includes("access_token"));
-
-  if(!sessionRaw) return null;
-
-  try{
-    const parsed = JSON.parse(sessionRaw);
-    return parsed?.access_token || parsed?.currentSession?.access_token || null;
-  }catch(error){
-    const match = sessionRaw.match(/"access_token":"([^"]+)"/);
-    return match ? match[1] : null;
-  }
-}
-
-function getCurrentProposalId(){
-  return localStorage.getItem(LOCAL_PROPOSAL_ID_KEY) || "";
-}
-
-function setCurrentProposalId(id){
-  if(id){
-    localStorage.setItem(LOCAL_PROPOSAL_ID_KEY, id);
-  }
-}
-
-function clearCurrentProposalId(){
-  localStorage.removeItem(LOCAL_PROPOSAL_ID_KEY);
-}
-
-function getTrimmedFieldValue(id){
-  return document.getElementById(id)?.value?.trim() || "";
-}
-
-function buildProposalTitle(selectedServices){
-  const objective = getTrimmedFieldValue("obj_principal");
-  if(objective) return objective;
-
-  if(Array.isArray(selectedServices) && selectedServices.length){
-    return selectedServices
-      .map((item)=> `${item.code} - ${item.title}`)
-      .join(" | ");
-  }
-
-  return "Proposta comercial";
-}
-
-function buildClientName(){
-  return (
-    getTrimmedFieldValue("cliente_empresa") ||
-    getTrimmedFieldValue("cliente_contato") ||
-    "Cliente não informado"
-  );
-}
-
-function updateSaveButtonState(){
-  const button = document.getElementById("saveProposalBtn");
-  if(!button) return;
-
-  if(getCurrentProposalId()){
-    button.textContent = "Atualizar proposta";
-  }else{
-    button.textContent = "Salvar proposta";
-  }
-}
-
-async function saveProposalToBackend(){
-  try{
-    const token = getSupabaseAccessToken();
-
-    if(!token){
-      showToast("Faça login novamente para salvar a proposta.", "error");
-      return;
+    function goBackToDashboard(){
+      window.location.href = "/dashboard";
     }
 
-    const data = collectFormData();
-    const selected = getSelectedServices();
-    const proposalId = getCurrentProposalId();
-
-    const compactFields = Object.fromEntries(
-      Object.entries(data.fields || {}).filter(([, value]) => String(value || "").trim() !== "")
-    );
-
-    const compactServiceState = Object.fromEntries(
-      Object.entries(data.serviceState || {}).filter(([, service]) => {
-        if(!service || typeof service !== "object") return false;
-
-        const miniRows = Array.isArray(service.miniRows)
-          ? service.miniRows.filter((row) =>
-              row && Object.values(row).some((value) => String(value || "").trim() !== "")
-            )
-          : [];
-
-        service.miniRows = miniRows;
-
-        return Boolean(service.selected)
-          || String(service.current || "").trim() !== ""
-          || String(service.goal || "").trim() !== ""
-          || String(service.scope || "").trim() !== ""
-          || String(service.restrictions || "").trim() !== ""
-          || String(service.custom || "").trim() !== ""
-          || miniRows.length > 0;
-      })
-    );
-
-    const compactPricingRows = (data.pricingRows || []).filter((row) =>
-      row && Object.values(row).some((value) => String(value || "").trim() !== "")
-    );
-
-    const editableData = {
-      version: data.version || 1,
-      savedAt: new Date().toISOString(),
-      fields: compactFields,
-      serviceState: compactServiceState,
-      pricingRows: compactPricingRows,
-      selectedServices: Array.isArray(selected) ? selected : []
-    };
-
-    const payload = {
-      client_name: buildClientName(),
-      title: buildProposalTitle(selected),
-      status: "draft",
-      editable_json: editableData
-    };
-
-    const response = await fetch(
-      proposalId ? `/api/proposals/${proposalId}` : "/api/proposals",
-      {
-        method: proposalId ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      }
-    );
-
-    const rawText = await response.text();
-    let result = {};
-
-    try{
-      result = rawText ? JSON.parse(rawText) : {};
-    }catch(error){
-      result = { rawText };
+    function bindTopActions(){
+      document.getElementById("backDashboardBtn")?.addEventListener("click", goBackToDashboard);
+      document.getElementById("saveProposalBtn")?.addEventListener("click", saveProposalToBackend);
+      document.getElementById("openClientHtmlBtn")?.addEventListener("click", openClientLink);
+      document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
+      document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
     }
 
-    if(!response.ok){
-      const detail = result?.detail || result?.error || result?.message || `HTTP ${response.status}`;
-      console.error("Falha ao salvar proposta:", {
-        status: response.status,
-        result
-      });
-      showToast(`Não foi possível salvar a proposta: ${detail}`, "error");
-      return;
-    }
-
-    const savedId = result?.id || result?.data?.id || result?.proposal?.id || proposalId || null;
-
-    if(savedId){
-      setCurrentProposalId(savedId);
-    }
-
-    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
-    updateSaveButtonState();
-
-    showToast(
-      proposalId
-        ? "Proposta atualizada com sucesso."
-        : "Proposta salva com sucesso no sistema.",
-      "success"
-    );
-  }catch(error){
-    console.error("Erro inesperado ao salvar proposta:", error);
-    showToast(`Erro ao salvar a proposta: ${error.message || "falha inesperada"}`, "error");
-  }
-}
-
-async function loadProposalFromBackend(){
-  try{
-    const proposalId = getCurrentProposalId();
-    if(!proposalId) return false;
-
-    const token = getSupabaseAccessToken();
-    if(!token) return false;
-
-    const response = await fetch(`/api/proposals/${proposalId}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
-
-    const rawText = await response.text();
-    let result = {};
-
-    try{
-      result = rawText ? JSON.parse(rawText) : {};
-    }catch(error){
-      result = { rawText };
-    }
-
-    if(!response.ok){
-      console.error("Falha ao carregar proposta:", {
-        status: response.status,
-        result
-      });
-      return false;
-    }
-
-    const proposal = result?.data || result?.proposal || result;
-    const editableData = proposal?.editable_json;
-
-    if(!editableData || typeof editableData !== "object"){
-      return false;
-    }
-
-    restoreFormData(editableData);
-    calculatePricing();
-    updateServiceSelectionUI();
-    updateSelectedServicesSummary();
-    updateAnnex();
-    updateCoverClientName();
-    updateSaveButtonState();
-
-    return true;
-  }catch(error){
-    console.error("Erro ao carregar proposta salva:", error);
-    return false;
-  }
-}
-
-async function restoreInitialProposalState(){
-  const restoredFromBackend = await loadProposalFromBackend();
-  if(restoredFromBackend) return;
-
-  const rawDraft = localStorage.getItem(LOCAL_DRAFT_KEY);
-  if(!rawDraft) return;
-
-  try{
-    const data = JSON.parse(rawDraft);
-    restoreFormData(data);
-    calculatePricing();
-    updateServiceSelectionUI();
-    updateSelectedServicesSummary();
-    updateAnnex();
-    updateCoverClientName();
-  }catch(error){
-    console.error("Não foi possível restaurar rascunho inicial:", error);
-  }
-}
-
-function saveDraft() {
-  try {
-    const data = collectFormData();
-    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const code = (
-      document.getElementById("resp_codigo")?.value || "rascunho"
-    ).replace(/[^a-zA-Z0-9_-]+/g, "_");
-
-    link.href = url;
-    link.download = `proposta_expert_energy_${code}_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:T]/g, "-")}.json`;
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    showToast("Rascunho arquivado no navegador e exportado em JSON.", "success");
-  } catch (error) {
-    console.error(error);
-    showToast("Não foi possível arquivar o rascunho.", "error");
-  }
-}
-
-function restoreDraft() {
-  try {
-    const raw = localStorage.getItem(LOCAL_DRAFT_KEY);
-
-    if (!raw) {
-      showToast("Nenhum rascunho salvo no navegador.", "error");
-      return;
-    }
-
-    const data = JSON.parse(raw);
-    restoreFormData(data);
-    calculatePricing();
-    updateServiceSelectionUI();
-    updateSelectedServicesSummary();
-    updateAnnex();
-    updateCoverClientName();
-
-    showToast("Rascunho restaurado com sucesso.", "success");
-  } catch (error) {
-    console.error(error);
-    showToast("Não foi possível restaurar o rascunho salvo.", "error");
-  }
-}
-
-function generateClientPreview() {
-  try {
-    const link = buildClientViewLink();
-    updateClientLinkPanel(link);
-
-    const previewHTML = buildPreviewHTML();
-    const previewWindow = window.open("", "_blank");
-
-    if (!previewWindow) {
-      showToast("Permita pop-ups para abrir a versão cliente.", "error");
-      return;
-    }
-
-    previewWindow.document.open();
-    previewWindow.document.write(previewHTML);
-    previewWindow.document.close();
-
-    window.__lastPreviewWindow = previewWindow;
-
-    previewWindow.onload = function () {
-      try {
-        previewWindow.focus();
-        setTimeout(() => {
-          try {
-            previewWindow.print();
-          } catch (error) {}
-        }, 500);
-      } catch (error) {}
-    };
-
-    showToast("Versão cliente aberta. Use a impressão para salvar em PDF.", "success");
-  } catch (error) {
-    console.error(error);
-    showToast("Não foi possível gerar a versão cliente.", "error");
-  }
-}
-
-function returnToEditMode() {
-  if (window.__lastPreviewWindow && !window.__lastPreviewWindow.closed) {
-    window.__lastPreviewWindow.close();
-  }
-  showToast("Modo edição ativo nesta página.", "success");
-}
-
-function bindTopActions() {
-  document
-    .getElementById("saveProposalBtn")
-    ?.addEventListener("click", saveProposalToBackend);
-
-  document
-    .getElementById("saveDraftBtn")
-    ?.addEventListener("click", saveDraft);
-
-  document
-    .getElementById("restoreDraftBtn")
-    ?.addEventListener("click", restoreDraft);
-
-  document
-    .getElementById("generatePdfBtn")
-    ?.addEventListener("click", generateClientPreview);
-
-  document
-    .getElementById("editModeBtn")
-    ?.addEventListener("click", returnToEditMode);
-
-  document
-    .getElementById("copyClientLinkBtn")
-    ?.addEventListener("click", copyClientLink);
-
-  document
-    .getElementById("openClientLinkBtn")
-    ?.addEventListener("click", openClientLink);
-}
     async function initialize(){
-  renderServiceCards();
-  renderServiceBlocks();
-  attachServiceEvents();
-  attachPricingEvents();
-  bindTopActions();
-  ensureMinimumPricingRows(3);
-  updateServiceSelectionUI();
-  updateSelectedServicesSummary();
-  updateAnnex();
-  updateCoverClientName();
-  updateSaveButtonState();
+      renderServiceCards();
+      renderServiceBlocks();
+      attachServiceEvents();
+      attachPricingEvents();
+      bindTopActions();
+      ensureMinimumPricingRows(3);
+      updateServiceSelectionUI();
+      updateSelectedServicesSummary();
+      updateAnnex();
+      updateCoverClientName();
+      updateSaveProposalButtonLabel();
 
-  const clienteEmpresaInput = document.getElementById("cliente_empresa");
-  if(clienteEmpresaInput){
-    clienteEmpresaInput.addEventListener("input", updateCoverClientName);
-  }
+      const clienteEmpresaInput = document.getElementById("cliente_empresa");
+      if(clienteEmpresaInput){
+        clienteEmpresaInput.addEventListener("input", updateCoverClientName);
+      }
 
-  await restoreInitialProposalState();
-  maybeRenderClientViewFromURL();
-}
+      maybeRenderClientViewFromURL();
+
+      if(new URLSearchParams(window.location.search).get("modo") === "cliente"){
+        return;
+      }
+
+      await restoreInitialProposalState();
+    }
+
     initialize();
   </script>
+<script defer="" src="./index_files/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;4edd5f8ec12a48cfa682ab8261b80a79&quot;,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
 
 </body></html>

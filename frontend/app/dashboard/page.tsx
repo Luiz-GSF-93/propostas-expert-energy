@@ -87,6 +87,14 @@ export default function DashboardPage() {
     window.location.href = "/";
   }
 
+  function handleNewProposal() {
+    window.location.href = "/proposta-base.html?new=1";
+  }
+
+  function handleEditProposal(proposalId: string) {
+    window.location.href = `/proposta-base.html?proposalId=${proposalId}&mode=edit`;
+  }
+
   function formatStatus(status?: string) {
     switch (status) {
       case "draft":
@@ -158,7 +166,7 @@ export default function DashboardPage() {
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => (window.location.href = "/propostas/nova")}
+                onClick={handleNewProposal}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
               >
                 Nova proposta
@@ -221,9 +229,7 @@ export default function DashboardPage() {
 
           {proposals.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <p className="text-slate-600">
-                Nenhuma proposta salva ainda.
-              </p>
+              <p className="text-slate-600">Nenhuma proposta salva ainda.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -267,12 +273,9 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          alert(
-                            "A rota de edição individual será criada na próxima etapa. Por enquanto, a lista já confirma que a proposta foi salva no sistema."
-                          )
-                        }
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        onClick={() => handleEditProposal(proposal.id)}
+                        disabled={!proposal.id}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Abrir / editar
                       </button>
