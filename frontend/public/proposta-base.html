@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/jzFAQsuf -->
 <html lang="pt-BR" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3158,6 +3159,12 @@
       panel.classList.add("visible");
     }
 
+    function refreshClientLinkPanel(){
+      const link = buildClientViewLink();
+      updateClientLinkPanel(link);
+      return link;
+    }
+
     async function copyClientLink(){
       const input = document.getElementById("clientViewLink");
       if(!input || !input.value) {
@@ -3232,12 +3239,13 @@
     }
 
     function openClientLink(){
-      const previewHTML = buildPreviewHTML();
-      const previewWindow = openClientPreviewWindow(previewHTML, false);
+      const link = refreshClientLinkPanel();
+      const previewWindow = window.open(link, "_blank");
       if(!previewWindow){
+        showToast("Permita pop-ups para abrir o link da versão cliente.", "error");
         return;
       }
-      showToast("Versão cliente aberta em modo somente leitura.", "success");
+      showToast("Link da versão cliente aberto em nova aba.", "success");
     }
 
     function renderClientModeError(message){
@@ -3453,6 +3461,7 @@
         updateAnnex();
         updateCoverClientName();
         updateSaveProposalButtonLabel();
+        refreshClientLinkPanel();
 
         return true;
       }catch(error){
@@ -3500,6 +3509,7 @@
           updateAnnex();
           updateCoverClientName();
           updateSaveProposalButtonLabel();
+          refreshClientLinkPanel();
         }catch(error){
           console.error("Erro ao restaurar rascunho local:", error);
         }
@@ -3625,6 +3635,7 @@
 
         localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(editableData));
         updateSaveProposalButtonLabel();
+        refreshClientLinkPanel();
 
         if(new URLSearchParams(window.location.search).get("new") === "1"){
           window.history.replaceState({}, "", window.location.pathname);
@@ -3676,6 +3687,7 @@
         updateSelectedServicesSummary();
         updateAnnex();
         updateCoverClientName();
+        refreshClientLinkPanel();
         showToast("Rascunho restaurado com sucesso.", "success");
       }catch(error){
         console.error(error);
@@ -4195,4 +4207,6 @@
 
     initialize();
   </script>
+<script defer="" src="./index_files/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;4edd5f8ec12a48cfa682ab8261b80a79&quot;,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
 </body></html>
