@@ -289,7 +289,7 @@ export default function DashboardPage() {
     );
 
     try {
-      let response = await fetch(`/api/proposals/${proposalId}/status`, {
+      let response = await apiFetch(`/api/proposals/${proposalId}/status`, accessToken, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -299,7 +299,7 @@ export default function DashboardPage() {
       });
 
       if (!response.ok) {
-        response = await fetch(`/api/proposals/${proposalId}`, {
+        response = await apiFetch(`/api/proposals/${proposalId}`, accessToken, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
