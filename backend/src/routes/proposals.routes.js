@@ -108,6 +108,62 @@ function isValidProposalStatus(status) {
   return ALLOWED_PROPOSAL_STATUSES.includes(normalizeProposalStatus(status));
 }
 
+async function loadProfilesMapByIds(userIds) {
+  const uniqueIds = [...new Set((userIds || []).filter(Boolean))];
+
+  if (!uniqueIds.length) {
+    return new Map();
+  }
+
+  const { data, error } = await adminSupabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", uniqueIds);
+
+  if (error) {
+    console.error("Erro ao carregar perfis dos criadores:", error);
+    return new Map();
+  }
+
+  return new Map((data || []).map((profile) => [profile.id, profile]));
+}
+
+function attachCreatorInfoToProposal(proposal, profilesMap) {
+  if (!proposal) {
+    return proposal;
+  }
+
+  const creatorProfile = proposal.created_by
+    ? profilesMap.get(proposal.created_by)
+    : null;
+
+  return {
+    ...proposal,
+    created_by_name: creatorProfile?.full_name || null,
+    created_by_email: creatorProfile?.email || null
+  };
+}
+
+async function enrichProposalsWithCreatorInfo(proposals) {
+  const list = Array.isArray(proposals) ? proposals : [];
+  const profilesMap = await loadProfilesMapByIds(
+    list.map((proposal) => proposal?.created_by)
+  );
+
+  return list.map((proposal) =>
+    attachCreatorInfoToProposal(proposal, profilesMap)
+  );
+}
+
+async function enrichProposalWithCreatorInfo(proposal) {
+  if (!proposal) {
+    return proposal;
+  }
+
+  const profilesMap = await loadProfilesMapByIds([proposal.created_by]);
+  return attachCreatorInfoToProposal(proposal, profilesMap);
+}
+
 router.post("/", authMiddleware, async (req, res) => {
   try {
 
@@ -193,9 +249,11 @@ router.post("/", authMiddleware, async (req, res) => {
       console.error("Erro ao registrar evento da proposta:", eventError);
     }
 
+    const enrichedData = await enrichProposalWithCreatorInfo(data);
+
     return res.status(201).json({
       message: "Proposta criada com sucesso.",
-      data
+      data: enrichedData
     });
   } catch (error) {
     console.error("Erro interno ao criar proposta:", error);
@@ -259,8 +317,10 @@ router.get("/", authMiddleware, async (req, res) => {
       });
     }
 
+    const enrichedData = await enrichProposalsWithCreatorInfo(data || []);
+
     return res.json({
-      data,
+      data: enrichedData,
       meta: {
         page,
         limit,
@@ -300,7 +360,9 @@ router.get("/:id", authMiddleware, async (req, res) => {
       });
     }
 
-    return res.json({ data });
+    const enrichedData = await enrichProposalWithCreatorInfo(data);
+
+    return res.json({ data: enrichedData });
   } catch (error) {
     console.error("Erro interno ao buscar proposta:", error);
     return res.status(500).json({
@@ -409,9 +471,11 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       console.error("Erro ao registrar evento de mudança de status:", eventError);
     }
 
+    const enrichedData = await enrichProposalWithCreatorInfo(data);
+
     return res.json({
       message: "Status da proposta atualizado com sucesso.",
-      data
+      data: enrichedData
     });
   } catch (error) {
     console.error("Erro interno ao atualizar status da proposta:", error);
@@ -506,9 +570,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
       console.error("Erro ao registrar evento de atualização:", eventError);
     }
 
+    const enrichedData = await enrichProposalWithCreatorInfo(data);
+
     return res.json({
       message: "Proposta atualizada com sucesso.",
-      data
+      data: enrichedData
     });
   } catch (error) {
     console.error("Erro interno ao atualizar proposta:", error);

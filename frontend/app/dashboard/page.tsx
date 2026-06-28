@@ -34,6 +34,8 @@ type Proposal = {
   updated_at?: string;
   created_by?: string | null;
   updated_by?: string | null;
+  created_by_name?: string | null;
+  created_by_email?: string | null;
   editable_json?: Record<string, unknown> | null;
 };
 
@@ -266,9 +268,22 @@ export default function DashboardPage() {
   }
 
   function formatCreator(proposal: Proposal) {
-    if (!proposal.created_by) return "Não informado";
-    if (profile?.id && proposal.created_by === profile.id) return "Você";
-    return proposal.created_by;
+    const creatorName = proposal.created_by_name?.trim();
+    const creatorEmail = proposal.created_by_email?.trim();
+
+    if (profile?.id && proposal.created_by === profile.id) {
+      if (creatorName && creatorEmail) return `Você (${creatorName} - ${creatorEmail})`;
+      if (creatorName) return `Você (${creatorName})`;
+      if (creatorEmail) return `Você (${creatorEmail})`;
+      return "Você";
+    }
+
+    if (creatorName && creatorEmail) return `${creatorName} (${creatorEmail})`;
+    if (creatorName) return creatorName;
+    if (creatorEmail) return creatorEmail;
+    if (proposal.created_by) return proposal.created_by;
+
+    return "Não informado";
   }
 
   const filteredProposals = useMemo(() => {
