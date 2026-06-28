@@ -110,8 +110,6 @@ function isValidProposalStatus(status) {
 
 router.post("/", authMiddleware, async (req, res) => {
   try {
-    console.log("BODY recebido em POST /api/proposals:", req.body);
-    console.log("USER autenticado:", req.user);
 
     const {
       title,
@@ -164,7 +162,6 @@ router.post("/", authMiddleware, async (req, res) => {
       updated_by: req.user.id
     };
 
-    console.log("Payload enviado ao Supabase:", payload);
 
     const { data, error } = await adminSupabase
       .from("proposals")
@@ -216,8 +213,6 @@ router.get("/", authMiddleware, async (req, res) => {
 
     const accessContext = await getAccessContext(req.user);
 
-    console.log("[GET /api/proposals] user_id:", req.user?.id);
-    console.log("[GET /api/proposals] accessContext:", accessContext);
 
     let query = adminSupabase
       .from("proposals")
@@ -229,10 +224,8 @@ router.get("/", authMiddleware, async (req, res) => {
       .range(from, to);
 
     if (!accessContext.isAdmin) {
-      console.log("[GET /api/proposals] aplicando filtro created_by =", req.user.id);
       query = query.eq("created_by", req.user.id);
     } else {
-      console.log("[GET /api/proposals] admin detectado, sem filtro por created_by");
     }
 
     if (status) {
@@ -257,9 +250,6 @@ router.get("/", authMiddleware, async (req, res) => {
 
     const { data, error, count } = await query;
 
-    console.log("[GET /api/proposals] count:", count);
-    console.log("[GET /api/proposals] total retornado no array:", Array.isArray(data) ? data.length : "não-array");
-    console.log("[GET /api/proposals] created_by retornados:", Array.isArray(data) ? data.map(item => item.created_by) : []);
 
     if (error) {
       console.error("Erro ao listar propostas:", error);
@@ -326,11 +316,6 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
     const rawStatus = req.body?.status;
     const normalizedStatus = normalizeProposalStatus(rawStatus);
 
-    console.log("[PATCH /api/proposals/:id/status]");
-    console.log("proposal_id:", id);
-    console.log("rawStatus:", rawStatus);
-    console.log("normalizedStatus:", normalizedStatus);
-    console.log("user_id:", req.user?.id);
 
     if (!isValidProposalStatus(normalizedStatus)) {
       return res.status(400).json({

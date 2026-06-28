@@ -8,8 +8,6 @@ const proposalsRoutes = require("./routes/proposals.routes");
 
 const app = express();
 
-console.log("=== APP VERSION DEBUG CORS LIBERADO ===");
-
 app.use(cors({
   origin: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -20,12 +18,6 @@ app.use(cors({
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  console.log("Origin recebida:", req.headers.origin);
-  next();
-});
 
 app.get("/", (req, res) => {
   res.status(200).json({

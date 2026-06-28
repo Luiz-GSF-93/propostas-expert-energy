@@ -1,16 +1,8 @@
-const { createClient } = require("@supabase/supabase-js");
-const env = require("../config/env");
-
-const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
+const { authSupabase, adminSupabase } = require("../config/supabase");
 
 module.exports = async function authMiddleware(req, res, next) {
   try {
-    console.log("=== AUTH MIDDLEWARE ===");
-    console.log("Método:", req.method);
-    console.log("URL:", req.originalUrl);
-
     const authHeader = req.headers.authorization;
-    console.log("Authorization header existe?", !!authHeader);
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
@@ -19,13 +11,10 @@ module.exports = async function authMiddleware(req, res, next) {
     }
 
     const token = authHeader.replace("Bearer ", "").trim();
-    console.log("Token extraído?", !!token);
-    console.log("Tamanho do token:", token.length);
 
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data, error } = await authSupabase.auth.getUser(token);
 
     if (error) {
-      console.error("Erro no Supabase auth.getUser:", error);
       return res.status(401).json({
         message: "Token inválido ou expirado.",
         error: error.message
@@ -38,9 +27,44 @@ module.exports = async function authMiddleware(req, res, next) {
       });
     }
 
-    console.log("Usuário autenticado:", data.user.id);
+    const user = data.user;
+    let profileRow = null;
 
-    req.user = data.user;
+    const { data: profileById, error: profileByIdError } = await adminSupabase
+      .from("profiles")
+      .select("id, email, role, is_active, full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileByIdError) {
+      console.error("Erro ao buscar perfil por id no auth middleware:", profileByIdError);
+    } else {
+      profileRow = profileById || null;
+    }
+
+    if (!profileRow && user?.email) {
+      const { data: profileByEmail, error: profileByEmailError } = await adminSupabase
+        .from("profiles")
+        .select("id, email, role, is_active, full_name")
+        .eq("email", user.email)
+        .maybeSingle();
+
+      if (profileByEmailError) {
+        console.error("Erro ao buscar perfil por email no auth middleware:", profileByEmailError);
+      } else {
+        profileRow = profileByEmail || null;
+      }
+    }
+
+    if (profileRow && profileRow.is_active === false) {
+      return res.status(403).json({
+        message: "Usuário inativo."
+      });
+    }
+
+    req.user = user;
+    req.profile = profileRow || null;
+
     next();
   } catch (error) {
     console.error("Erro interno no auth middleware:", error);
