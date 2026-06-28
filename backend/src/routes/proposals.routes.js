@@ -47,7 +47,7 @@ async function getAccessContext(user) {
 
   const { data: profileRow, error: profileError } = await adminSupabase
     .from("profiles")
-    .select("id, role, profile, email, full_name, name")
+    .select("id, role, email, full_name, name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -57,7 +57,6 @@ async function getAccessContext(user) {
 
   const rawRole =
     profileRow?.role ||
-    profileRow?.profile ||
     user?.user_metadata?.role ||
     user?.app_metadata?.role ||
     fallbackRole;
