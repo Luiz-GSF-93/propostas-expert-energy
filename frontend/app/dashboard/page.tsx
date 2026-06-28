@@ -32,6 +32,9 @@ type Proposal = {
   public_slug?: string;
   created_at?: string;
   updated_at?: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  editable_json?: Record<string, unknown> | null;
 };
 
 const PAGE_SIZE = 10;
@@ -44,6 +47,7 @@ export default function DashboardPage() {
   const [accessToken, setAccessToken] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [scopeFilter, setScopeFilter] = useState<"all" | "mine">("all");
 
   const [filters, setFilters] = useState({
     status: "",
@@ -51,6 +55,17 @@ export default function DashboardPage() {
     code: "",
     date: "",
   });
+
+  function persistAccessToken(token: string) {
+    if (!token || typeof window === "undefined") return;
+
+    try {
+      localStorage.setItem("access_token", token);
+      localStorage.setItem("supabase.access_token", token);
+    } catch {
+      // silencioso para não quebrar o fluxo
+    }
+  }
 
   useEffect(() => {
     async function loadDashboard() {
@@ -65,6 +80,7 @@ export default function DashboardPage() {
         }
 
         setAccessToken(session.access_token);
+        persistAccessToken(session.access_token);
 
         const [profileResponse, proposalsResponse] = await Promise.all([
           apiFetch("/api/auth/me", session.access_token),
@@ -78,7 +94,14 @@ export default function DashboardPage() {
         }
 
         const profileJson = await profileResponse.json();
-        setProfile(profileJson?.data ?? null);
+        const normalizedProfile =
+          profileJson?.data ??
+          profileJson?.user ??
+          profileJson?.profile ??
+          profileJson ??
+          null;
+
+        setProfile(normalizedProfile);
 
         if (proposalsResponse.ok) {
           const proposalsData = await proposalsResponse.json();
@@ -89,6 +112,10 @@ export default function DashboardPage() {
             ? proposalsData.items
             : Array.isArray(proposalsData?.data)
             ? proposalsData.data
+            : Array.isArray(proposalsData?.proposals)
+            ? proposalsData.proposals
+            : Array.isArray(proposalsData?.rows)
+            ? proposalsData.rows
             : [];
 
           setProposals(normalizedProposals);
@@ -110,7 +137,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.status, filters.client, filters.code, filters.date]);
+  }, [filters.status, filters.client, filters.code, filters.date, scopeFilter]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -118,28 +145,34 @@ export default function DashboardPage() {
   }
 
   function handleNewProposal() {
+    if (accessToken) {
+      persistAccessToken(accessToken);
+    }
     window.location.href = "/proposta-base.html?new=1";
   }
 
   function handleEditProposal(proposalId: string) {
+    if (accessToken) {
+      persistAccessToken(accessToken);
+    }
     window.location.href = `/proposta-base.html?proposalId=${proposalId}&mode=edit`;
   }
 
   function normalizeStatus(status?: string): ProposalStatus | string {
     if (!status) return "draft";
 
-    switch (status) {
+    const normalized = String(status).toLowerCase();
+
+    switch (normalized) {
       case "draft":
       case "pending":
       case "approved":
       case "rejected":
-      case "pending":
-      case "rejected":
       case "published":
       case "archived":
-        return status;
+        return normalized;
       default:
-        return status;
+        return normalized;
     }
   }
 
@@ -153,10 +186,6 @@ export default function DashboardPage() {
         return "Aprovada";
       case "rejected":
         return "Cancelada";
-      case "pending":
-        return "Pendente";
-      case "rejected":
-        return "Rejeitada";
       case "published":
         return "Publicada";
       case "archived":
@@ -172,9 +201,7 @@ export default function DashboardPage() {
       case "published":
         return "bg-emerald-100 text-emerald-700";
       case "pending":
-      case "pending":
         return "bg-amber-100 text-amber-700";
-      case "rejected":
       case "rejected":
         return "bg-red-100 text-red-700";
       case "archived":
@@ -228,11 +255,28 @@ export default function DashboardPage() {
       code: "",
       date: "",
     });
+    setScopeFilter("all");
     setCurrentPage(1);
+  }
+
+  const isAdmin = (profile?.role || "").toLowerCase() === "admin";
+
+  function isOwnProposal(proposal: Proposal) {
+    return !!profile?.id && proposal.created_by === profile.id;
+  }
+
+  function formatCreator(proposal: Proposal) {
+    if (!proposal.created_by) return "Não informado";
+    if (profile?.id && proposal.created_by === profile.id) return "Você";
+    return proposal.created_by;
   }
 
   const filteredProposals = useMemo(() => {
     return proposals.filter((proposal) => {
+      if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
+        return false;
+      }
+
       const proposalStatus = String(proposal.status || "").toLowerCase();
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
@@ -258,9 +302,12 @@ export default function DashboardPage() {
 
       return matchesStatus && matchesClient && matchesCode && matchesDate;
     });
-  }, [proposals, filters]);
+  }, [proposals, filters, isAdmin, scopeFilter, profile?.id]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProposals.length / PAGE_SIZE)
+  );
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const paginatedProposals = filteredProposals.slice(
     startIndex,
@@ -289,14 +336,18 @@ export default function DashboardPage() {
     );
 
     try {
-      let response = await apiFetch(`/api/proposals/${proposalId}/status`, accessToken, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      let response = await apiFetch(
+        `/api/proposals/${proposalId}/status`,
+        accessToken,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
       if (!response.ok) {
         response = await apiFetch(`/api/proposals/${proposalId}`, accessToken, {
@@ -383,34 +434,54 @@ export default function DashboardPage() {
           </div>
 
           {profile ? (
-            <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Nome
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-900">
-                  {profile.full_name || profile.name || "Não informado"}
-                </p>
+            <>
+              <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Nome
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {profile.full_name || profile.name || "Não informado"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    E-mail
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {profile.email || "Não informado"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Perfil
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-slate-900">
+                      {profile.profile ||
+                        profile.role_label ||
+                        formatRole(profile.role) ||
+                        "Não informado"}
+                    </p>
+
+                    {isAdmin && (
+                      <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                        Administrador
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  E-mail
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-900">
-                  {profile.email || "Não informado"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Perfil
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-900">
-                  {profile.profile || profile.role_label || formatRole(profile.role) || "Não informado"}
-                </p>
-              </div>
-            </div>
+              {isAdmin && (
+                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  Você está em modo administrador e pode visualizar propostas de
+                  todos os usuários.
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-red-600">Perfil não encontrado.</p>
           )}
@@ -434,6 +505,24 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">
+              {isAdmin && (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Escopo
+                  </label>
+                  <select
+                    value={scopeFilter}
+                    onChange={(e) =>
+                      setScopeFilter(e.target.value as "all" | "mine")
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="all">Todas as propostas</option>
+                    <option value="mine">Somente minhas</option>
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Tag / status
@@ -541,6 +630,10 @@ export default function DashboardPage() {
                           {proposal.proposal_code || "Não informado"}
                         </p>
 
+                        <p className="text-sm text-slate-700">
+                          <strong>Criado por:</strong> {formatCreator(proposal)}
+                        </p>
+
                         <p className="text-sm text-slate-500">
                           <strong>Atualizado em:</strong>{" "}
                           {formatDate(proposal.updated_at || proposal.created_at)}
@@ -591,7 +684,9 @@ export default function DashboardPage() {
                                   | "rejected"
                               )
                             }
-                            disabled={!proposal.id || updatingStatusId === proposal.id}
+                            disabled={
+                              !proposal.id || updatingStatusId === proposal.id
+                            }
                             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <option value="draft">Rascunho</option>
@@ -619,7 +714,9 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
                     disabled={currentPage === 1}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
