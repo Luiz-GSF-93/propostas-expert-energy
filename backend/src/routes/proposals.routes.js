@@ -45,14 +45,32 @@ async function getAccessContext(user) {
     };
   }
 
-  const { data: profileRow, error: profileError } = await adminSupabase
+  let profileRow = null;
+
+  const { data: profileById, error: profileByIdError } = await adminSupabase
     .from("profiles")
     .select("id, role, email, full_name, name")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileError) {
-    console.error("Erro ao buscar perfil para autorização:", profileError);
+  if (profileByIdError) {
+    console.error("Erro ao buscar perfil por id para autorização:", profileByIdError);
+  } else {
+    profileRow = profileById || null;
+  }
+
+  if (!profileRow && user?.email) {
+    const { data: profileByEmail, error: profileByEmailError } = await adminSupabase
+      .from("profiles")
+      .select("id, role, email, full_name, name")
+      .eq("email", user.email)
+      .maybeSingle();
+
+    if (profileByEmailError) {
+      console.error("Erro ao buscar perfil por email para autorização:", profileByEmailError);
+    } else {
+      profileRow = profileByEmail || null;
+    }
   }
 
   const rawRole =
