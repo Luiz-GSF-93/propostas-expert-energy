@@ -996,17 +996,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <section class="link-output-panel editor-only" id="clientLinkPanel">
-    <div class="link-output-copy">
-      <div class="link-output-title">Link da versão cliente</div>
-      <p class="link-output-help">Este link abre a proposta em HTML somente leitura e pode ser enviado ao cliente para visualização no navegador.</p>
-      <div class="link-output-row">
-        <input type="text" id="clientViewLink" class="link-output-input" readonly="" value="">
-        <button type="button" id="copyClientLinkBtn" class="primary">Copiar link</button>
-        <button type="button" id="openClientLinkBtn" class="secondary">Abrir link</button>
-      </div>
-    </div>
-  </section>
 
   <section class="summary-note editor-only">
     <p><strong>Como usar este modelo:</strong> selecione os serviços aplicáveis, preencha os campos principais, clique em <strong>Salvar proposta</strong>, use <strong>Download HTML</strong> para baixar a versão somente leitura e envie esse arquivo ao cliente por e-mail. Utilize <strong>Imprimir / Salvar PDF</strong> para gerar a versão final em PDF.</p>
@@ -3144,44 +3133,8 @@
       return JSON.parse(decodeURIComponent(escape(atob(padded))));
     }
 
-    function buildClientViewLink(){
-      const payload = encodeProposalState(collectFormData());
-      const baseUrl = window.location.href.split("#")[0].split("?")[0];
-      return `${baseUrl}?modo=cliente#proposta=${payload}`;
-    }
-
-    function updateClientLinkPanel(link){
-      const panel = document.getElementById("clientLinkPanel");
-      const input = document.getElementById("clientViewLink");
-      if(!panel || !input) return;
-      input.value = link;
-      panel.classList.add("visible");
-    }
-
     function refreshClientLinkPanel(){
-      const link = buildClientViewLink();
-      updateClientLinkPanel(link);
-      return link;
-    }
-
-    async function copyClientLink(){
-      const input = document.getElementById("clientViewLink");
-      if(!input || !input.value) {
-        showToast("Gere a versão cliente antes de copiar o link.", "error");
-        return;
-      }
-      try{
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          await navigator.clipboard.writeText(input.value);
-        }else{
-          input.focus();
-          input.select();
-          document.execCommand("copy");
-        }
-        showToast("Link da versão cliente copiado com sucesso.", "success");
-      }catch(error){
-        showToast("Não foi possível copiar o link automaticamente.", "error");
-      }
+      return "";
     }
 
     function openClientPreviewWindow(previewHTML, autoPrint = false){
@@ -3235,16 +3188,6 @@
         console.error(error);
         showToast("Não foi possível baixar a versão cliente em HTML.", "error");
       }
-    }
-
-    function openClientLink(){
-      const link = refreshClientLinkPanel();
-      const previewWindow = window.open(link, "_blank");
-      if(!previewWindow){
-        showToast("Permita pop-ups para abrir o link da versão cliente.", "error");
-        return;
-      }
-      showToast("Link da versão cliente aberto em nova aba.", "success");
     }
 
     function renderClientModeError(message){
@@ -3359,12 +3302,6 @@
       updateAnnex();
       updateCoverClientName();
       updateSaveProposalButtonLabel();
-
-      const clientViewInput = document.getElementById("clientViewLink");
-      if(clientViewInput) clientViewInput.value = "";
-
-      const panel = document.getElementById("clientLinkPanel");
-      if(panel) panel.classList.remove("visible");
 
       if(window.__lastPreviewWindow && !window.__lastPreviewWindow.closed){
         window.__lastPreviewWindow.close();
@@ -4181,8 +4118,6 @@
       document.getElementById("saveProposalBtn")?.addEventListener("click", saveProposalToBackend);
       document.getElementById("openClientHtmlBtn")?.addEventListener("click", downloadClientHtml);
       document.getElementById("printClientPdfBtn")?.addEventListener("click", generateClientPreview);
-      document.getElementById("copyClientLinkBtn")?.addEventListener("click", copyClientLink);
-      document.getElementById("openClientLinkBtn")?.addEventListener("click", openClientLink);
     }
 
     async function initialize(){
