@@ -17,6 +17,58 @@ const STATUS_ALIAS_MAP = {
   canceled: "rejected"
 };
 
+const ADMIN_ROLE_VALUES = [
+  "admin",
+  "administrator",
+  "administrador"
+];
+
+function normalizeUserRole(role) {
+  return String(role || "").trim().toLowerCase();
+}
+
+function isAdminRole(role) {
+  return ADMIN_ROLE_VALUES.includes(normalizeUserRole(role));
+}
+
+async function getAccessContext(user) {
+  const fallbackRole =
+    user?.user_metadata?.role ||
+    user?.app_metadata?.role ||
+    "seller";
+
+  if (!user?.id) {
+    return {
+      role: normalizeUserRole(fallbackRole) || "seller",
+      isAdmin: isAdminRole(fallbackRole),
+      profile: null
+    };
+  }
+
+  const { data: profileRow, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("id, role, profile, email, full_name, name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("Erro ao buscar perfil para autorização:", profileError);
+  }
+
+  const rawRole =
+    profileRow?.role ||
+    profileRow?.profile ||
+    user?.user_metadata?.role ||
+    user?.app_metadata?.role ||
+    fallbackRole;
+
+  return {
+    role: normalizeUserRole(rawRole) || "seller",
+    isAdmin: isAdminRole(rawRole),
+    profile: profileRow || null
+  };
+}
+
 function normalizeProposalStatus(status) {
   if (status === undefined || status === null || status === "") {
     return "draft";
@@ -145,15 +197,20 @@ router.get("/", authMiddleware, async (req, res) => {
     const { status, search } = req.query;
     const { page, limit, from, to } = normalizePagination(req.query);
 
+    const accessContext = await getAccessContext(req.user);
+
     let query = adminSupabase
       .from("proposals")
       .select(
-        "id, proposal_code, title, client_name, status, current_version, created_at, updated_at",
+        "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by",
         { count: "exact" }
       )
-      .eq("created_by", req.user.id)
       .order("created_at", { ascending: false })
       .range(from, to);
+
+    if (!accessContext.isAdmin) {
+      query = query.eq("created_by", req.user.id);
+    }
 
     if (status) {
       const normalizedStatus = normalizeProposalStatus(status);
@@ -206,12 +263,18 @@ router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await adminSupabase
+    const accessContext = await getAccessContext(req.user);
+
+    let proposalQuery = adminSupabase
       .from("proposals")
       .select("*")
-      .eq("id", id)
-      .eq("created_by", req.user.id)
-      .single();
+      .eq("id", id);
+
+    if (!accessContext.isAdmin) {
+      proposalQuery = proposalQuery.eq("created_by", req.user.id);
+    }
+
+    const { data, error } = await proposalQuery.single();
 
     if (error || !data) {
       return res.status(404).json({
@@ -251,12 +314,18 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       });
     }
 
-    const { data: existingProposal, error: existingError } = await adminSupabase
+    const accessContext = await getAccessContext(req.user);
+
+    let existingProposalQuery = adminSupabase
       .from("proposals")
       .select("id, created_by, status")
-      .eq("id", id)
-      .eq("created_by", req.user.id)
-      .maybeSingle();
+      .eq("id", id);
+
+    if (!accessContext.isAdmin) {
+      existingProposalQuery = existingProposalQuery.eq("created_by", req.user.id);
+    }
+
+    const { data: existingProposal, error: existingError } = await existingProposalQuery.maybeSingle();
 
     if (existingError) {
       console.error("Erro ao buscar proposta antes do update:", existingError);
@@ -281,12 +350,17 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       updatePayload.updated_by = req.user.id;
     }
 
-    const { data, error } = await adminSupabase
+    let updateStatusQuery = adminSupabase
       .from("proposals")
       .update(updatePayload)
-      .eq("id", id)
-      .eq("created_by", req.user.id)
-      .select("id, proposal_code, client_name, status, updated_at, updated_by")
+      .eq("id", id);
+
+    if (!accessContext.isAdmin) {
+      updateStatusQuery = updateStatusQuery.eq("created_by", req.user.id);
+    }
+
+    const { data, error } = await updateStatusQuery
+      .select("id, proposal_code, client_name, status, updated_at, updated_by, created_by")
       .maybeSingle();
 
     if (error) {
@@ -360,6 +434,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
       }
     }
 
+    const accessContext = await getAccessContext(req.user);
+
     const updatePayload = {
       updated_by: req.user.id
     };
@@ -372,11 +448,16 @@ router.put("/:id", authMiddleware, async (req, res) => {
     if (editable_json !== undefined) updatePayload.editable_json = editable_json;
     if (status !== undefined) updatePayload.status = normalizeProposalStatus(status);
 
-    const { data, error } = await adminSupabase
+    let updateProposalQuery = adminSupabase
       .from("proposals")
       .update(updatePayload)
-      .eq("id", id)
-      .eq("created_by", req.user.id)
+      .eq("id", id);
+
+    if (!accessContext.isAdmin) {
+      updateProposalQuery = updateProposalQuery.eq("created_by", req.user.id);
+    }
+
+    const { data, error } = await updateProposalQuery
       .select("*")
       .maybeSingle();
 
