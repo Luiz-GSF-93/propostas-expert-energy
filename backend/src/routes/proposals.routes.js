@@ -49,7 +49,7 @@ async function getAccessContext(user) {
 
   const { data: profileById, error: profileByIdError } = await adminSupabase
     .from("profiles")
-    .select("id, role, email, full_name, name")
+    .select("id, role, email, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -62,7 +62,7 @@ async function getAccessContext(user) {
   if (!profileRow && user?.email) {
     const { data: profileByEmail, error: profileByEmailError } = await adminSupabase
       .from("profiles")
-      .select("id, role, email, full_name, name")
+      .select("id, role, email, full_name")
       .eq("email", user.email)
       .maybeSingle();
 
