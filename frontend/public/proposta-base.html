@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/5lpRGs9d -->
+<!-- saved from url=(0044)https://www.genspark.ai/api/files/s/URtHqzSf -->
 <html lang="pt-BR" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -3282,6 +3282,12 @@
 
     const LOCAL_DRAFT_KEY = "expert_energy_proposta_html_draft";
     const LOCAL_PROPOSAL_ID_KEY = "expert_energy_current_proposal_id";
+    const API_BASE_URL = "https://propostas-expert-energy-api.onrender.com";
+
+    function buildApiUrl(path = ""){
+      const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
+      return `${API_BASE_URL}${normalizedPath}`;
+    }
 
     function getSupabaseAccessToken(){
       const directKeys = [
@@ -3405,7 +3411,7 @@
       }
 
       try{
-        const response = await fetch(`/api/proposals/${proposalId}`, {
+        const response = await fetch(buildApiUrl(`/api/proposals/${proposalId}`), {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`
@@ -3592,7 +3598,9 @@
         const body = JSON.stringify(payload);
 
         const response = await fetch(
-          proposalId ? `/api/proposals/${proposalId}` : "/api/proposals",
+          proposalId
+            ? buildApiUrl(`/api/proposals/${proposalId}`)
+            : buildApiUrl("/api/proposals"),
           {
             method: proposalId ? "PUT" : "POST",
             headers: {
