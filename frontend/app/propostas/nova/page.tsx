@@ -1,145 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function NovaPropostaPage() {
-  const searchParams = useSearchParams();
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [iframeHeight, setIframeHeight] = useState(1400);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
 
-  const iframeSrc = useMemo(() => {
-    const params = new URLSearchParams();
-
-    const isNew = searchParams.get("new");
-    const proposalId = searchParams.get("proposalId");
-    const mode = searchParams.get("mode");
-
-    if (isNew === "1") {
+    if (!params.has("new")) {
       params.set("new", "1");
     }
 
-    if (proposalId) {
-      params.set("proposalId", proposalId);
-    }
+    const queryString = params.toString();
+    const targetUrl = `/proposta-base.html${queryString ? `?${queryString}` : ""}`;
 
-    if (mode) {
-      params.set("mode", mode);
-    }
-
-    const query = params.toString();
-    return `/proposta-base.html${query ? `?${query}` : ""}`;
-  }, [searchParams]);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    let resizeObserver: ResizeObserver | null = null;
-    let mutationObserver: MutationObserver | null = null;
-    let intervalId: number | null = null;
-
-    const updateIframeHeight = () => {
-      try {
-        const doc =
-          iframe.contentDocument || iframe.contentWindow?.document;
-        if (!doc) return;
-
-        const bodyHeight = doc.body?.scrollHeight || 0;
-        const htmlHeight = doc.documentElement?.scrollHeight || 0;
-        const nextHeight = Math.max(bodyHeight, htmlHeight, 1400);
-
-        if (nextHeight) {
-          setIframeHeight(nextHeight + 40);
-        }
-      } catch (error) {
-        console.error("Não foi possível ajustar altura do iframe:", error);
-      }
-    };
-
-    const setupObservers = () => {
-      try {
-        const doc =
-          iframe.contentDocument || iframe.contentWindow?.document;
-        if (!doc) return;
-
-        updateIframeHeight();
-
-        if (typeof ResizeObserver !== "undefined") {
-          resizeObserver = new ResizeObserver(() => {
-            updateIframeHeight();
-          });
-
-          if (doc.body) resizeObserver.observe(doc.body);
-          if (doc.documentElement) resizeObserver.observe(doc.documentElement);
-        }
-
-        mutationObserver = new MutationObserver(() => {
-          updateIframeHeight();
-        });
-
-        if (doc.body) {
-          mutationObserver.observe(doc.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            characterData: true,
-          });
-        }
-
-        intervalId = window.setInterval(() => {
-          updateIframeHeight();
-        }, 800);
-      } catch (error) {
-        console.error("Erro ao configurar observers do iframe:", error);
-      }
-    };
-
-    const handleLoad = () => {
-      setupObservers();
-      updateIframeHeight();
-    };
-
-    iframe.addEventListener("load", handleLoad);
-
-    return () => {
-      iframe.removeEventListener("load", handleLoad);
-      if (resizeObserver) resizeObserver.disconnect();
-      if (mutationObserver) mutationObserver.disconnect();
-      if (intervalId) window.clearInterval(intervalId);
-    };
-  }, [iframeSrc]);
+    window.location.replace(targetUrl);
+  }, []);
 
   return (
-    <main className="min-h-screen bg-slate-100">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">
-            Editor de proposta
-          </h1>
-          <p className="text-sm text-slate-600">
-            Criação, edição e apresentação da proposta comercial.
-          </p>
-        </div>
-
-        <Link
-          href="/dashboard"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Voltar ao dashboard
-        </Link>
-      </div>
-
-      <div className="px-4 pb-6">
-        <iframe
-          ref={iframeRef}
-          key={iframeSrc}
-          src={iframeSrc}
-          title="Editor de proposta"
-          style={{ width: "100%", height: `${iframeHeight}px` }}
-          className="rounded-xl border border-slate-200 bg-white shadow"
-        />
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-6">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+        <h1 className="text-xl font-semibold text-slate-900">
+          Abrindo editor de proposta
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Você está sendo redirecionado para o editor da proposta.
+        </p>
       </div>
     </main>
   );
