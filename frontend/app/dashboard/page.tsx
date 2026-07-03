@@ -161,6 +161,14 @@ export default function DashboardPage() {
     );
   }
 
+  function handleOpenEnergyLinkProposal() {
+    window.open(
+      "https://luiz-gsf-93.github.io/new-proposta-energy-link/",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
   function handleEditProposal(proposalId: string) {
     if (accessToken) {
       persistAccessToken(accessToken);
@@ -452,6 +460,13 @@ export default function DashboardPage() {
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
               >
                 Abrir Simulador DIC/FIC+ROI
+              </button>
+
+              <button
+                onClick={handleOpenEnergyLinkProposal}
+                className="rounded-lg bg-cyan-600 px-4 py-2 text-white transition hover:bg-cyan-700"
+              >
+                Proposta Energy Link
               </button>
 
               <button
