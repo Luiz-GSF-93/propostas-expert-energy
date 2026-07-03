@@ -153,6 +153,14 @@ export default function DashboardPage() {
     window.location.href = "/proposta-base.html?new=1";
   }
 
+  function handleOpenDicFicSimulator() {
+    window.open(
+      "https://luiz-gsf-93.github.io/Simulador-DIC-FIC-com-ROI/",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
   function handleEditProposal(proposalId: string) {
     if (accessToken) {
       persistAccessToken(accessToken);
@@ -437,6 +445,13 @@ export default function DashboardPage() {
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
               >
                 Nova proposta
+              </button>
+
+              <button
+                onClick={handleOpenDicFicSimulator}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
+              >
+                Abrir Simulador DIC/FIC+ROI
               </button>
 
               <button
