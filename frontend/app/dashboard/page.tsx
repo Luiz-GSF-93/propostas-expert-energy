@@ -359,6 +359,20 @@ export default function DashboardPage() {
     return current;
   }
 
+  function sumPricingRows(pricingRows: unknown): number {
+    if (!Array.isArray(pricingRows)) return 0;
+
+    return pricingRows.reduce((total, row) => {
+      if (!row || typeof row !== "object") return total;
+
+      const rowData = row as Record<string, unknown>;
+      const qty = parsePossibleNumber(rowData.qty) ?? 0;
+      const unitValue = parsePossibleNumber(rowData.unitValue) ?? 0;
+
+      return total + qty * unitValue;
+    }, 0);
+  }
+
   function extractProposalValue(proposal: Proposal) {
     const editable =
       proposal.editable_json && typeof proposal.editable_json === "object"
@@ -400,7 +414,22 @@ export default function DashboardPage() {
       }
     }
 
-    return 0;
+    const pricingRowsTotal = sumPricingRows(
+      getNestedValue(editable, ["pricingRows"])
+    );
+
+    const pricingTaxes =
+      parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_taxes"])) ??
+      0;
+
+    const pricingDiscount =
+      parsePossibleNumber(
+        getNestedValue(editable, ["fields", "pricing_discount"])
+      ) ?? 0;
+
+    const calculatedTotal = pricingRowsTotal + pricingTaxes - pricingDiscount;
+
+    return calculatedTotal > 0 ? calculatedTotal : 0;
   }
 
   function handleFilterChange(
