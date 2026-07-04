@@ -275,7 +275,7 @@ router.get("/", authMiddleware, async (req, res) => {
     let query = adminSupabase
       .from("proposals")
       .select(
-        "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by",
+        "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by, editable_json",
         { count: "exact" }
       )
       .order("created_at", { ascending: false })
