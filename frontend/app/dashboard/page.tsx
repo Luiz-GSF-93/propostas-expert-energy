@@ -39,7 +39,44 @@ type Proposal = {
   editable_json?: Record<string, unknown> | null;
 };
 
+type DashboardMetrics = {
+  totalCount: number;
+  totalValue: number;
+  approvedCount: number;
+  approvedValue: number;
+  pendingCount: number;
+  pendingValue: number;
+  draftCount: number;
+  draftValue: number;
+  rejectedCount: number;
+  rejectedValue: number;
+  conversionRate: number;
+  averageTicket: number;
+};
+
 const PAGE_SIZE = 10;
+
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  valueClassName = "text-slate-900",
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      <p className={`mt-2 text-2xl font-bold ${valueClassName}`}>{value}</p>
+      {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -56,6 +93,7 @@ export default function DashboardPage() {
     client: "",
     code: "",
     date: "",
+    user: "",
   });
 
   function persistAccessToken(token: string) {
@@ -139,7 +177,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.status, filters.client, filters.code, filters.date, scopeFilter]);
+  }, [
+    filters.status,
+    filters.client,
+    filters.code,
+    filters.date,
+    filters.user,
+    scopeFilter,
+  ]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -256,8 +301,110 @@ export default function DashboardPage() {
     }
   }
 
+  function formatCurrency(value: number) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(value) ? value : 0);
+  }
+
+  function formatPercent(value: number) {
+    return `${value.toFixed(1).replace(".", ",")}%`;
+  }
+
+  function parsePossibleNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const raw = value.trim();
+    if (!raw) return null;
+
+    const cleaned = raw.replace(/[R$\s]/g, "");
+
+    if (!cleaned) return null;
+
+    let normalized = cleaned;
+
+    if (/^\d{1,3}(\.\d{3})*,\d{2}$/.test(cleaned)) {
+      normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    } else if (/^\d+,\d{2}$/.test(cleaned)) {
+      normalized = cleaned.replace(",", ".");
+    } else {
+      normalized = cleaned.replace(/,/g, "");
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function getNestedValue(
+    source: Record<string, unknown> | null | undefined,
+    path: string[]
+  ): unknown {
+    let current: unknown = source;
+
+    for (const key of path) {
+      if (!current || typeof current !== "object" || !(key in current)) {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[key];
+    }
+
+    return current;
+  }
+
+  function extractProposalValue(proposal: Proposal) {
+    const editable =
+      proposal.editable_json && typeof proposal.editable_json === "object"
+        ? proposal.editable_json
+        : null;
+
+    if (!editable) return 0;
+
+    const candidatePaths = [
+      ["total_value"],
+      ["valor_total"],
+      ["valor_total_proposta"],
+      ["valorProposta"],
+      ["proposal_total"],
+      ["totalProposalValue"],
+      ["investment_total"],
+      ["total_investimento"],
+      ["total"],
+      ["pricing", "total"],
+      ["pricing", "total_value"],
+      ["pricing", "valor_total"],
+      ["pricingSummary", "total"],
+      ["pricing_summary", "total"],
+      ["totals", "total"],
+      ["totals", "valor_total"],
+      ["summary", "total"],
+      ["summary", "valor_total"],
+      ["resumo_financeiro", "valor_total"],
+      ["resumoFinanceiro", "valorTotal"],
+      ["commercial", "total"],
+      ["comercial", "total"],
+    ];
+
+    for (const path of candidatePaths) {
+      const value = getNestedValue(editable, path);
+      const parsed = parsePossibleNumber(value);
+      if (parsed !== null) {
+        return parsed;
+      }
+    }
+
+    return 0;
+  }
+
   function handleFilterChange(
-    field: "status" | "client" | "code" | "date",
+    field: "status" | "client" | "code" | "date" | "user",
     value: string
   ) {
     setFilters((prev) => ({
@@ -272,6 +419,7 @@ export default function DashboardPage() {
       client: "",
       code: "",
       date: "",
+      user: "",
     });
     setScopeFilter("all");
     setCurrentPage(1);
@@ -288,23 +436,74 @@ export default function DashboardPage() {
     const creatorEmail = proposal.created_by_email?.trim();
 
     if (profile?.id && proposal.created_by === profile.id) {
-      if (creatorName && creatorEmail) return `Você (${creatorName} - ${creatorEmail})`;
-      if (creatorName) return `Você (${creatorName})`;
-      if (creatorEmail) return `Você (${creatorEmail})`;
       return "Você";
     }
 
     if (creatorName && creatorEmail) return `${creatorName} (${creatorEmail})`;
     if (creatorName) return creatorName;
     if (creatorEmail) return creatorEmail;
-    if (proposal.created_by) return proposal.created_by;
-
     return "Não informado";
   }
+
+  function formatCreatorDetails(proposal: Proposal) {
+    const creatorName = proposal.created_by_name?.trim();
+    const creatorEmail = proposal.created_by_email?.trim();
+
+    if (profile?.id && proposal.created_by === profile.id) {
+      if (creatorName && creatorEmail) return `${creatorName} • ${creatorEmail}`;
+      return creatorName || creatorEmail || "";
+    }
+
+    if (creatorEmail) return creatorEmail;
+    return "";
+  }
+
+  const creatorOptions = useMemo(() => {
+    if (!isAdmin) return [];
+
+    const map = new Map<string, { value: string; label: string }>();
+
+    for (const proposal of proposals) {
+      const creatorId = proposal.created_by;
+      if (!creatorId) continue;
+
+      const creatorName = proposal.created_by_name?.trim();
+      const creatorEmail = proposal.created_by_email?.trim();
+
+      let label = "Usuário não identificado";
+
+      if (creatorName && creatorEmail) {
+        label = `${creatorName} (${creatorEmail})`;
+      } else if (creatorName) {
+        label = creatorName;
+      } else if (creatorEmail) {
+        label = creatorEmail;
+      }
+
+      if (profile?.id && creatorId === profile.id) {
+        label = `Você — ${label}`;
+      }
+
+      if (!map.has(creatorId)) {
+        map.set(creatorId, {
+          value: creatorId,
+          label,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, "pt-BR")
+    );
+  }, [isAdmin, proposals, profile?.id]);
 
   const filteredProposals = useMemo(() => {
     return proposals.filter((proposal) => {
       if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
+        return false;
+      }
+
+      if (isAdmin && filters.user && proposal.created_by !== filters.user) {
         return false;
       }
 
@@ -334,6 +533,65 @@ export default function DashboardPage() {
       return matchesStatus && matchesClient && matchesCode && matchesDate;
     });
   }, [proposals, filters, isAdmin, scopeFilter, profile?.id]);
+
+  const metrics = useMemo<DashboardMetrics>(() => {
+    const initial: DashboardMetrics = {
+      totalCount: 0,
+      totalValue: 0,
+      approvedCount: 0,
+      approvedValue: 0,
+      pendingCount: 0,
+      pendingValue: 0,
+      draftCount: 0,
+      draftValue: 0,
+      rejectedCount: 0,
+      rejectedValue: 0,
+      conversionRate: 0,
+      averageTicket: 0,
+    };
+
+    const calculated = filteredProposals.reduce((acc, proposal) => {
+      const status = normalizeStatus(proposal.status);
+      const value = extractProposalValue(proposal);
+
+      acc.totalCount += 1;
+      acc.totalValue += value;
+
+      switch (status) {
+        case "approved":
+          acc.approvedCount += 1;
+          acc.approvedValue += value;
+          break;
+        case "pending":
+          acc.pendingCount += 1;
+          acc.pendingValue += value;
+          break;
+        case "rejected":
+          acc.rejectedCount += 1;
+          acc.rejectedValue += value;
+          break;
+        case "draft":
+        default:
+          acc.draftCount += 1;
+          acc.draftValue += value;
+          break;
+      }
+
+      return acc;
+    }, initial);
+
+    calculated.conversionRate =
+      calculated.totalCount > 0
+        ? (calculated.approvedCount / calculated.totalCount) * 100
+        : 0;
+
+    calculated.averageTicket =
+      calculated.approvedCount > 0
+        ? calculated.approvedValue / calculated.approvedCount
+        : 0;
+
+    return calculated;
+  }, [filteredProposals]);
 
   const totalPages = Math.max(
     1,
@@ -437,7 +695,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl bg-white p-8 shadow">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -447,7 +705,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleNewProposal}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
@@ -523,13 +781,62 @@ export default function DashboardPage() {
               {isAdmin && (
                 <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
                   Você está em modo administrador e pode visualizar propostas de
-                  todos os usuários.
+                  todos os usuários, inclusive as criadas por você.
                 </div>
               )}
             </>
           ) : (
             <p className="text-sm text-red-600">Perfil não encontrado.</p>
           )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            title="Total de propostas geradas"
+            value={String(metrics.totalCount)}
+            subtitle="Quantidade no escopo e filtros atuais"
+          />
+          <MetricCard
+            title="Valor total geral"
+            value={formatCurrency(metrics.totalValue)}
+            subtitle="Soma de todas as propostas filtradas"
+          />
+          <MetricCard
+            title="Conversão"
+            value={formatPercent(metrics.conversionRate)}
+            subtitle={`${metrics.approvedCount} aprovada(s) de ${metrics.totalCount} proposta(s)`}
+            valueClassName="text-emerald-700"
+          />
+          <MetricCard
+            title="Ticket médio"
+            value={formatCurrency(metrics.averageTicket)}
+            subtitle="Média de valor das propostas aprovadas"
+            valueClassName="text-violet-700"
+          />
+          <MetricCard
+            title="Aprovadas"
+            value={formatCurrency(metrics.approvedValue)}
+            subtitle={`${metrics.approvedCount} proposta(s)`}
+            valueClassName="text-emerald-700"
+          />
+          <MetricCard
+            title="Enviadas"
+            value={formatCurrency(metrics.pendingValue)}
+            subtitle={`${metrics.pendingCount} proposta(s)`}
+            valueClassName="text-amber-700"
+          />
+          <MetricCard
+            title="Rascunho"
+            value={formatCurrency(metrics.draftValue)}
+            subtitle={`${metrics.draftCount} proposta(s)`}
+            valueClassName="text-blue-700"
+          />
+          <MetricCard
+            title="Canceladas"
+            value={formatCurrency(metrics.rejectedValue)}
+            subtitle={`${metrics.rejectedCount} proposta(s)`}
+            valueClassName="text-red-700"
+          />
         </div>
 
         <div className="rounded-2xl bg-white p-8 shadow">
@@ -549,7 +856,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-6">
               {isAdmin && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -564,6 +871,26 @@ export default function DashboardPage() {
                   >
                     <option value="all">Todas as propostas</option>
                     <option value="mine">Somente minhas</option>
+                  </select>
+                </div>
+              )}
+
+              {isAdmin && (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Usuário
+                  </label>
+                  <select
+                    value={filters.user}
+                    onChange={(e) => handleFilterChange("user", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">Todos os usuários</option>
+                    {creatorOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -623,7 +950,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="md:col-span-4 flex flex-wrap gap-2">
+              <div className="md:col-span-2 xl:col-span-6 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={clearFilters}
@@ -676,8 +1003,18 @@ export default function DashboardPage() {
                         </p>
 
                         <p className="text-sm text-slate-700">
-                          <strong>Criado por:</strong> {formatCreator(proposal)}
+                          <strong>Valor estimado:</strong>{" "}
+                          {formatCurrency(extractProposalValue(proposal))}
                         </p>
+
+                        <div className="text-sm text-slate-700">
+                          <strong>Criado por:</strong> {formatCreator(proposal)}
+                          {formatCreatorDetails(proposal) ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {formatCreatorDetails(proposal)}
+                            </p>
+                          ) : null}
+                        </div>
 
                         <p className="text-sm text-slate-500">
                           <strong>Atualizado em:</strong>{" "}
