@@ -1080,6 +1080,11 @@ export default function DashboardPage() {
                         </div>
 
                         <p className="text-sm text-slate-500">
+                          <strong>Criada em:</strong>{" "}
+                          {formatDate(proposal.created_at)}
+                        </p>
+
+                        <p className="text-sm text-slate-500">
                           <strong>Atualizado em:</strong>{" "}
                           {formatDate(proposal.updated_at || proposal.created_at)}
                         </p>
