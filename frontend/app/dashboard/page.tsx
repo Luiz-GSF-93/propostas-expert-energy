@@ -92,7 +92,8 @@ export default function DashboardPage() {
     status: "",
     client: "",
     code: "",
-    date: "",
+    dateStart: "",
+    dateEnd: "",
     user: "",
   });
 
@@ -181,7 +182,8 @@ export default function DashboardPage() {
     filters.status,
     filters.client,
     filters.code,
-    filters.date,
+    filters.dateStart,
+    filters.dateEnd,
     filters.user,
     scopeFilter,
   ]);
@@ -433,7 +435,7 @@ export default function DashboardPage() {
   }
 
   function handleFilterChange(
-    field: "status" | "client" | "code" | "date" | "user",
+    field: "status" | "client" | "code" | "dateStart" | "dateEnd" | "user",
     value: string
   ) {
     setFilters((prev) => ({
@@ -447,7 +449,8 @@ export default function DashboardPage() {
       status: "",
       client: "",
       code: "",
-      date: "",
+      dateStart: "",
+      dateEnd: "",
       user: "",
     });
     setScopeFilter("all");
@@ -539,7 +542,10 @@ export default function DashboardPage() {
       const proposalStatus = String(proposal.status || "").toLowerCase();
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
-      const updatedDate = proposal.updated_at || proposal.created_at || "";
+      const createdDate = proposal.created_at || "";
+      const createdDateOnly = createdDate
+        ? new Date(createdDate).toISOString().slice(0, 10)
+        : "";
 
       const matchesStatus = filters.status
         ? proposalStatus === filters.status.toLowerCase()
@@ -553,13 +559,25 @@ export default function DashboardPage() {
         ? proposalCode.includes(filters.code.toLowerCase())
         : true;
 
-      const matchesDate = filters.date
-        ? updatedDate
-          ? new Date(updatedDate).toISOString().slice(0, 10) === filters.date
+      const matchesDateStart = filters.dateStart
+        ? createdDateOnly
+          ? createdDateOnly >= filters.dateStart
           : false
         : true;
 
-      return matchesStatus && matchesClient && matchesCode && matchesDate;
+      const matchesDateEnd = filters.dateEnd
+        ? createdDateOnly
+          ? createdDateOnly <= filters.dateEnd
+          : false
+        : true;
+
+      return (
+        matchesStatus &&
+        matchesClient &&
+        matchesCode &&
+        matchesDateStart &&
+        matchesDateEnd
+      );
     });
   }, [proposals, filters, isAdmin, scopeFilter, profile?.id]);
 
@@ -885,7 +903,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-6">
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-7">
               {isAdmin && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -969,17 +987,33 @@ export default function DashboardPage() {
 
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Data
+                  Data início
                 </label>
                 <input
                   type="date"
-                  value={filters.date}
-                  onChange={(e) => handleFilterChange("date", e.target.value)}
+                  value={filters.dateStart}
+                  onChange={(e) =>
+                    handleFilterChange("dateStart", e.target.value)
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="md:col-span-2 xl:col-span-6 flex flex-wrap gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Data fim
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateEnd}
+                  onChange={(e) =>
+                    handleFilterChange("dateEnd", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="md:col-span-2 xl:col-span-7 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={clearFilters}
