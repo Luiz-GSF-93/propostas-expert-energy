@@ -89,6 +89,7 @@ export default function DashboardPage() {
   const [updatingNextContactId, setUpdatingNextContactId] = useState<string | null>(null);
   const [nextContactDrafts, setNextContactDrafts] = useState<Record<string, string>>({});
   const [scopeFilter, setScopeFilter] = useState<"all" | "mine">("all");
+  const [autoSortByAgenda, setAutoSortByAgenda] = useState(true);
 
   const [filters, setFilters] = useState({
     status: "",
@@ -731,6 +732,14 @@ export default function DashboardPage() {
       );
     });
 
+    if (!autoSortByAgenda) {
+      return filtered.sort((a, b) => {
+        const updatedA = a.updated_at || a.created_at || "";
+        const updatedB = b.updated_at || b.created_at || "";
+        return updatedB.localeCompare(updatedA);
+      });
+    }
+
     return filtered.sort((a, b) => {
       const priorityA = getContactPriority(a);
       const priorityB = getContactPriority(b);
@@ -751,7 +760,7 @@ export default function DashboardPage() {
 
       return updatedB.localeCompare(updatedA);
     });
-  }, [proposals, filters, isAdmin, scopeFilter, profile?.id]);
+  }, [proposals, filters, isAdmin, scopeFilter, profile?.id, autoSortByAgenda]);
 
   const metrics = useMemo<DashboardMetrics>(() => {
     const initial: DashboardMetrics = {
@@ -1224,8 +1233,20 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <div className="text-sm text-slate-500">
-                Total filtrado: <strong>{filteredProposals.length}</strong>
+              <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
+                <div>
+                  Total filtrado: <strong>{filteredProposals.length}</strong>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={autoSortByAgenda}
+                    onChange={(e) => setAutoSortByAgenda(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Ordenação automática por agenda
+                </label>
               </div>
             </div>
 
