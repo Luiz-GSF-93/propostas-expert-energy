@@ -86,6 +86,8 @@ export default function DashboardPage() {
   const [accessToken, setAccessToken] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [updatingNextContactId, setUpdatingNextContactId] = useState<string | null>(null);
+  const [nextContactDrafts, setNextContactDrafts] = useState<Record<string, string>>({});
   const [scopeFilter, setScopeFilter] = useState<"all" | "mine">("all");
 
   const [filters, setFilters] = useState({
@@ -301,6 +303,50 @@ export default function DashboardPage() {
       default:
         return role || "Não informado";
     }
+  }
+
+  function canScheduleNextContact(proposal: Proposal) {
+    const status = normalizeStatus(proposal.status);
+    return status === "draft" || status === "pending";
+  }
+
+  function getNextContactDate(proposal: Proposal) {
+    const editable =
+      proposal.editable_json && typeof proposal.editable_json === "object"
+        ? (proposal.editable_json as Record<string, unknown>)
+        : null;
+
+    const rootValue =
+      editable && typeof editable.next_contact_date === "string"
+        ? editable.next_contact_date
+        : "";
+
+    if (rootValue) {
+      return String(rootValue).slice(0, 10);
+    }
+
+    const fields =
+      editable?.fields && typeof editable.fields === "object"
+        ? (editable.fields as Record<string, unknown>)
+        : null;
+
+    const fieldsValue =
+      fields && typeof fields.next_contact_date === "string"
+        ? fields.next_contact_date
+        : "";
+
+    return fieldsValue ? String(fieldsValue).slice(0, 10) : "";
+  }
+
+  function getNextContactInputValue(proposal: Proposal) {
+    return nextContactDrafts[proposal.id] ?? getNextContactDate(proposal);
+  }
+
+  function handleNextContactDraftChange(proposalId: string, value: string) {
+    setNextContactDrafts((current) => ({
+      ...current,
+      [proposalId]: value,
+    }));
   }
 
   function formatCurrency(value: number) {
@@ -732,6 +778,84 @@ export default function DashboardPage() {
     }
   }
 
+  async function saveNextContactDate(proposal: Proposal, forcedValue?: string) {
+    if (!proposal.id || !accessToken) return;
+
+    const nextContactDate =
+      typeof forcedValue === "string"
+        ? forcedValue
+        : getNextContactInputValue(proposal);
+
+    setUpdatingNextContactId(proposal.id);
+
+    const editableJson =
+      proposal.editable_json && typeof proposal.editable_json === "object"
+        ? { ...(proposal.editable_json as Record<string, unknown>) }
+        : {};
+
+    if (nextContactDate) {
+      editableJson.next_contact_date = nextContactDate;
+    } else {
+      delete editableJson.next_contact_date;
+    }
+
+    try {
+      const response = await apiFetch(`/api/proposals/${proposal.id}`, accessToken, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          editable_json: editableJson,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Não foi possível salvar a data do próximo contato.");
+      }
+
+      let result: any = null;
+      try {
+        result = await response.json();
+      } catch {
+        result = null;
+      }
+
+      const updatedProposal =
+        result?.data ||
+        result?.proposal ||
+        null;
+
+      setProposals((current) =>
+        current.map((item) =>
+          item.id === proposal.id
+            ? {
+                ...item,
+                ...(updatedProposal || {}),
+                editable_json: updatedProposal?.editable_json || editableJson,
+              }
+            : item
+        )
+      );
+
+      setNextContactDrafts((current) => ({
+        ...current,
+        [proposal.id]: nextContactDate,
+      }));
+    } catch (error) {
+      console.error(error);
+      window.alert("Não foi possível salvar a data do próximo contato.");
+    } finally {
+      setUpdatingNextContactId(null);
+    }
+  }
+
+  async function clearNextContactDate(proposal: Proposal) {
+    handleNextContactDraftChange(proposal.id, "");
+    await saveNextContactDate(proposal, "");
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -1069,6 +1193,48 @@ export default function DashboardPage() {
                           <strong>Valor estimado:</strong>{" "}
                           {formatCurrency(extractProposalValue(proposal))}
                         </p>
+
+                        {canScheduleNextContact(proposal) && (
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Agenda de contato
+                            </p>
+
+                            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                              <input
+                                type="date"
+                                value={getNextContactInputValue(proposal)}
+                                onChange={(e) =>
+                                  handleNextContactDraftChange(
+                                    proposal.id,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() => saveNextContactDate(proposal)}
+                                disabled={updatingNextContactId === proposal.id}
+                                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {updatingNextContactId === proposal.id
+                                  ? "Salvando..."
+                                  : "Salvar próximo contato"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => clearNextContactDate(proposal)}
+                                disabled={updatingNextContactId === proposal.id}
+                                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Limpar
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="text-sm text-slate-700">
                           <strong>Criado por:</strong> {formatCreator(proposal)}
