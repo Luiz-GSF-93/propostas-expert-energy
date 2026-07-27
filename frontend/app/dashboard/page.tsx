@@ -90,6 +90,9 @@ export default function DashboardPage() {
   const [nextContactDrafts, setNextContactDrafts] = useState<Record<string, string>>({});
   const [scopeFilter, setScopeFilter] = useState<"all" | "mine">("all");
   const [autoSortByAgenda, setAutoSortByAgenda] = useState(true);
+  const [agendaFilter, setAgendaFilter] = useState<
+    "all" | "scheduled" | "unscheduled" | "overdue"
+  >("all");
 
   const [filters, setFilters] = useState({
     status: "",
@@ -189,6 +192,7 @@ export default function DashboardPage() {
     filters.dateEnd,
     filters.user,
     scopeFilter,
+    agendaFilter,
   ]);
 
   async function handleLogout() {
@@ -563,6 +567,7 @@ export default function DashboardPage() {
       user: "",
     });
     setScopeFilter("all");
+    setAgendaFilter("all");
     setCurrentPage(1);
   }
 
@@ -691,6 +696,21 @@ export default function DashboardPage() {
         return false;
       }
 
+      const nextContactDate = getNextContactDate(proposal);
+      const contactPriority = getContactPriority(proposal);
+
+      if (agendaFilter === "scheduled" && !nextContactDate) {
+        return false;
+      }
+
+      if (agendaFilter === "unscheduled" && !!nextContactDate) {
+        return false;
+      }
+
+      if (agendaFilter === "overdue" && contactPriority !== 1) {
+        return false;
+      }
+
       const proposalStatus = String(proposal.status || "").toLowerCase();
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
@@ -760,7 +780,15 @@ export default function DashboardPage() {
 
       return updatedB.localeCompare(updatedA);
     });
-  }, [proposals, filters, isAdmin, scopeFilter, profile?.id, autoSortByAgenda]);
+  }, [
+    proposals,
+    filters,
+    isAdmin,
+    scopeFilter,
+    profile?.id,
+    autoSortByAgenda,
+    agendaFilter,
+  ]);
 
   const metrics = useMemo<DashboardMetrics>(() => {
     const initial: DashboardMetrics = {
@@ -1236,6 +1264,30 @@ export default function DashboardPage() {
               <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
                 <div>
                   Total filtrado: <strong>{filteredProposals.length}</strong>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Seletor de agenda
+                  </label>
+                  <select
+                    value={agendaFilter}
+                    onChange={(e) =>
+                      setAgendaFilter(
+                        e.target.value as
+                          | "all"
+                          | "scheduled"
+                          | "unscheduled"
+                          | "overdue"
+                      )
+                    }
+                    className="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="scheduled">Somente com agenda</option>
+                    <option value="unscheduled">Somente sem agenda</option>
+                    <option value="overdue">Somente atrasadas</option>
+                  </select>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm text-slate-600">
