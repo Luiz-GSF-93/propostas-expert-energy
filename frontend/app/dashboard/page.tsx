@@ -1300,6 +1300,14 @@ export default function DashboardPage() {
           />
         </div>
 
+        <GoalsPanel
+          isAdmin={isAdmin}
+          accessToken={accessToken}
+          filteredProposals={filteredProposals}
+          extractProposalValue={extractProposalValue}
+          normalizeStatus={normalizeStatus}
+        />
+
         <div className="rounded-2xl bg-white p-8 shadow">
           <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
