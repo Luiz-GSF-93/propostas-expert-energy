@@ -349,6 +349,68 @@ export default function DashboardPage() {
     }));
   }
 
+  function formatNextContactDate(value?: string) {
+    if (!value) return "Não agendado";
+
+    try {
+      return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR");
+    } catch {
+      return value;
+    }
+  }
+
+  function getNextContactStatus(proposal: Proposal) {
+    const rawDate = getNextContactInputValue(proposal) || getNextContactDate(proposal);
+
+    if (!rawDate) {
+      return {
+        label: "Sem data agendada",
+        containerClassName: "border-slate-200 bg-slate-50",
+        badgeClassName: "bg-slate-200 text-slate-700",
+        textClassName: "text-slate-600",
+      };
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const nextContact = new Date(`${rawDate}T00:00:00`);
+    const nextContactOnly = new Date(
+      nextContact.getFullYear(),
+      nextContact.getMonth(),
+      nextContact.getDate()
+    );
+
+    if (nextContactOnly.getTime() < todayOnly.getTime()) {
+      return {
+        label: "Atrasado",
+        containerClassName: "border-red-200 bg-red-50",
+        badgeClassName: "bg-red-100 text-red-700",
+        textClassName: "text-red-700",
+      };
+    }
+
+    if (nextContactOnly.getTime() === todayOnly.getTime()) {
+      return {
+        label: "Vence hoje",
+        containerClassName: "border-amber-200 bg-amber-50",
+        badgeClassName: "bg-amber-100 text-amber-700",
+        textClassName: "text-amber-700",
+      };
+    }
+
+    return {
+      label: "Agendado",
+      containerClassName: "border-emerald-200 bg-emerald-50",
+      badgeClassName: "bg-emerald-100 text-emerald-700",
+      textClassName: "text-emerald-700",
+    };
+  }
+
   function formatCurrency(value: number) {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -1194,47 +1256,66 @@ export default function DashboardPage() {
                           {formatCurrency(extractProposalValue(proposal))}
                         </p>
 
-                        {canScheduleNextContact(proposal) && (
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Agenda de contato
-                            </p>
+                        {canScheduleNextContact(proposal) && (() => {
+                          const nextContactStatus = getNextContactStatus(proposal);
+                          const nextContactValue = getNextContactInputValue(proposal);
 
-                            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
-                              <input
-                                type="date"
-                                value={getNextContactInputValue(proposal)}
-                                onChange={(e) =>
-                                  handleNextContactDraftChange(
-                                    proposal.id,
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
-                              />
+                          return (
+                            <div
+                              className={`rounded-xl border p-3 ${nextContactStatus.containerClassName}`}
+                            >
+                              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Agenda de contato
+                                </p>
 
-                              <button
-                                type="button"
-                                onClick={() => saveNextContactDate(proposal)}
-                                disabled={updatingNextContactId === proposal.id}
-                                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {updatingNextContactId === proposal.id
-                                  ? "Salvando..."
-                                  : "Salvar próximo contato"}
-                              </button>
+                                <span
+                                  className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${nextContactStatus.badgeClassName}`}
+                                >
+                                  {nextContactStatus.label}
+                                </span>
+                              </div>
 
-                              <button
-                                type="button"
-                                onClick={() => clearNextContactDate(proposal)}
-                                disabled={updatingNextContactId === proposal.id}
-                                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Limpar
-                              </button>
+                              <p className={`mt-2 text-sm font-medium ${nextContactStatus.textClassName}`}>
+                                Próximo contato: {formatNextContactDate(nextContactValue)}
+                              </p>
+
+                              <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+                                <input
+                                  type="date"
+                                  value={nextContactValue}
+                                  onChange={(e) =>
+                                    handleNextContactDraftChange(
+                                      proposal.id,
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => saveNextContactDate(proposal)}
+                                  disabled={updatingNextContactId === proposal.id}
+                                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {updatingNextContactId === proposal.id
+                                    ? "Salvando..."
+                                    : "Salvar próximo contato"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => clearNextContactDate(proposal)}
+                                  disabled={updatingNextContactId === proposal.id}
+                                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Limpar
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         <div className="text-sm text-slate-700">
                           <strong>Criado por:</strong> {formatCreator(proposal)}
