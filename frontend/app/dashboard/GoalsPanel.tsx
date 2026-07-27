@@ -38,6 +38,8 @@ const MONTHS = [
   { value: 12, label: "Dez" },
 ];
 
+const AVAILABLE_YEARS = Array.from({ length: 12 }, (_, index) => 2025 + index);
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -328,7 +330,7 @@ export default function GoalsPanel({
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
             >
-              {[currentYear - 1, currentYear, currentYear + 1].map((year) => (
+              {AVAILABLE_YEARS.map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
