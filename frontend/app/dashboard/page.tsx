@@ -598,6 +598,49 @@ export default function DashboardPage() {
     return "";
   }
 
+  function getContactPriority(proposal: Proposal) {
+    const status = normalizeStatus(proposal.status);
+
+    if (!(status === "draft" || status === "pending")) {
+      return 99;
+    }
+
+    const rawDate = getNextContactDate(proposal);
+
+    if (!rawDate) {
+      return 3;
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const nextContact = new Date(`${rawDate}T00:00:00`);
+    const nextContactOnly = new Date(
+      nextContact.getFullYear(),
+      nextContact.getMonth(),
+      nextContact.getDate()
+    );
+
+    if (nextContactOnly.getTime() < todayOnly.getTime()) {
+      return 1;
+    }
+
+    if (nextContactOnly.getTime() === todayOnly.getTime()) {
+      return 2;
+    }
+
+    return 4;
+  }
+
+  function getComparableNextContactDate(proposal: Proposal) {
+    const rawDate = getNextContactDate(proposal);
+    return rawDate || "9999-12-31";
+  }
+
   const creatorOptions = useMemo(() => {
     if (!isAdmin) return [];
 
@@ -638,7 +681,7 @@ export default function DashboardPage() {
   }, [isAdmin, proposals, profile?.id]);
 
   const filteredProposals = useMemo(() => {
-    return proposals.filter((proposal) => {
+    const filtered = proposals.filter((proposal) => {
       if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
         return false;
       }
@@ -686,6 +729,27 @@ export default function DashboardPage() {
         matchesDateStart &&
         matchesDateEnd
       );
+    });
+
+    return filtered.sort((a, b) => {
+      const priorityA = getContactPriority(a);
+      const priorityB = getContactPriority(b);
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      const nextDateA = getComparableNextContactDate(a);
+      const nextDateB = getComparableNextContactDate(b);
+
+      if (nextDateA !== nextDateB) {
+        return nextDateA.localeCompare(nextDateB);
+      }
+
+      const updatedA = a.updated_at || a.created_at || "";
+      const updatedB = b.updated_at || b.created_at || "";
+
+      return updatedB.localeCompare(updatedA);
     });
   }, [proposals, filters, isAdmin, scopeFilter, profile?.id]);
 
