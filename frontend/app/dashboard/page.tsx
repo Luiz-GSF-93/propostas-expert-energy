@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
+import GoalsPanel from "./GoalsPanel";
 
 type UserProfile = {
   id: string;

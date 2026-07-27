@@ -5,6 +5,7 @@ const env = require("./config/env");
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 const proposalsRoutes = require("./routes/proposals.routes");
+const monthlyGoalsRoutes = require("./routes/monthly-goals.routes");
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/proposals", proposalsRoutes);
+app.use("/api/monthly-goals", monthlyGoalsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
