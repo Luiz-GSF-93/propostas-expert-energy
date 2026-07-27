@@ -767,6 +767,7 @@ export default function DashboardPage() {
         const rawDate = getNextContactDate(proposal);
 
         if (!rawDate) {
+          acc.withoutDate += 1;
           return acc;
         }
 
@@ -791,6 +792,7 @@ export default function DashboardPage() {
         overdue: 0,
         today: 0,
         future: 0,
+        withoutDate: 0,
       }
     );
   }, [filteredProposals]);
@@ -1119,7 +1121,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Contatos atrasados"
             value={String(nextContactMetrics.overdue)}
@@ -1137,6 +1139,12 @@ export default function DashboardPage() {
             value={String(nextContactMetrics.future)}
             subtitle="Próximos contatos já agendados"
             valueClassName="text-emerald-700"
+          />
+          <MetricCard
+            title="Sem data de próximo contato"
+            value={String(nextContactMetrics.withoutDate)}
+            subtitle="Propostas em rascunho ou enviada sem agenda definida"
+            valueClassName="text-slate-700"
           />
         </div>
 
