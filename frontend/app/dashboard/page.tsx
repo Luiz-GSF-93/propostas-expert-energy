@@ -54,6 +54,21 @@ type DashboardMetrics = {
   averageTicket: number;
 };
 
+type ScopeFilter = "all" | "mine";
+type AgendaFilter = "all" | "scheduled" | "unscheduled" | "overdue";
+type EditableStatus = "draft" | "pending" | "approved" | "rejected";
+
+type ApiEnvelope<T> = {
+  data?: T;
+  items?: T;
+  user?: T;
+  profile?: T;
+  proposal?: T;
+  proposals?: T;
+  rows?: T;
+  status?: string;
+};
+
 const PAGE_SIZE = 10;
 
 function MetricCard({
@@ -88,11 +103,9 @@ export default function DashboardPage() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [updatingNextContactId, setUpdatingNextContactId] = useState<string | null>(null);
   const [nextContactDrafts, setNextContactDrafts] = useState<Record<string, string>>({});
-  const [scopeFilter, setScopeFilter] = useState<"all" | "mine">("all");
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
   const [autoSortByAgenda, setAutoSortByAgenda] = useState(true);
-  const [agendaFilter, setAgendaFilter] = useState<
-    "all" | "scheduled" | "unscheduled" | "overdue"
-  >("all");
+  const [agendaFilter, setAgendaFilter] = useState<AgendaFilter>("all");
 
   const [filters, setFilters] = useState({
     status: "",
@@ -112,6 +125,22 @@ export default function DashboardPage() {
     } catch {
       // silencioso para não quebrar o fluxo
     }
+  }
+
+  function getDateOnly(value?: string) {
+    if (!value) return "";
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value.slice(0, 10);
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
   useEffect(() => {
@@ -140,29 +169,36 @@ export default function DashboardPage() {
           return;
         }
 
-        const profileJson = await profileResponse.json();
+        const profileJson = (await profileResponse.json()) as
+          | ApiEnvelope<UserProfile>
+          | UserProfile
+          | null;
+
         const normalizedProfile =
-          profileJson?.data ??
-          profileJson?.user ??
-          profileJson?.profile ??
-          profileJson ??
+          (profileJson as ApiEnvelope<UserProfile>)?.data ??
+          (profileJson as ApiEnvelope<UserProfile>)?.user ??
+          (profileJson as ApiEnvelope<UserProfile>)?.profile ??
+          (profileJson as UserProfile) ??
           null;
 
         setProfile(normalizedProfile);
 
         if (proposalsResponse.ok) {
-          const proposalsData = await proposalsResponse.json();
+          const proposalsData = (await proposalsResponse.json()) as
+            | ApiEnvelope<Proposal[]>
+            | Proposal[]
+            | null;
 
           const normalizedProposals = Array.isArray(proposalsData)
             ? proposalsData
-            : Array.isArray(proposalsData?.items)
-            ? proposalsData.items
-            : Array.isArray(proposalsData?.data)
-            ? proposalsData.data
-            : Array.isArray(proposalsData?.proposals)
-            ? proposalsData.proposals
-            : Array.isArray(proposalsData?.rows)
-            ? proposalsData.rows
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.items)
+            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.items as Proposal[])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.data)
+            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.data as Proposal[])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.proposals)
+            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.proposals as Proposal[])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.rows)
+            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.rows as Proposal[])
             : [];
 
           setProposals(normalizedProposals);
@@ -233,9 +269,14 @@ export default function DashboardPage() {
   function normalizeStatus(status?: string): ProposalStatus | string {
     if (!status) return "draft";
 
-    const normalized = String(status).toLowerCase();
+    const normalized = String(status).toLowerCase().trim();
 
     switch (normalized) {
+      case "sent":
+        return "pending";
+      case "cancelled":
+      case "canceled":
+        return "rejected";
       case "draft":
       case "pending":
       case "approved":
@@ -245,6 +286,24 @@ export default function DashboardPage() {
         return normalized;
       default:
         return normalized;
+    }
+  }
+
+  function getEditableStatusValue(status?: string): EditableStatus {
+    const normalized = normalizeStatus(status);
+
+    switch (normalized) {
+      case "pending":
+        return "pending";
+      case "approved":
+      case "published":
+        return "approved";
+      case "rejected":
+      case "archived":
+        return "rejected";
+      case "draft":
+      default:
+        return "draft";
     }
   }
 
@@ -441,7 +500,6 @@ export default function DashboardPage() {
     if (!raw) return null;
 
     const cleaned = raw.replace(/[R$\s]/g, "");
-
     if (!cleaned) return null;
 
     let normalized = cleaned;
@@ -529,21 +587,15 @@ export default function DashboardPage() {
       }
     }
 
-    const pricingRowsTotal = sumPricingRows(
-      getNestedValue(editable, ["pricingRows"])
-    );
+    const pricingRowsTotal = sumPricingRows(getNestedValue(editable, ["pricingRows"]));
 
     const pricingTaxes =
-      parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_taxes"])) ??
-      0;
+      parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_taxes"])) ?? 0;
 
     const pricingDiscount =
-      parsePossibleNumber(
-        getNestedValue(editable, ["fields", "pricing_discount"])
-      ) ?? 0;
+      parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_discount"])) ?? 0;
 
     const calculatedTotal = pricingRowsTotal + pricingTaxes - pricingDiscount;
-
     return calculatedTotal > 0 ? calculatedTotal : 0;
   }
 
@@ -711,13 +763,10 @@ export default function DashboardPage() {
         return false;
       }
 
-      const proposalStatus = String(proposal.status || "").toLowerCase();
+      const proposalStatus = String(normalizeStatus(proposal.status) || "").toLowerCase();
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
-      const createdDate = proposal.created_at || "";
-      const createdDateOnly = createdDate
-        ? new Date(createdDate).toISOString().slice(0, 10)
-        : "";
+      const createdDateOnly = getDateOnly(proposal.created_at);
 
       const matchesStatus = filters.status
         ? proposalStatus === filters.status.toLowerCase()
@@ -815,6 +864,7 @@ export default function DashboardPage() {
 
       switch (status) {
         case "approved":
+        case "published":
           acc.approvedCount += 1;
           acc.approvedValue += value;
           break;
@@ -823,6 +873,7 @@ export default function DashboardPage() {
           acc.pendingValue += value;
           break;
         case "rejected":
+        case "archived":
           acc.rejectedCount += 1;
           acc.rejectedValue += value;
           break;
@@ -898,20 +949,21 @@ export default function DashboardPage() {
     );
   }, [filteredProposals]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredProposals.length / PAGE_SIZE)
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const paginatedProposals = filteredProposals.slice(
     startIndex,
     startIndex + PAGE_SIZE
   );
 
-  async function updateProposalStatus(
-    proposalId: string,
-    newStatus: "draft" | "pending" | "approved" | "rejected"
-  ) {
+  async function updateProposalStatus(proposalId: string, newStatus: EditableStatus) {
     if (!proposalId || !accessToken) return;
 
     setUpdatingStatusId(proposalId);
@@ -930,18 +982,14 @@ export default function DashboardPage() {
     );
 
     try {
-      let response = await apiFetch(
-        `/api/proposals/${proposalId}/status`,
-        accessToken,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      let response = await apiFetch(`/api/proposals/${proposalId}/status`, accessToken, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
       if (!response.ok) {
         response = await apiFetch(`/api/proposals/${proposalId}`, accessToken, {
@@ -958,24 +1006,22 @@ export default function DashboardPage() {
         throw new Error("Não foi possível atualizar o status da proposta.");
       }
 
-      let result: any = null;
+      let result: ApiEnvelope<Proposal> | null = null;
       try {
-        result = await response.json();
+        result = (await response.json()) as ApiEnvelope<Proposal>;
       } catch {
         result = null;
       }
 
-      const updatedStatus =
-        result?.status ||
-        result?.data?.status ||
-        result?.proposal?.status ||
-        newStatus;
+      const updatedProposal = result?.data || result?.proposal || null;
+      const updatedStatus = updatedProposal?.status || result?.status || newStatus;
 
       setProposals((current) =>
         current.map((proposal) =>
           proposal.id === proposalId
             ? {
                 ...proposal,
+                ...(updatedProposal || {}),
                 status: updatedStatus,
               }
             : proposal
@@ -994,9 +1040,7 @@ export default function DashboardPage() {
     if (!proposal.id || !accessToken) return;
 
     const nextContactDate =
-      typeof forcedValue === "string"
-        ? forcedValue
-        : getNextContactInputValue(proposal);
+      typeof forcedValue === "string" ? forcedValue : getNextContactInputValue(proposal);
 
     setUpdatingNextContactId(proposal.id);
 
@@ -1005,10 +1049,19 @@ export default function DashboardPage() {
         ? { ...(proposal.editable_json as Record<string, unknown>) }
         : {};
 
+    const existingFields =
+      editableJson.fields && typeof editableJson.fields === "object"
+        ? { ...(editableJson.fields as Record<string, unknown>) }
+        : {};
+
     if (nextContactDate) {
       editableJson.next_contact_date = nextContactDate;
+      existingFields.next_contact_date = nextContactDate;
+      editableJson.fields = existingFields;
     } else {
       delete editableJson.next_contact_date;
+      delete existingFields.next_contact_date;
+      editableJson.fields = existingFields;
     }
 
     try {
@@ -1027,17 +1080,14 @@ export default function DashboardPage() {
         throw new Error("Não foi possível salvar a data do próximo contato.");
       }
 
-      let result: any = null;
+      let result: ApiEnvelope<Proposal> | null = null;
       try {
-        result = await response.json();
+        result = (await response.json()) as ApiEnvelope<Proposal>;
       } catch {
         result = null;
       }
 
-      const updatedProposal =
-        result?.data ||
-        result?.proposal ||
-        null;
+      const updatedProposal = result?.data || result?.proposal || null;
 
       setProposals((current) =>
         current.map((item) =>
@@ -1272,15 +1322,7 @@ export default function DashboardPage() {
                   </label>
                   <select
                     value={agendaFilter}
-                    onChange={(e) =>
-                      setAgendaFilter(
-                        e.target.value as
-                          | "all"
-                          | "scheduled"
-                          | "unscheduled"
-                          | "overdue"
-                      )
-                    }
+                    onChange={(e) => setAgendaFilter(e.target.value as AgendaFilter)}
                     className="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   >
                     <option value="all">Todos</option>
@@ -1310,9 +1352,7 @@ export default function DashboardPage() {
                   </label>
                   <select
                     value={scopeFilter}
-                    onChange={(e) =>
-                      setScopeFilter(e.target.value as "all" | "mine")
-                    }
+                    onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   >
                     <option value="all">Todas as propostas</option>
@@ -1391,9 +1431,7 @@ export default function DashboardPage() {
                 <input
                   type="date"
                   value={filters.dateStart}
-                  onChange={(e) =>
-                    handleFilterChange("dateStart", e.target.value)
-                  }
+                  onChange={(e) => handleFilterChange("dateStart", e.target.value)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                 />
               </div>
@@ -1405,14 +1443,12 @@ export default function DashboardPage() {
                 <input
                   type="date"
                   value={filters.dateEnd}
-                  onChange={(e) =>
-                    handleFilterChange("dateEnd", e.target.value)
-                  }
+                  onChange={(e) => handleFilterChange("dateEnd", e.target.value)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="md:col-span-2 xl:col-span-7 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-7">
                 <button
                   type="button"
                   onClick={clearFilters}
@@ -1455,18 +1491,15 @@ export default function DashboardPage() {
                         </div>
 
                         <p className="text-sm text-slate-700">
-                          <strong>Título:</strong>{" "}
-                          {proposal.title || "Sem título"}
+                          <strong>Título:</strong> {proposal.title || "Sem título"}
                         </p>
 
                         <p className="text-sm text-slate-700">
-                          <strong>Código:</strong>{" "}
-                          {proposal.proposal_code || "Não informado"}
+                          <strong>Código:</strong> {proposal.proposal_code || "Não informado"}
                         </p>
 
                         <p className="text-sm text-slate-700">
-                          <strong>Valor estimado:</strong>{" "}
-                          {formatCurrency(extractProposalValue(proposal))}
+                          <strong>Valor estimado:</strong> {formatCurrency(extractProposalValue(proposal))}
                         </p>
 
                         {canScheduleNextContact(proposal) && (() => {
@@ -1498,10 +1531,7 @@ export default function DashboardPage() {
                                   type="date"
                                   value={nextContactValue}
                                   onChange={(e) =>
-                                    handleNextContactDraftChange(
-                                      proposal.id,
-                                      e.target.value
-                                    )
+                                    handleNextContactDraftChange(proposal.id, e.target.value)
                                   }
                                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
                                 />
@@ -1540,13 +1570,13 @@ export default function DashboardPage() {
                         </div>
 
                         <p className="text-sm text-slate-500">
-                          <strong>Criada em:</strong>{" "}
-                          {formatDate(proposal.created_at)}
+                          <strong>Criada em:</strong> {formatDate(proposal.created_at)}
                         </p>
 
                         <p className="text-sm text-slate-500">
-                          <strong>Atualizado em:</strong>{" "}
-                          {formatDate(proposal.updated_at || proposal.created_at)}
+                          <strong>Atualizado em:</strong> {formatDate(
+                            proposal.updated_at || proposal.created_at
+                          )}
                         </p>
                       </div>
 
@@ -1564,12 +1594,7 @@ export default function DashboardPage() {
                           {proposal.public_slug ? (
                             <button
                               type="button"
-                              onClick={() =>
-                                window.open(
-                                  `/public/${proposal.public_slug}`,
-                                  "_blank"
-                                )
-                              }
+                              onClick={() => window.open(`/public/${proposal.public_slug}`, "_blank")}
                               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
                             >
                               Ver versão pública
@@ -1583,20 +1608,14 @@ export default function DashboardPage() {
                           </label>
 
                           <select
-                            value={String(proposal.status || "draft")}
+                            value={getEditableStatusValue(proposal.status)}
                             onChange={(e) =>
                               updateProposalStatus(
                                 proposal.id,
-                                e.target.value as
-                                  | "draft"
-                                  | "pending"
-                                  | "approved"
-                                  | "rejected"
+                                e.target.value as EditableStatus
                               )
                             }
-                            disabled={
-                              !proposal.id || updatingStatusId === proposal.id
-                            }
+                            disabled={!proposal.id || updatingStatusId === proposal.id}
                             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <option value="draft">Rascunho</option>
@@ -1613,20 +1632,13 @@ export default function DashboardPage() {
 
               <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500">
-                  Exibindo{" "}
-                  <strong>
-                    {startIndex + 1}-
-                    {Math.min(startIndex + PAGE_SIZE, filteredProposals.length)}
-                  </strong>{" "}
-                  de <strong>{filteredProposals.length}</strong> propostas
+                  Exibindo <strong>{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, filteredProposals.length)}</strong> de <strong>{filteredProposals.length}</strong> propostas
                 </p>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setCurrentPage((page) => Math.max(1, page - 1))
-                    }
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage === 1}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -1634,15 +1646,12 @@ export default function DashboardPage() {
                   </button>
 
                   <span className="text-sm text-slate-600">
-                    Página <strong>{currentPage}</strong> de{" "}
-                    <strong>{totalPages}</strong>
+                    Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
                   </span>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setCurrentPage((page) => Math.min(totalPages, page + 1))
-                    }
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage === totalPages}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
