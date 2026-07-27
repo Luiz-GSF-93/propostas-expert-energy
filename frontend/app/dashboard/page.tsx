@@ -748,6 +748,53 @@ export default function DashboardPage() {
     return calculated;
   }, [filteredProposals]);
 
+  const nextContactMetrics = useMemo(() => {
+    const today = new Date();
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    return filteredProposals.reduce(
+      (acc, proposal) => {
+        const status = normalizeStatus(proposal.status);
+
+        if (!(status === "draft" || status === "pending")) {
+          return acc;
+        }
+
+        const rawDate = getNextContactDate(proposal);
+
+        if (!rawDate) {
+          return acc;
+        }
+
+        const nextContact = new Date(`${rawDate}T00:00:00`);
+        const nextContactOnly = new Date(
+          nextContact.getFullYear(),
+          nextContact.getMonth(),
+          nextContact.getDate()
+        );
+
+        if (nextContactOnly.getTime() < todayOnly.getTime()) {
+          acc.overdue += 1;
+        } else if (nextContactOnly.getTime() === todayOnly.getTime()) {
+          acc.today += 1;
+        } else {
+          acc.future += 1;
+        }
+
+        return acc;
+      },
+      {
+        overdue: 0,
+        today: 0,
+        future: 0,
+      }
+    );
+  }, [filteredProposals]);
+
   const totalPages = Math.max(
     1,
     Math.ceil(filteredProposals.length / PAGE_SIZE)
@@ -1069,6 +1116,27 @@ export default function DashboardPage() {
             value={formatCurrency(metrics.rejectedValue)}
             subtitle={`${metrics.rejectedCount} proposta(s)`}
             valueClassName="text-red-700"
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard
+            title="Contatos atrasados"
+            value={String(nextContactMetrics.overdue)}
+            subtitle="Propostas em rascunho ou enviada com contato vencido"
+            valueClassName="text-red-700"
+          />
+          <MetricCard
+            title="Contatos para hoje"
+            value={String(nextContactMetrics.today)}
+            subtitle="Propostas que precisam de contato hoje"
+            valueClassName="text-amber-700"
+          />
+          <MetricCard
+            title="Contatos futuros"
+            value={String(nextContactMetrics.future)}
+            subtitle="Próximos contatos já agendados"
+            valueClassName="text-emerald-700"
           />
         </div>
 
