@@ -260,6 +260,14 @@ export default function DashboardPage() {
     );
   }
 
+  function handleOpenAjudaComercial() {
+    window.open(
+      "https://luiz-gsf-93.github.io/Ajuda-Comercial-E-Link/",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
   function handleEditProposal(proposalId: string) {
     if (accessToken) {
       persistAccessToken(accessToken);
@@ -1159,6 +1167,13 @@ export default function DashboardPage() {
                 className="rounded-lg bg-cyan-600 px-4 py-2 text-white transition hover:bg-cyan-700"
               >
                 Proposta Energy Link
+              </button>
+
+              <button
+                onClick={handleOpenAjudaComercial}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-white transition hover:bg-amber-700"
+              >
+                Ajuda comercial
               </button>
 
               <button
