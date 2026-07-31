@@ -983,7 +983,7 @@
   <div class="action-bar editor-only">
     <div class="action-row">
       <div class="action-left">
-        <button type="button" id="backDashboardBtn" class="secondary" onclick="goBackToDashboard()">Voltar ao dashboard</button>
+        <button type="button" id="backDashboardBtn" class="secondary" onclick="window.location.assign(`${window.location.origin}/dashboard`)">Voltar ao dashboard</button>
         <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
         <button type="button" id="openClientHtmlBtn" class="secondary">Download HTML</button>
         <button type="button" id="printClientPdfBtn" class="secondary">Imprimir / Salvar PDF</button>
@@ -4084,6 +4084,13 @@
     <div class="footer-note">Estimativas de ganhos, eficiência, economia, redução de penalidades ou mitigação de riscos apresentadas nesta versão cliente possuem caráter referencial e dependem de diagnóstico, baseline, condições de mercado, perfil tarifário, disponibilidade de dados, regime operacional e efetiva implementação das medidas propostas.</div>
   </div>
   <script src="/proposta-contact-loader.js"></script>
+
+  <script>
+    window.goBackToDashboard = function () {
+      window.location.assign(`${window.location.origin}/dashboard`);
+    };
+  </script>
+
 </body>
 </html>`;
     }
