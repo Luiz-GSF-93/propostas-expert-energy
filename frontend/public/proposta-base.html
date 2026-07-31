@@ -978,6 +978,28 @@
     .footer-note {
       overflow: visible;
     }
+
+    .contact-registry-card{
+      border:1px solid var(--borda);
+      background:linear-gradient(180deg, #fbfdfe 0%, #f4f9fb 100%);
+      border-radius:22px;
+      padding:18px;
+      box-shadow:0 14px 32px rgba(12, 41, 56, .06);
+    }
+    .contact-registry-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+    .contact-registry-status{
+      margin-top:12px;
+      font-size:13px;
+      color:var(--texto-suave);
+    }
+    .contact-registry-status[data-status="success"]{color:var(--sucesso)}
+    .contact-registry-status[data-status="error"]{color:var(--erro)}
+    .contact-registry-status[data-status="warning"]{color:#8a5a00}
   </style>
 </head>
 <body>
@@ -1115,6 +1137,24 @@
 
   <section class="editor-only" id="cliente-section">
     <h2>1. Dados do cliente</h2>
+    <div class="contact-registry-card">
+      <p style="margin:0 0 12px 0;">Selecione um contato já cadastrado para preencher automaticamente os dados do cliente, mantendo a possibilidade de ajustar os campos antes de salvar a proposta.</p>
+      <div class="grid-2">
+        <div class="field full">
+          <label for="contact_registry_select">Contato cadastrado</label>
+          <select id="contact_registry_select">
+            <option value="">Selecione um contato cadastrado</option>
+          </select>
+          <input type="hidden" id="selected_contact_id" />
+        </div>
+      </div>
+      <div class="contact-registry-actions">
+        <button type="button" class="secondary" id="refreshContactsBtn">Atualizar lista</button>
+        <button type="button" class="secondary" id="openContactsRegistryBtn">Abrir cadastro de contatos</button>
+        <button type="button" class="primary" id="createContactBtn">Criar novo contato</button>
+      </div>
+      <div class="contact-registry-status" id="contact_registry_status">Carregue a lista de contatos para vincular a proposta a um cadastro existente.</div>
+    </div>
     <div class="grid-2">
       <div class="field">
         <label for="cliente_empresa">Empresa</label>
@@ -1633,6 +1673,7 @@
     ];
 
     const staticFields = [
+      "selected_contact_id",
       "cliente_empresa","cliente_cnpj","cliente_contato","cliente_cargo","cliente_email","cliente_telefone","cliente_endereco","cliente_segmento",
       "resp_nome","resp_cargo","resp_email","resp_telefone","resp_validade","resp_codigo",
       "obj_principal","contexto_dor","unidades_atendidas","premissas_relevantes","necessidades_custom",
@@ -2057,6 +2098,7 @@
       });
       restorePricingRows(data.pricingRows || []);
       restoreServiceState(data.serviceState || {});
+      syncContactRegistryFromStoredSelection(true);
       calculatePricing();
       updateCoverClientName();
     }
@@ -2197,6 +2239,247 @@
       }
 
       return "";
+    }
+
+    const CONTACTS_PAGE_LIMIT = 100;
+    let contactsRegistryCache = [];
+    let contactsRegistryInitialized = false;
+
+    function getClientFieldIds(){
+      return [
+        "cliente_empresa",
+        "cliente_cnpj",
+        "cliente_contato",
+        "cliente_cargo",
+        "cliente_email",
+        "cliente_telefone",
+        "cliente_endereco",
+        "cliente_segmento"
+      ];
+    }
+
+    function getSelectedContactId(){
+      return document.getElementById("selected_contact_id")?.value?.trim() || "";
+    }
+
+    function setSelectedContactId(value){
+      const hiddenInput = document.getElementById("selected_contact_id");
+      if(hiddenInput){
+        hiddenInput.value = value || "";
+      }
+    }
+
+    function setContactRegistryStatus(message, type = "info"){
+      const status = document.getElementById("contact_registry_status");
+      if(!status) return;
+      status.textContent = message;
+      status.dataset.status = type;
+    }
+
+    function getContactsFromApiResult(result){
+      if(Array.isArray(result)) return result;
+      if(Array.isArray(result?.data)) return result.data;
+      if(Array.isArray(result?.contacts)) return result.contacts;
+      if(Array.isArray(result?.items)) return result.items;
+      return [];
+    }
+
+    function formatContactOptionLabel(contact){
+      const primary = contact?.company_name || "Empresa sem nome";
+      const secondary = contact?.main_contact || "Contato sem nome";
+      const extras = [contact?.cnpj, contact?.email, contact?.phone]
+        .filter((value) => String(value || "").trim() !== "");
+      return `${primary} · ${secondary}${extras.length ? ` · ${extras.join(" · ")}` : ""}`;
+    }
+
+    function areClientFieldsEmpty(){
+      return getClientFieldIds().every((id) => !String(document.getElementById(id)?.value || "").trim());
+    }
+
+    function fillClientFieldsFromContact(contact){
+      if(!contact || typeof contact !== "object") return;
+
+      const mapping = {
+        cliente_empresa: contact.company_name,
+        cliente_cnpj: contact.cnpj,
+        cliente_contato: contact.main_contact,
+        cliente_cargo: contact.role_area,
+        cliente_email: contact.email,
+        cliente_telefone: contact.phone,
+        cliente_endereco: contact.address_unit,
+        cliente_segmento: contact.segment_operation
+      };
+
+      Object.entries(mapping).forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if(field){
+          field.value = value || "";
+        }
+      });
+
+      updateCoverClientName();
+    }
+
+    function renderContactRegistryOptions(){
+      const select = document.getElementById("contact_registry_select");
+      if(!select) return;
+
+      const selectedId = getSelectedContactId();
+      let availableContacts = contactsRegistryCache.filter((contact) => contact && contact.is_active !== false);
+
+      if(selectedId && !availableContacts.some((contact) => contact.id === selectedId)){
+        const selectedContact = contactsRegistryCache.find((contact) => contact.id === selectedId);
+        if(selectedContact){
+          availableContacts = [selectedContact, ...availableContacts];
+        }
+      }
+
+      select.innerHTML = [
+        '<option value="">Selecione um contato cadastrado</option>',
+        ...availableContacts.map((contact) => `<option value="${escapeHtml(contact.id || "")}">${escapeHtml(formatContactOptionLabel(contact))}</option>`)
+      ].join("");
+
+      if(selectedId && availableContacts.some((contact) => contact.id === selectedId)){
+        select.value = selectedId;
+      }else if(!selectedId){
+        select.value = "";
+      }
+
+      if(!contactsRegistryCache.length){
+        setContactRegistryStatus("Nenhum contato ativo foi encontrado. Use o cadastro de contatos para criar a base.", "warning");
+        return;
+      }
+
+      const activeLinkedContact = contactsRegistryCache.find((contact) => contact.id === selectedId);
+
+      if(activeLinkedContact){
+        setContactRegistryStatus(`Contato vinculado: ${formatContactOptionLabel(activeLinkedContact)}`, "success");
+      }else{
+        setContactRegistryStatus(`${contactsRegistryCache.length} contato(s) ativo(s) disponível(is) para preenchimento automático.`, "info");
+      }
+    }
+
+    function syncContactRegistryFromStoredSelection(fillWhenClientFieldsEmpty = false){
+      const selectedId = getSelectedContactId();
+      const select = document.getElementById("contact_registry_select");
+
+      if(!selectedId){
+        if(select) select.value = "";
+        if(contactsRegistryCache.length){
+          setContactRegistryStatus(`${contactsRegistryCache.length} contato(s) ativo(s) disponível(is) para preenchimento automático.`, "info");
+        }
+        return;
+      }
+
+      if(select && Array.from(select.options).some((option) => option.value === selectedId)){
+        select.value = selectedId;
+      }
+
+      const linkedContact = contactsRegistryCache.find((contact) => contact.id === selectedId);
+      if(!linkedContact){
+        setContactRegistryStatus("O contato vinculado a esta proposta não está disponível na lista ativa atual.", "warning");
+        return;
+      }
+
+      if(fillWhenClientFieldsEmpty && areClientFieldsEmpty()){
+        fillClientFieldsFromContact(linkedContact);
+      }
+
+      setContactRegistryStatus(`Contato vinculado: ${formatContactOptionLabel(linkedContact)}`, "success");
+    }
+
+    async function fetchContactsRegistry(forceReload = false){
+      if(contactsRegistryCache.length && !forceReload){
+        renderContactRegistryOptions();
+        syncContactRegistryFromStoredSelection(false);
+        return contactsRegistryCache;
+      }
+
+      const token = getSupabaseAccessToken();
+      if(!token){
+        contactsRegistryCache = [];
+        renderContactRegistryOptions();
+        setContactRegistryStatus("Faça login novamente para carregar os contatos cadastrados.", "error");
+        return [];
+      }
+
+      setContactRegistryStatus("Carregando contatos cadastrados...", "info");
+
+      try{
+        const response = await fetch(buildApiUrl(`/api/contacts?page=1&limit=${CONTACTS_PAGE_LIMIT}&status=active`), {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        const rawText = await response.text();
+        let result = {};
+        try{
+          result = rawText ? JSON.parse(rawText) : {};
+        }catch(error){
+          result = { rawText };
+        }
+
+        if(!response.ok){
+          const detail = result?.detail || result?.error || result?.message || `HTTP ${response.status}`;
+          throw new Error(detail);
+        }
+
+        contactsRegistryCache = getContactsFromApiResult(result)
+          .filter((contact) => contact && contact.id)
+          .sort((a, b) => String(a.company_name || "").localeCompare(String(b.company_name || ""), "pt-BR"));
+
+        renderContactRegistryOptions();
+        syncContactRegistryFromStoredSelection(true);
+        return contactsRegistryCache;
+      }catch(error){
+        console.error("Erro ao carregar contatos cadastrados:", error);
+        contactsRegistryCache = [];
+        renderContactRegistryOptions();
+        setContactRegistryStatus(`Não foi possível carregar os contatos: ${error.message || "falha inesperada"}`, "error");
+        return [];
+      }
+    }
+
+    function handleContactRegistrySelection(){
+      const select = document.getElementById("contact_registry_select");
+      const selectedId = select?.value || "";
+      setSelectedContactId(selectedId);
+
+      if(!selectedId){
+        renderContactRegistryOptions();
+        setContactRegistryStatus("Nenhum contato vinculado. Você pode preencher os dados manualmente ou selecionar um cadastro.", "info");
+        return;
+      }
+
+      const linkedContact = contactsRegistryCache.find((contact) => contact.id === selectedId);
+      if(!linkedContact){
+        setContactRegistryStatus("O contato selecionado não foi encontrado na base carregada. Atualize a lista e tente novamente.", "error");
+        return;
+      }
+
+      fillClientFieldsFromContact(linkedContact);
+      renderContactRegistryOptions();
+      showToast("Dados do contato preenchidos automaticamente. Você pode editar qualquer campo antes de salvar.", "success");
+    }
+
+    function openContactsRegistryPage(mode = "list"){
+      const suffix = mode === "new" ? "?novo=1" : "";
+      const targetUrl = `${window.location.origin}/contatos${suffix}`;
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+    }
+
+    async function initializeContactRegistry(){
+      if(contactsRegistryInitialized) return;
+      contactsRegistryInitialized = true;
+
+      document.getElementById("contact_registry_select")?.addEventListener("change", handleContactRegistrySelection);
+      document.getElementById("refreshContactsBtn")?.addEventListener("click", () => fetchContactsRegistry(true));
+      document.getElementById("openContactsRegistryBtn")?.addEventListener("click", () => openContactsRegistryPage("list"));
+      document.getElementById("createContactBtn")?.addEventListener("click", () => openContactsRegistryPage("new"));
+
+      await fetchContactsRegistry();
     }
 
     function getCurrentProposalId(){
@@ -3084,6 +3367,7 @@
       }
 
       await restoreInitialProposalState();
+      await initializeContactRegistry();
     }
 
     initialize();
