@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middlewares/auth");
-const { supabaseAdmin } = require("../lib/supabase");
+const { adminSupabase: supabaseAdmin } = require("../config/supabase");
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
