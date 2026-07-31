@@ -4111,7 +4111,12 @@
     }
 
     function goBackToDashboard(){
-      window.location.href = "/dashboard";
+      try{
+        const target = `${window.location.origin}/dashboard`;
+        window.location.assign(target);
+      }catch(error){
+        window.location.href = "/dashboard";
+      }
     }
 
     function bindTopActions(){

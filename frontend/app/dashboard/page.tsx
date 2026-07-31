@@ -107,6 +107,7 @@ export default function DashboardPage() {
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
   const [autoSortByAgenda, setAutoSortByAgenda] = useState(true);
   const [agendaFilter, setAgendaFilter] = useState<AgendaFilter>("all");
+  const [quickAccessCollapsed, setQuickAccessCollapsed] = useState(true);
 
   const [filters, setFilters] = useState({
     status: "",
@@ -1153,13 +1154,6 @@ export default function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={handleNewProposal}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-              >
-                Nova proposta
-              </button>
-
-              <button
                 onClick={handleLogout}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-white transition hover:bg-slate-800"
               >
@@ -1222,50 +1216,126 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <div className="mb-4">
-            <h2 className="text-lg font-bold text-slate-900">Acessos rápidos</h2>
-            <p className="text-sm text-slate-600">
-              Ferramentas e atalhos para apoiar o time comercial no dia a dia.
-            </p>
+        <div className="hidden xl:block">
+          <aside
+            className={`fixed left-4 top-1/2 z-30 -translate-y-1/2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/95 shadow-2xl transition-all duration-300 ${
+              quickAccessCollapsed ? "w-16" : "w-72"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setQuickAccessCollapsed((prev) => !prev)}
+              className="flex w-full items-center justify-center border-b border-slate-800 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-900"
+            >
+              {quickAccessCollapsed ? "»" : "« Recolher acessos rápidos"}
+            </button>
+
+            {!quickAccessCollapsed && (
+              <div className="space-y-3 p-4">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-white">
+                    Acessos rápidos
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-300">
+                    Ferramentas e atalhos para apoiar o time comercial no dia a dia.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleNewProposal}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+                >
+                  Nova proposta
+                </button>
+
+                <button
+                  onClick={handleOpenDicFicSimulator}
+                  className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                >
+                  Abrir Simulador DIC/FIC+ROI
+                </button>
+
+                <button
+                  onClick={handleOpenEnergyLinkProposal}
+                  className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
+                >
+                  Proposta Energy Link
+                </button>
+
+                <button
+                  onClick={handleOpenAjudaComercial}
+                  className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
+                >
+                  Ajuda comercial
+                </button>
+
+                <button
+                  onClick={handleOpenContactsRegistry}
+                  className="w-full rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
+                >
+                  Cadastro de contatos
+                </button>
+              </div>
+            )}
+          </aside>
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow xl:hidden">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Acessos rápidos</h2>
+              <p className="text-sm text-slate-600">
+                Ferramentas e atalhos para apoiar o time comercial no dia a dia.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setQuickAccessCollapsed((prev) => !prev)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              {quickAccessCollapsed ? "Expandir" : "Recolher"}
+            </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <button
-              onClick={handleNewProposal}
-              className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
-            >
-              Nova proposta
-            </button>
+          {!quickAccessCollapsed && (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <button
+                onClick={handleNewProposal}
+                className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+              >
+                Nova proposta
+              </button>
 
-            <button
-              onClick={handleOpenDicFicSimulator}
-              className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
-            >
-              Abrir Simulador DIC/FIC+ROI
-            </button>
+              <button
+                onClick={handleOpenDicFicSimulator}
+                className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+              >
+                Abrir Simulador DIC/FIC+ROI
+              </button>
 
-            <button
-              onClick={handleOpenEnergyLinkProposal}
-              className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
-            >
-              Proposta Energy Link
-            </button>
+              <button
+                onClick={handleOpenEnergyLinkProposal}
+                className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
+              >
+                Proposta Energy Link
+              </button>
 
-            <button
-              onClick={handleOpenAjudaComercial}
-              className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
-            >
-              Ajuda comercial
-            </button>
+              <button
+                onClick={handleOpenAjudaComercial}
+                className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
+              >
+                Ajuda comercial
+              </button>
 
-            <button
-              onClick={handleOpenContactsRegistry}
-              className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
-            >
-              Cadastro de contatos
-            </button>
-          </div>
+              <button
+                onClick={handleOpenContactsRegistry}
+                className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
+              >
+                Cadastro de contatos
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
