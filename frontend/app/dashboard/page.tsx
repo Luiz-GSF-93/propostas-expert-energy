@@ -268,6 +268,10 @@ export default function DashboardPage() {
     );
   }
 
+  function handleOpenContactsRegistry() {
+    window.location.href = "/contatos";
+  }
+
   function handleEditProposal(proposalId: string) {
     if (accessToken) {
       persistAccessToken(accessToken);
@@ -1156,27 +1160,6 @@ export default function DashboardPage() {
               </button>
 
               <button
-                onClick={handleOpenDicFicSimulator}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
-              >
-                Abrir Simulador DIC/FIC+ROI
-              </button>
-
-              <button
-                onClick={handleOpenEnergyLinkProposal}
-                className="rounded-lg bg-cyan-600 px-4 py-2 text-white transition hover:bg-cyan-700"
-              >
-                Proposta Energy Link
-              </button>
-
-              <button
-                onClick={handleOpenAjudaComercial}
-                className="rounded-lg bg-amber-600 px-4 py-2 text-white transition hover:bg-amber-700"
-              >
-                Ajuda comercial
-              </button>
-
-              <button
                 onClick={handleLogout}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-white transition hover:bg-slate-800"
               >
@@ -1237,6 +1220,52 @@ export default function DashboardPage() {
           ) : (
             <p className="text-sm text-red-600">Perfil não encontrado.</p>
           )}
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-slate-900">Acessos rápidos</h2>
+            <p className="text-sm text-slate-600">
+              Ferramentas e atalhos para apoiar o time comercial no dia a dia.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <button
+              onClick={handleNewProposal}
+              className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+            >
+              Nova proposta
+            </button>
+
+            <button
+              onClick={handleOpenDicFicSimulator}
+              className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+            >
+              Abrir Simulador DIC/FIC+ROI
+            </button>
+
+            <button
+              onClick={handleOpenEnergyLinkProposal}
+              className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
+            >
+              Proposta Energy Link
+            </button>
+
+            <button
+              onClick={handleOpenAjudaComercial}
+              className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
+            >
+              Ajuda comercial
+            </button>
+
+            <button
+              onClick={handleOpenContactsRegistry}
+              className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
+            >
+              Cadastro de contatos
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
