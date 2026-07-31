@@ -983,7 +983,7 @@
   <div class="action-bar editor-only">
     <div class="action-row">
       <div class="action-left">
-        <button type="button" id="backDashboardBtn" class="secondary">Voltar ao dashboard</button>
+        <button type="button" id="backDashboardBtn" class="secondary" onclick="goBackToDashboard()">Voltar ao dashboard</button>
         <button type="button" id="saveProposalBtn" class="primary">Salvar proposta</button>
         <button type="button" id="openClientHtmlBtn" class="secondary">Download HTML</button>
         <button type="button" id="printClientPdfBtn" class="secondary">Imprimir / Salvar PDF</button>
@@ -4111,11 +4111,23 @@
     }
 
     function goBackToDashboard(){
+      const target = `${window.location.origin}/dashboard`;
+
       try{
-        const target = `${window.location.origin}/dashboard`;
-        window.location.assign(target);
+        if(window.top && window.top !== window){
+          window.top.location.href = target;
+          return;
+        }
+      }catch(error){}
+
+      try{
+        window.location.href = target;
       }catch(error){
-        window.location.href = "/dashboard";
+        try{
+          window.location.assign(target);
+        }catch(innerError){
+          window.location.href = "/dashboard";
+        }
       }
     }
 
