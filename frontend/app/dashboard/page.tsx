@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 import GoalsPanel from "./GoalsPanel";
@@ -94,6 +94,117 @@ function MetricCard({
   );
 }
 
+function IconMenu() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconChart() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19h16" strokeLinecap="round" />
+      <path d="M7 16V10" strokeLinecap="round" />
+      <path d="M12 16V6" strokeLinecap="round" />
+      <path d="M17 16v-4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconBolt() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+      <path d="M13 2L5 14h6l-1 8 8-12h-6l1-8z" />
+    </svg>
+  );
+}
+
+function IconHelp() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path
+        d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M12 17h.01" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
+function IconUsers() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" strokeLinecap="round" />
+      <circle cx="9.5" cy="7" r="3" />
+      <path d="M20 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round" />
+      <path d="M16 4.13a3 3 0 0 1 0 5.74" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconLogout() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" strokeLinecap="round" />
+      <path d="M16 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 12H9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconDashboard() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="8" height="8" rx="2" />
+      <rect x="13" y="3" width="8" height="5" rx="2" />
+      <rect x="13" y="10" width="8" height="11" rx="2" />
+      <rect x="3" y="13" width="8" height="8" rx="2" />
+    </svg>
+  );
+}
+
+function SidebarActionButton({
+  icon,
+  label,
+  onClick,
+  collapsed,
+  className,
+  title,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  collapsed: boolean;
+  className: string;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title || label}
+      className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-white shadow-sm transition hover:scale-[1.01] hover:shadow-md ${collapsed ? "justify-center" : "justify-start"} ${className}`}
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+        {icon}
+      </span>
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
 export default function DashboardPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +219,7 @@ export default function DashboardPage() {
   const [autoSortByAgenda, setAutoSortByAgenda] = useState(true);
   const [agendaFilter, setAgendaFilter] = useState<AgendaFilter>("all");
   const [quickAccessCollapsed, setQuickAccessCollapsed] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     status: "",
@@ -1132,6 +1244,44 @@ export default function DashboardPage() {
     await saveNextContactDate(proposal, "");
   }
 
+  const quickActions = [
+    {
+      key: "new",
+      label: "Nova proposta",
+      icon: <IconPlus />,
+      onClick: handleNewProposal,
+      className: "bg-blue-600 hover:bg-blue-700",
+    },
+    {
+      key: "dicfic",
+      label: "Simulador DIC/FIC+ROI",
+      icon: <IconChart />,
+      onClick: handleOpenDicFicSimulator,
+      className: "bg-emerald-600 hover:bg-emerald-700",
+    },
+    {
+      key: "energylink",
+      label: "Proposta Energy Link",
+      icon: <IconBolt />,
+      onClick: handleOpenEnergyLinkProposal,
+      className: "bg-cyan-600 hover:bg-cyan-700",
+    },
+    {
+      key: "ajuda",
+      label: "Ajuda comercial",
+      icon: <IconHelp />,
+      onClick: handleOpenAjudaComercial,
+      className: "bg-amber-600 hover:bg-amber-700",
+    },
+    {
+      key: "contatos",
+      label: "Cadastro de contatos",
+      icon: <IconUsers />,
+      onClick: handleOpenContactsRegistry,
+      className: "bg-violet-600 hover:bg-violet-700",
+    },
+  ];
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -1141,649 +1291,709 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl bg-white p-8 shadow">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-              <p className="text-sm text-slate-600">
-                Área interna do sistema de propostas.
-              </p>
-            </div>
+    <main className="min-h-screen bg-slate-100">
+      {/* Mobile button */}
+      <button
+        type="button"
+        onClick={() => setMobileSidebarOpen(true)}
+        className="fixed left-4 top-4 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-xl xl:hidden"
+        aria-label="Abrir menu"
+      >
+        <IconMenu />
+      </button>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleLogout}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-white transition hover:bg-slate-800"
-              >
-                Sair
-              </button>
+      {/* Mobile overlay */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[1px] xl:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-800 bg-slate-950 text-white shadow-2xl transition-transform duration-300 xl:hidden ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+              <IconDashboard />
+            </span>
+            <div>
+              <p className="text-sm font-bold">Dashboard</p>
+              <p className="text-xs text-slate-400">Expert Energy</p>
             </div>
           </div>
 
-          {profile ? (
-            <>
-              <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Nome
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">
-                    {profile.full_name || profile.name || "Não informado"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    E-mail
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">
-                    {profile.email || "Não informado"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Perfil
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-slate-900">
-                      {profile.profile ||
-                        profile.role_label ||
-                        formatRole(profile.role) ||
-                        "Não informado"}
-                    </p>
-
-                    {isAdmin && (
-                      <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                        Administrador
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {isAdmin && (
-                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                  Você está em modo administrador e pode visualizar propostas de
-                  todos os usuários, inclusive as criadas por você.
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-red-600">Perfil não encontrado.</p>
-          )}
-        </div>
-
-        <div className="hidden xl:block">
-          <aside
-            className={`fixed left-4 top-1/2 z-30 -translate-y-1/2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/95 shadow-2xl transition-all duration-300 ${
-              quickAccessCollapsed ? "w-16" : "w-72"
-            }`}
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
+            aria-label="Fechar menu"
           >
-            <button
-              type="button"
-              onClick={() => setQuickAccessCollapsed((prev) => !prev)}
-              className="flex w-full items-center justify-center border-b border-slate-800 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-900"
-            >
-              {quickAccessCollapsed ? "»" : "« Recolher acessos rápidos"}
-            </button>
-
-            {!quickAccessCollapsed && (
-              <div className="space-y-3 p-4">
-                <div>
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                    Acessos rápidos
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-300">
-                    Ferramentas e atalhos para apoiar o time comercial no dia a dia.
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleNewProposal}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
-                >
-                  Nova proposta
-                </button>
-
-                <button
-                  onClick={handleOpenDicFicSimulator}
-                  className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
-                >
-                  Abrir Simulador DIC/FIC+ROI
-                </button>
-
-                <button
-                  onClick={handleOpenEnergyLinkProposal}
-                  className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
-                >
-                  Proposta Energy Link
-                </button>
-
-                <button
-                  onClick={handleOpenAjudaComercial}
-                  className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
-                >
-                  Ajuda comercial
-                </button>
-
-                <button
-                  onClick={handleOpenContactsRegistry}
-                  className="w-full rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
-                >
-                  Cadastro de contatos
-                </button>
-              </div>
-            )}
-          </aside>
+            ✕
+          </button>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow xl:hidden">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Acessos rápidos</h2>
-              <p className="text-sm text-slate-600">
-                Ferramentas e atalhos para apoiar o time comercial no dia a dia.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setQuickAccessCollapsed((prev) => !prev)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              {quickAccessCollapsed ? "Expandir" : "Recolher"}
-            </button>
+        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Acessos rápidos
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Ferramentas do time comercial
+            </p>
           </div>
+
+          {quickActions.map((item) => (
+            <SidebarActionButton
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => {
+                setMobileSidebarOpen(false);
+                item.onClick();
+              }}
+              collapsed={false}
+              className={item.className}
+            />
+          ))}
+        </div>
+
+        <div className="border-t border-slate-800 p-4">
+          <SidebarActionButton
+            icon={<IconLogout />}
+            label="Sair"
+            onClick={handleLogout}
+            collapsed={false}
+            className="bg-rose-600 hover:bg-rose-700"
+          />
+        </div>
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside
+        className={`fixed bottom-4 left-4 top-4 z-30 hidden flex-col rounded-[28px] border border-slate-800 bg-slate-950 text-white shadow-2xl transition-all duration-300 xl:flex ${
+          quickAccessCollapsed ? "w-24" : "w-72"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-4">
+          {!quickAccessCollapsed && (
+            <div className="flex items-center gap-3 overflow-hidden">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
+                <IconDashboard />
+              </span>
+              <div>
+                <p className="text-sm font-bold">Dashboard</p>
+                <p className="text-xs text-slate-400">Expert Energy</p>
+              </div>
+            </div>
+          )}
+
+          {quickAccessCollapsed && (
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
+              <IconDashboard />
+            </div>
+          )}
 
           {!quickAccessCollapsed && (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              <button
-                onClick={handleNewProposal}
-                className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
-              >
-                Nova proposta
-              </button>
-
-              <button
-                onClick={handleOpenDicFicSimulator}
-                className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
-              >
-                Abrir Simulador DIC/FIC+ROI
-              </button>
-
-              <button
-                onClick={handleOpenEnergyLinkProposal}
-                className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-cyan-700"
-              >
-                Proposta Energy Link
-              </button>
-
-              <button
-                onClick={handleOpenAjudaComercial}
-                className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
-              >
-                Ajuda comercial
-              </button>
-
-              <button
-                onClick={handleOpenContactsRegistry}
-                className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-700"
-              >
-                Cadastro de contatos
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setQuickAccessCollapsed(true)}
+              className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
+              aria-label="Recolher menu"
+            >
+              <IconMenu />
+            </button>
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Total de propostas geradas"
-            value={String(metrics.totalCount)}
-            subtitle="Quantidade no escopo e filtros atuais"
-          />
-          <MetricCard
-            title="Valor total geral"
-            value={formatCurrency(metrics.totalValue)}
-            subtitle="Soma de todas as propostas filtradas"
-          />
-          <MetricCard
-            title="Conversão"
-            value={formatPercent(metrics.conversionRate)}
-            subtitle={`${metrics.approvedCount} aprovada(s) de ${metrics.totalCount} proposta(s)`}
-            valueClassName="text-emerald-700"
-          />
-          <MetricCard
-            title="Ticket médio"
-            value={formatCurrency(metrics.averageTicket)}
-            subtitle="Média de valor das propostas aprovadas"
-            valueClassName="text-violet-700"
-          />
-          <MetricCard
-            title="Aprovadas"
-            value={formatCurrency(metrics.approvedValue)}
-            subtitle={`${metrics.approvedCount} proposta(s)`}
-            valueClassName="text-emerald-700"
-          />
-          <MetricCard
-            title="Enviadas"
-            value={formatCurrency(metrics.pendingValue)}
-            subtitle={`${metrics.pendingCount} proposta(s)`}
-            valueClassName="text-amber-700"
-          />
-          <MetricCard
-            title="Rascunho"
-            value={formatCurrency(metrics.draftValue)}
-            subtitle={`${metrics.draftCount} proposta(s)`}
-            valueClassName="text-blue-700"
-          />
-          <MetricCard
-            title="Canceladas"
-            value={formatCurrency(metrics.rejectedValue)}
-            subtitle={`${metrics.rejectedCount} proposta(s)`}
-            valueClassName="text-red-700"
-          />
+        {quickAccessCollapsed && (
+          <div className="px-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setQuickAccessCollapsed(false)}
+              className="flex w-full items-center justify-center rounded-2xl bg-white/10 px-3 py-3 text-white transition hover:bg-white/20"
+              aria-label="Expandir menu"
+              title="Expandir menu"
+            >
+              <IconMenu />
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 space-y-3 overflow-y-auto p-3">
+          {!quickAccessCollapsed && (
+            <div className="px-1 pb-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Acessos rápidos
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Navegação comercial e utilidades
+              </p>
+            </div>
+          )}
+
+          {quickActions.map((item) => (
+            <SidebarActionButton
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              onClick={item.onClick}
+              collapsed={quickAccessCollapsed}
+              className={item.className}
+            />
+          ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Contatos atrasados"
-            value={String(nextContactMetrics.overdue)}
-            subtitle="Propostas em rascunho ou enviada com contato vencido"
-            valueClassName="text-red-700"
-          />
-          <MetricCard
-            title="Contatos para hoje"
-            value={String(nextContactMetrics.today)}
-            subtitle="Propostas que precisam de contato hoje"
-            valueClassName="text-amber-700"
-          />
-          <MetricCard
-            title="Contatos futuros"
-            value={String(nextContactMetrics.future)}
-            subtitle="Próximos contatos já agendados"
-            valueClassName="text-emerald-700"
-          />
-          <MetricCard
-            title="Sem data de próximo contato"
-            value={String(nextContactMetrics.withoutDate)}
-            subtitle="Propostas em rascunho ou enviada sem agenda definida"
-            valueClassName="text-slate-700"
+        <div className="border-t border-slate-800 p-3">
+          <SidebarActionButton
+            icon={<IconLogout />}
+            label="Sair"
+            onClick={handleLogout}
+            collapsed={quickAccessCollapsed}
+            className="bg-rose-600 hover:bg-rose-700"
           />
         </div>
+      </aside>
 
-        <GoalsPanel
-          isAdmin={isAdmin}
-          accessToken={accessToken}
-          filteredProposals={filteredProposals}
-          extractProposalValue={extractProposalValue}
-          normalizeStatus={normalizeStatus}
-        />
-
-        <div className="rounded-2xl bg-white p-8 shadow">
-          <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div
+        className={`transition-all duration-300 ${
+          quickAccessCollapsed ? "xl:pl-28" : "xl:pl-80"
+        }`}
+      >
+        <div className="mx-auto max-w-7xl space-y-6 px-4 pb-6 pt-20 xl:px-6 xl:pt-6">
+          <div className="rounded-3xl bg-white p-8 shadow-sm">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Propostas salvas
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Lista das propostas já registradas no sistema.
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  Área interna
+                </div>
+
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  Dashboard comercial
+                </h1>
+                <p className="mt-2 text-sm text-slate-600">
+                  Gestão de propostas, agenda comercial, metas e acompanhamento da operação.
                 </p>
               </div>
 
-              <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
-                <div>
-                  Total filtrado: <strong>{filteredProposals.length}</strong>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Seletor de agenda
-                  </label>
-                  <select
-                    value={agendaFilter}
-                    onChange={(e) => setAgendaFilter(e.target.value as AgendaFilter)}
-                    className="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                  >
-                    <option value="all">Todos</option>
-                    <option value="scheduled">Somente com agenda</option>
-                    <option value="unscheduled">Somente sem agenda</option>
-                    <option value="overdue">Somente atrasadas</option>
-                  </select>
-                </div>
-
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={autoSortByAgenda}
-                    onChange={(e) => setAutoSortByAgenda(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Ordenação automática por agenda
-                </label>
-              </div>
-            </div>
-
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-7">
-              {isAdmin && (
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Escopo
-                  </label>
-                  <select
-                    value={scopeFilter}
-                    onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                  >
-                    <option value="all">Todas as propostas</option>
-                    <option value="mine">Somente minhas</option>
-                  </select>
-                </div>
-              )}
-
-              {isAdmin && (
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Usuário
-                  </label>
-                  <select
-                    value={filters.user}
-                    onChange={(e) => handleFilterChange("user", e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                  >
-                    <option value="">Todos os usuários</option>
-                    {creatorOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Tag / status
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                >
-                  <option value="">Todos</option>
-                  <option value="draft">Rascunho</option>
-                  <option value="pending">Enviada</option>
-                  <option value="approved">Aprovada</option>
-                  <option value="rejected">Cancelada</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Cliente
-                </label>
-                <input
-                  type="text"
-                  value={filters.client}
-                  onChange={(e) => handleFilterChange("client", e.target.value)}
-                  placeholder="Pesquisar cliente"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Número / código
-                </label>
-                <input
-                  type="text"
-                  value={filters.code}
-                  onChange={(e) => handleFilterChange("code", e.target.value)}
-                  placeholder="Pesquisar código"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Data início
-                </label>
-                <input
-                  type="date"
-                  value={filters.dateStart}
-                  onChange={(e) => handleFilterChange("dateStart", e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Data fim
-                </label>
-                <input
-                  type="date"
-                  value={filters.dateEnd}
-                  onChange={(e) => handleFilterChange("dateEnd", e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-7">
+              <div className="xl:hidden">
                 <button
                   type="button"
-                  onClick={clearFilters}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  Limpar filtros
+                  <IconMenu />
+                  Menu
                 </button>
               </div>
             </div>
+
+            {profile ? (
+              <>
+                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Nome
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {profile.full_name || profile.name || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      E-mail
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {profile.email || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Perfil
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-slate-900">
+                        {profile.profile ||
+                          profile.role_label ||
+                          formatRole(profile.role) ||
+                          "Não informado"}
+                      </p>
+
+                      {isAdmin && (
+                        <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                          Administrador
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {isAdmin && (
+                  <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    Você está em modo administrador e pode visualizar propostas de
+                    todos os usuários, inclusive as criadas por você.
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-red-600">Perfil não encontrado.</p>
+            )}
           </div>
 
-          {filteredProposals.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <p className="text-slate-600">
-                Nenhuma proposta encontrada com os filtros aplicados.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {paginatedProposals.map((proposal) => (
-                  <div
-                    key={proposal.id}
-                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Total de propostas geradas"
+              value={String(metrics.totalCount)}
+              subtitle="Quantidade no escopo e filtros atuais"
+            />
+            <MetricCard
+              title="Valor total geral"
+              value={formatCurrency(metrics.totalValue)}
+              subtitle="Soma de todas as propostas filtradas"
+            />
+            <MetricCard
+              title="Conversão"
+              value={formatPercent(metrics.conversionRate)}
+              subtitle={`${metrics.approvedCount} aprovada(s) de ${metrics.totalCount} proposta(s)`}
+              valueClassName="text-emerald-700"
+            />
+            <MetricCard
+              title="Ticket médio"
+              value={formatCurrency(metrics.averageTicket)}
+              subtitle="Média de valor das propostas aprovadas"
+              valueClassName="text-violet-700"
+            />
+            <MetricCard
+              title="Aprovadas"
+              value={formatCurrency(metrics.approvedValue)}
+              subtitle={`${metrics.approvedCount} proposta(s)`}
+              valueClassName="text-emerald-700"
+            />
+            <MetricCard
+              title="Enviadas"
+              value={formatCurrency(metrics.pendingValue)}
+              subtitle={`${metrics.pendingCount} proposta(s)`}
+              valueClassName="text-amber-700"
+            />
+            <MetricCard
+              title="Rascunho"
+              value={formatCurrency(metrics.draftValue)}
+              subtitle={`${metrics.draftCount} proposta(s)`}
+              valueClassName="text-blue-700"
+            />
+            <MetricCard
+              title="Canceladas"
+              value={formatCurrency(metrics.rejectedValue)}
+              subtitle={`${metrics.rejectedCount} proposta(s)`}
+              valueClassName="text-red-700"
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Contatos atrasados"
+              value={String(nextContactMetrics.overdue)}
+              subtitle="Propostas em rascunho ou enviada com contato vencido"
+              valueClassName="text-red-700"
+            />
+            <MetricCard
+              title="Contatos para hoje"
+              value={String(nextContactMetrics.today)}
+              subtitle="Propostas que precisam de contato hoje"
+              valueClassName="text-amber-700"
+            />
+            <MetricCard
+              title="Contatos futuros"
+              value={String(nextContactMetrics.future)}
+              subtitle="Próximos contatos já agendados"
+              valueClassName="text-emerald-700"
+            />
+            <MetricCard
+              title="Sem data de próximo contato"
+              value={String(nextContactMetrics.withoutDate)}
+              subtitle="Propostas em rascunho ou enviada sem agenda definida"
+              valueClassName="text-slate-700"
+            />
+          </div>
+
+          <GoalsPanel
+            isAdmin={isAdmin}
+            accessToken={accessToken}
+            filteredProposals={filteredProposals}
+            extractProposalValue={extractProposalValue}
+            normalizeStatus={normalizeStatus}
+          />
+
+          <div className="rounded-3xl bg-white p-8 shadow-sm">
+            <div className="mb-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Propostas salvas
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    Lista das propostas já registradas no sistema.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
+                  <div>
+                    Total filtrado: <strong>{filteredProposals.length}</strong>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Seletor de agenda
+                    </label>
+                    <select
+                      value={agendaFilter}
+                      onChange={(e) => setAgendaFilter(e.target.value as AgendaFilter)}
+                      className="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="scheduled">Somente com agenda</option>
+                      <option value="unscheduled">Somente sem agenda</option>
+                      <option value="overdue">Somente atrasadas</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={autoSortByAgenda}
+                      onChange={(e) => setAutoSortByAgenda(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Ordenação automática por agenda
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-7">
+                {isAdmin && (
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Escopo
+                    </label>
+                    <select
+                      value={scopeFilter}
+                      onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    >
+                      <option value="all">Todas as propostas</option>
+                      <option value="mine">Somente minhas</option>
+                    </select>
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Usuário
+                    </label>
+                    <select
+                      value={filters.user}
+                      onChange={(e) => handleFilterChange("user", e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    >
+                      <option value="">Todos os usuários</option>
+                      {creatorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Tag / status
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => handleFilterChange("status", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   >
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-semibold text-slate-900">
-                            {proposal.client_name || "Cliente não informado"}
-                          </h3>
+                    <option value="">Todos</option>
+                    <option value="draft">Rascunho</option>
+                    <option value="pending">Enviada</option>
+                    <option value="approved">Aprovada</option>
+                    <option value="rejected">Cancelada</option>
+                  </select>
+                </div>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                              proposal.status
-                            )}`}
-                          >
-                            {formatStatus(proposal.status)}
-                          </span>
-                        </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.client}
+                    onChange={(e) => handleFilterChange("client", e.target.value)}
+                    placeholder="Pesquisar cliente"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  />
+                </div>
 
-                        <p className="text-sm text-slate-700">
-                          <strong>Título:</strong> {proposal.title || "Sem título"}
-                        </p>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Número / código
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.code}
+                    onChange={(e) => handleFilterChange("code", e.target.value)}
+                    placeholder="Pesquisar código"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  />
+                </div>
 
-                        <p className="text-sm text-slate-700">
-                          <strong>Código:</strong> {proposal.proposal_code || "Não informado"}
-                        </p>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Data início
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.dateStart}
+                    onChange={(e) => handleFilterChange("dateStart", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  />
+                </div>
 
-                        <p className="text-sm text-slate-700">
-                          <strong>Valor estimado:</strong> {formatCurrency(extractProposalValue(proposal))}
-                        </p>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Data fim
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.dateEnd}
+                    onChange={(e) => handleFilterChange("dateEnd", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                  />
+                </div>
 
-                        {canScheduleNextContact(proposal) && (() => {
-                          const nextContactStatus = getNextContactStatus(proposal);
-                          const nextContactValue = getNextContactInputValue(proposal);
+                <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-7">
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Limpar filtros
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                          return (
-                            <div
-                              className={`rounded-xl border p-3 ${nextContactStatus.containerClassName}`}
+            {filteredProposals.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                <p className="text-slate-600">
+                  Nenhuma proposta encontrada com os filtros aplicados.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {paginatedProposals.map((proposal) => (
+                    <div
+                      key={proposal.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-lg font-semibold text-slate-900">
+                              {proposal.client_name || "Cliente não informado"}
+                            </h3>
+
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                                proposal.status
+                              )}`}
                             >
-                              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Agenda de contato
+                              {formatStatus(proposal.status)}
+                            </span>
+                          </div>
+
+                          <p className="text-sm text-slate-700">
+                            <strong>Título:</strong> {proposal.title || "Sem título"}
+                          </p>
+
+                          <p className="text-sm text-slate-700">
+                            <strong>Código:</strong> {proposal.proposal_code || "Não informado"}
+                          </p>
+
+                          <p className="text-sm text-slate-700">
+                            <strong>Valor estimado:</strong> {formatCurrency(extractProposalValue(proposal))}
+                          </p>
+
+                          {canScheduleNextContact(proposal) && (() => {
+                            const nextContactStatus = getNextContactStatus(proposal);
+                            const nextContactValue = getNextContactInputValue(proposal);
+
+                            return (
+                              <div
+                                className={`rounded-xl border p-3 ${nextContactStatus.containerClassName}`}
+                              >
+                                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Agenda de contato
+                                  </p>
+
+                                  <span
+                                    className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${nextContactStatus.badgeClassName}`}
+                                  >
+                                    {nextContactStatus.label}
+                                  </span>
+                                </div>
+
+                                <p className={`mt-2 text-sm font-medium ${nextContactStatus.textClassName}`}>
+                                  Próximo contato: {formatNextContactDate(nextContactValue)}
                                 </p>
 
-                                <span
-                                  className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${nextContactStatus.badgeClassName}`}
-                                >
-                                  {nextContactStatus.label}
-                                </span>
-                              </div>
+                                <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+                                  <input
+                                    type="date"
+                                    value={nextContactValue}
+                                    onChange={(e) =>
+                                      handleNextContactDraftChange(proposal.id, e.target.value)
+                                    }
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
+                                  />
 
-                              <p className={`mt-2 text-sm font-medium ${nextContactStatus.textClassName}`}>
-                                Próximo contato: {formatNextContactDate(nextContactValue)}
+                                  <button
+                                    type="button"
+                                    onClick={() => saveNextContactDate(proposal)}
+                                    disabled={updatingNextContactId === proposal.id}
+                                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {updatingNextContactId === proposal.id
+                                      ? "Salvando..."
+                                      : "Salvar próximo contato"}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => clearNextContactDate(proposal)}
+                                    disabled={updatingNextContactId === proposal.id}
+                                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Limpar
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          <div className="text-sm text-slate-700">
+                            <strong>Criado por:</strong> {formatCreator(proposal)}
+                            {formatCreatorDetails(proposal) ? (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {formatCreatorDetails(proposal)}
                               </p>
+                            ) : null}
+                          </div>
 
-                              <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
-                                <input
-                                  type="date"
-                                  value={nextContactValue}
-                                  onChange={(e) =>
-                                    handleNextContactDraftChange(proposal.id, e.target.value)
-                                  }
-                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
-                                />
+                          <p className="text-sm text-slate-500">
+                            <strong>Criada em:</strong> {formatDate(proposal.created_at)}
+                          </p>
 
-                                <button
-                                  type="button"
-                                  onClick={() => saveNextContactDate(proposal)}
-                                  disabled={updatingNextContactId === proposal.id}
-                                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  {updatingNextContactId === proposal.id
-                                    ? "Salvando..."
-                                    : "Salvar próximo contato"}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => clearNextContactDate(proposal)}
-                                  disabled={updatingNextContactId === proposal.id}
-                                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  Limpar
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        <div className="text-sm text-slate-700">
-                          <strong>Criado por:</strong> {formatCreator(proposal)}
-                          {formatCreatorDetails(proposal) ? (
-                            <p className="mt-1 text-xs text-slate-500">
-                              {formatCreatorDetails(proposal)}
-                            </p>
-                          ) : null}
+                          <p className="text-sm text-slate-500">
+                            <strong>Atualizado em:</strong> {formatDate(
+                              proposal.updated_at || proposal.created_at
+                            )}
+                          </p>
                         </div>
 
-                        <p className="text-sm text-slate-500">
-                          <strong>Criada em:</strong> {formatDate(proposal.created_at)}
-                        </p>
-
-                        <p className="text-sm text-slate-500">
-                          <strong>Atualizado em:</strong> {formatDate(
-                            proposal.updated_at || proposal.created_at
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-2 md:items-end">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEditProposal(proposal.id)}
-                            disabled={!proposal.id}
-                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Abrir / editar
-                          </button>
-
-                          {proposal.public_slug ? (
+                        <div className="flex flex-col gap-2 md:items-end">
+                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => window.open(`/public/${proposal.public_slug}`, "_blank")}
-                              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                              onClick={() => handleEditProposal(proposal.id)}
+                              disabled={!proposal.id}
+                              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              Ver versão pública
+                              Abrir / editar
                             </button>
-                          ) : null}
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Alterar tag
-                          </label>
+                            {proposal.public_slug ? (
+                              <button
+                                type="button"
+                                onClick={() => window.open(`/public/${proposal.public_slug}`, "_blank")}
+                                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                              >
+                                Ver versão pública
+                              </button>
+                            ) : null}
+                          </div>
 
-                          <select
-                            value={getEditableStatusValue(proposal.status)}
-                            onChange={(e) =>
-                              updateProposalStatus(
-                                proposal.id,
-                                e.target.value as EditableStatus
-                              )
-                            }
-                            disabled={!proposal.id || updatingStatusId === proposal.id}
-                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <option value="draft">Rascunho</option>
-                            <option value="pending">Enviada</option>
-                            <option value="approved">Aprovada</option>
-                            <option value="rejected">Cancelada</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Alterar tag
+                            </label>
+
+                            <select
+                              value={getEditableStatusValue(proposal.status)}
+                              onChange={(e) =>
+                                updateProposalStatus(
+                                  proposal.id,
+                                  e.target.value as EditableStatus
+                                )
+                              }
+                              disabled={!proposal.id || updatingStatusId === proposal.id}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <option value="draft">Rascunho</option>
+                              <option value="pending">Enviada</option>
+                              <option value="approved">Aprovada</option>
+                              <option value="rejected">Cancelada</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-slate-500">
-                  Exibindo <strong>{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, filteredProposals.length)}</strong> de <strong>{filteredProposals.length}</strong> propostas
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-
-                  <span className="text-sm text-slate-600">
-                    Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Próxima
-                  </button>
+                  ))}
                 </div>
-              </div>
-            </>
-          )}
+
+                <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 md:flex-row md:items-center md:justify-between">
+                  <p className="text-sm text-slate-500">
+                    Exibindo <strong>{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, filteredProposals.length)}</strong> de <strong>{filteredProposals.length}</strong> propostas
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+
+                    <span className="text-sm text-slate-600">
+                      Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </main>
