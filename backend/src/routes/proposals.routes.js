@@ -457,6 +457,13 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
 
     if (req.user?.id) {
       updatePayload.updated_by = req.user.id;
+
+      const isApprovedStatus =
+        normalizedStatus === "approved" || normalizedStatus === "published";
+
+      if (isApprovedStatus && !proposal?.approved_at) {
+        updatePayload.approved_at = new Date().toISOString();
+      }
     }
 
     let updateStatusQuery = adminSupabase
