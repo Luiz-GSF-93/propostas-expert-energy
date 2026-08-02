@@ -272,18 +272,23 @@ router.get("/", authMiddleware, async (req, res) => {
     const accessContext = await getAccessContext(req.user);
 
 
+    const proposalSelectColumns =
+      "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by, editable_json";
+
     let query = adminSupabase
       .from("proposals")
-      .select(
-        "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by, editable_json",
-        { count: "exact" }
-      )
+      .select(proposalSelectColumns, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to);
 
+    let metricsQuery = adminSupabase
+      .from("proposals")
+      .select(proposalSelectColumns)
+      .order("created_at", { ascending: false });
+
     if (!accessContext.isAdmin) {
       query = query.eq("created_by", req.user.id);
-    } else {
+      metricsQuery = metricsQuery.eq("created_by", req.user.id);
     }
 
     if (status) {
@@ -297,6 +302,7 @@ router.get("/", authMiddleware, async (req, res) => {
       }
 
       query = query.eq("status", normalizedStatus);
+      metricsQuery = metricsQuery.eq("status", normalizedStatus);
     }
 
     if (search) {
@@ -304,9 +310,15 @@ router.get("/", authMiddleware, async (req, res) => {
       query = query.or(
         `client_name.ilike.%${term}%,proposal_code.ilike.%${term}%,title.ilike.%${term}%`
       );
+      metricsQuery = metricsQuery.or(
+        `client_name.ilike.%${term}%,proposal_code.ilike.%${term}%,title.ilike.%${term}%`
+      );
     }
 
-    const { data, error, count } = await query;
+    const [
+      { data, error, count },
+      { data: metricsData, error: metricsError }
+    ] = await Promise.all([query, metricsQuery]);
 
 
     if (error) {
@@ -317,7 +329,16 @@ router.get("/", authMiddleware, async (req, res) => {
       });
     }
 
+    if (metricsError) {
+      console.error("Erro ao listar métricas das propostas:", metricsError);
+      return res.status(500).json({
+        message: "Erro ao listar métricas das propostas.",
+        error: metricsError.message
+      });
+    }
+
     const enrichedData = await enrichProposalsWithCreatorInfo(data || []);
+    const metricsRows = Array.isArray(metricsData) ? metricsData : [];
 
     return res.json({
       data: enrichedData,
@@ -336,6 +357,9 @@ router.get("/", authMiddleware, async (req, res) => {
         totalPages: Math.max(1, Math.ceil((count || 0) / limit)),
         hasNextPage: page < Math.ceil((count || 0) / limit),
         hasPrevPage: page > 1
+      },
+      metrics: {
+        rows: metricsRows
       }
     });
   } catch (error) {
