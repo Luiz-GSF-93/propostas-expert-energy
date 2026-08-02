@@ -219,6 +219,7 @@ function SidebarActionButton({
 
 export default function DashboardPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [serverTotalCount, setServerTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando...");
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -327,7 +328,8 @@ export default function DashboardPage() {
             ? ((proposalsData as ApiEnvelope<Proposal[]>)?.rows as Proposal[])
             : [];
 
-          setProposals(normalizedProposals);
+          setServerTotalCount(totalFromApi || normalizedProposals.length);
+        setProposals(normalizedProposals);
         } else {
           setProposals([]);
         }
@@ -1554,7 +1556,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Total de propostas geradas"
-              value={String(metrics.totalCount)}
+              value={String(serverTotalCount || metrics.totalCount)}
               subtitle="Quantidade no escopo e filtros atuais"
             />
             <MetricCard
