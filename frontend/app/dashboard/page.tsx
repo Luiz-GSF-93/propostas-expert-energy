@@ -936,6 +936,8 @@ export default function DashboardPage() {
   );
 
   const filteredProposals = useMemo(() => {
+    const todayDateOnly = getDateOnly(new Date().toISOString()) || "";
+
     const filtered = localFilterSource.filter((proposal) => {
       if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
         return false;
@@ -946,7 +948,8 @@ export default function DashboardPage() {
       }
 
       const nextContactDate = getNextContactDate(proposal);
-      const contactPriority = getContactPriority(proposal);
+      const isOverdueAgenda =
+        !!nextContactDate && !!todayDateOnly && nextContactDate < todayDateOnly;
 
       if (agendaFilter === "scheduled" && !nextContactDate) {
         return false;
@@ -956,7 +959,7 @@ export default function DashboardPage() {
         return false;
       }
 
-      if (agendaFilter === "overdue" && contactPriority !== 1) {
+      if (agendaFilter === "overdue" && !isOverdueAgenda) {
         return false;
       }
 
