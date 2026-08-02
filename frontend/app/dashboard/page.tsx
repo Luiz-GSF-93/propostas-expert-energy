@@ -220,6 +220,7 @@ function SidebarActionButton({
 export default function DashboardPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [serverTotalCount, setServerTotalCount] = useState(0);
+  const [serverPageCount, setServerPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando...");
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -329,6 +330,7 @@ export default function DashboardPage() {
             : [];
 
           setServerTotalCount(totalFromApi || normalizedProposals.length);
+        setServerPageCount(totalPagesFromApi || 1);
         setProposals(normalizedProposals);
         } else {
           setProposals([]);
@@ -1087,7 +1089,7 @@ export default function DashboardPage() {
     );
   }, [filteredProposals]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
+  const totalPages = serverPageCount || Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
 
   useEffect(() => {
     if (currentPage > totalPages) {
