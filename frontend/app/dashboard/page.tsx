@@ -221,6 +221,7 @@ export default function DashboardPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [serverTotalCount, setServerTotalCount] = useState(0);
   const [serverPageCount, setServerPageCount] = useState(1);
+  const [serverMetricsRows, setServerMetricsRows] = useState<Array<Partial<Proposal>>>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando...");
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -362,7 +363,8 @@ export default function DashboardPage() {
           setServerPageCount(totalPagesFromApi || 1);
           setProposals(normalizedProposals);
         } else {
-          setProposals([]);
+          setServerMetricsRows([]);
+            setProposals([]);
         }
 
         setMessage("");
@@ -1008,6 +1010,12 @@ export default function DashboardPage() {
     agendaFilter,
   ]);
 
+
+  const metricsSource = useMemo(
+    () => (serverMetricsRows.length ? (serverMetricsRows as Proposal[]) : filteredProposals),
+    [serverMetricsRows, filteredProposals]
+  );
+
   const metrics = useMemo<DashboardMetrics>(() => {
     const initial: DashboardMetrics = {
       totalCount: 0,
@@ -1024,7 +1032,7 @@ export default function DashboardPage() {
       averageTicket: 0,
     };
 
-    const calculated = filteredProposals.reduce((acc, proposal) => {
+    const calculated = metricsSource.reduce((acc, proposal) => {
       const status = normalizeStatus(proposal.status);
       const value = extractProposalValue(proposal);
 
@@ -1067,7 +1075,7 @@ export default function DashboardPage() {
         : 0;
 
     return calculated;
-  }, [filteredProposals]);
+  }, [metricsSource]);
 
   const nextContactMetrics = useMemo(() => {
     const today = new Date();
@@ -1077,7 +1085,7 @@ export default function DashboardPage() {
       today.getDate()
     );
 
-    return filteredProposals.reduce(
+    return metricsSource.reduce(
       (acc, proposal) => {
         const status = normalizeStatus(proposal.status);
 
@@ -1116,7 +1124,7 @@ export default function DashboardPage() {
         withoutDate: 0,
       }
     );
-  }, [filteredProposals]);
+  }, [metricsSource]);
 
   const totalPages = serverPageCount || Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
 

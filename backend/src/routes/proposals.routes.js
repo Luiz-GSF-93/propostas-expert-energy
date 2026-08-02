@@ -264,6 +264,101 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
+
+function normalizeDateOnly(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
+function addDaysToDateOnly(dateOnly, days) {
+  const date = new Date(`${dateOnly}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function applyProposalFilters(query, rawQuery, currentUser) {
+  let nextQuery = query;
+
+  const normalizedStatus = normalizeProposalStatus(rawQuery?.status);
+  const rawSearch = typeof rawQuery?.search === "string" ? rawQuery.search.trim() : "";
+  const rawClient = typeof rawQuery?.client === "string" ? rawQuery.client.trim() : "";
+  const rawCode = typeof rawQuery?.code === "string" ? rawQuery.code.trim() : "";
+  const rawUser = typeof rawQuery?.user === "string" ? rawQuery.user.trim() : "";
+  const rawAgenda = typeof rawQuery?.agenda === "string" ? rawQuery.agenda.trim() : "";
+  const rawScope = typeof rawQuery?.scope === "string" ? rawQuery.scope.trim() : "";
+
+  const dateStart = normalizeDateOnly(rawQuery?.dateStart);
+  const dateEnd = normalizeDateOnly(rawQuery?.dateEnd);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = addDaysToDateOnly(today, 1);
+
+  if (normalizedStatus) {
+    nextQuery = nextQuery.eq("status", normalizedStatus);
+  }
+
+  if (rawScope === "mine" && currentUser?.id) {
+    nextQuery = nextQuery.eq("created_by", currentUser.id);
+  }
+
+  if (rawUser) {
+    nextQuery = nextQuery.eq("created_by", rawUser);
+  }
+
+  if (rawClient) {
+    const clientTerm = rawClient.replace(/[%]/g, "").trim();
+    if (clientTerm) {
+      nextQuery = nextQuery.ilike("client_name", `%${clientTerm}%`);
+    }
+  }
+
+  if (rawCode) {
+    const codeTerm = rawCode.replace(/[%]/g, "").trim();
+    if (codeTerm) {
+      nextQuery = nextQuery.ilike("proposal_code", `%${codeTerm}%`);
+    }
+  }
+
+  if (rawSearch) {
+    const term = rawSearch.replace(/[%]/g, "").replace(/,/g, " ").trim();
+    if (term) {
+      nextQuery = nextQuery.or(
+        `client_name.ilike.%${term}%,proposal_code.ilike.%${term}%,title.ilike.%${term}%`
+      );
+    }
+  }
+
+  if (dateStart) {
+    nextQuery = nextQuery.gte("created_at", `${dateStart}T00:00:00.000Z`);
+  }
+
+  if (dateEnd) {
+    const nextDay = addDaysToDateOnly(dateEnd, 1);
+    nextQuery = nextQuery.lt("created_at", `${nextDay}T00:00:00.000Z`);
+  }
+
+  if (rawAgenda === "scheduled") {
+    nextQuery = nextQuery.not("next_contact_date", "is", null);
+  } else if (rawAgenda === "unscheduled" || rawAgenda === "withoutDate") {
+    nextQuery = nextQuery.is("next_contact_date", null);
+  } else if (rawAgenda === "overdue") {
+    nextQuery = nextQuery
+      .not("next_contact_date", "is", null)
+      .lt("next_contact_date", today);
+  } else if (rawAgenda === "today") {
+    nextQuery = nextQuery
+      .not("next_contact_date", "is", null)
+      .gte("next_contact_date", today)
+      .lt("next_contact_date", tomorrow);
+  } else if (rawAgenda === "future") {
+    nextQuery = nextQuery
+      .not("next_contact_date", "is", null)
+      .gte("next_contact_date", tomorrow);
+  }
+
+  return nextQuery;
+}
+
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const { status, search } = req.query;
@@ -306,7 +401,15 @@ router.get("/", authMiddleware, async (req, res) => {
       );
     }
 
-    const { data, error, count } = await query;
+    const [
+      { data, error, count },
+      { data: metricsRows, error: metricsError },
+    ] = await Promise.all([query, metricsQuery]);
+
+    if (metricsError) {
+      console.error("Erro ao carregar métricas globais das propostas:", metricsError);
+      return res.status(500).json({ error: "Não foi possível carregar as métricas das propostas." });
+    }
 
 
     if (error) {
