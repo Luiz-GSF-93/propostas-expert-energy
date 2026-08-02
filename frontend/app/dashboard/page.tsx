@@ -286,7 +286,7 @@ export default function DashboardPage() {
 
         const [profileResponse, proposalsResponse] = await Promise.all([
           apiFetch("/api/auth/me", session.access_token),
-          apiFetch("/api/proposals", session.access_token),
+          apiFetch("/api/proposals?page=1&limit=100", session.access_token),
         ]);
 
         if (!profileResponse.ok) {
