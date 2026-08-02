@@ -288,7 +288,27 @@ export default function DashboardPage() {
 
         const [profileResponse, proposalsResponse] = await Promise.all([
           apiFetch("/api/auth/me", session.access_token),
-          apiFetch(`/api/proposals?page=${currentPage}&limit=${PAGE_SIZE}`, session.access_token),
+          (() => {
+            const params = new URLSearchParams({
+              page: String(currentPage),
+              limit: String(PAGE_SIZE),
+            });
+
+            if (filters.status?.trim()) {
+              params.set("status", filters.status.trim());
+            }
+
+            const backendSearch = [filters.client, filters.code]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+              .join(" ");
+
+            if (backendSearch) {
+              params.set("search", backendSearch);
+            }
+
+            return apiFetch(`/api/proposals?${params.toString()}`, session.access_token);
+          })(),
         ]);
 
         if (!profileResponse.ok) {
@@ -329,7 +349,7 @@ export default function DashboardPage() {
             ? ((proposalsData as ApiEnvelope<Proposal[]>)?.rows as Proposal[])
             : [];
 
-          const proposalsEnvelope = proposalsResponse as any;
+          const proposalsEnvelope = proposalsData as any;
           const totalFromApi =
             proposalsEnvelope?.pagination?.total ??
             proposalsEnvelope?.meta?.total ??
@@ -1659,7 +1679,7 @@ export default function DashboardPage() {
 
                 <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
                   <div>
-                    Total filtrado: <strong>{filteredProposals.length}</strong>
+                    Total filtrado: <strong>{serverTotalCount || filteredProposals.length}</strong>
                   </div>
 
                   <div className="flex flex-col gap-1">
