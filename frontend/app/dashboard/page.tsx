@@ -954,7 +954,6 @@ export default function DashboardPage() {
       const proposalStatus = String(normalizeStatus(proposal.status) || "").toLowerCase();
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
-      const createdDateOnly = getDateOnly(proposal.created_at);
 
       const matchesStatus = filters.status
         ? proposalStatus === filters.status.toLowerCase()
@@ -968,25 +967,11 @@ export default function DashboardPage() {
         ? proposalCode.includes(filters.code.toLowerCase())
         : true;
 
-      const matchesDateStart = filters.dateStart
-        ? createdDateOnly
-          ? createdDateOnly >= filters.dateStart
-          : false
-        : true;
-
-      const matchesDateEnd = filters.dateEnd
-        ? createdDateOnly
-          ? createdDateOnly <= filters.dateEnd
-          : false
-        : true;
-
       return (
-        matchesStatus &&
-        matchesClient &&
-        matchesCode &&
-        matchesDateStart &&
-        matchesDateEnd
-      );
+          matchesStatus &&
+          matchesClient &&
+          matchesCode
+        );
     });
 
     if (!autoSortByAgenda) {
