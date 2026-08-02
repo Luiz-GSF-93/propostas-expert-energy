@@ -273,7 +273,7 @@ router.get("/", authMiddleware, async (req, res) => {
 
 
     const proposalSelectColumns =
-      "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, created_by, updated_by, editable_json";
+      "id, proposal_code, title, client_name, status, current_version, created_at, updated_at, approved_at, created_by, updated_by, editable_json";
 
     let query = adminSupabase
       .from("proposals")
@@ -427,7 +427,7 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
 
     let existingProposalQuery = adminSupabase
       .from("proposals")
-      .select("id, created_by, status")
+      .select("id, created_by, status, approved_at")
       .eq("id", id);
 
     if (!accessContext.isAdmin) {

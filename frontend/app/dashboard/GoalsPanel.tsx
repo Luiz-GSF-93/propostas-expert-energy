@@ -7,6 +7,7 @@ type ProposalLite = {
   id?: string;
   status?: string;
   created_at?: string;
+  approved_at?: string;
 };
 
 type GoalRow = {
@@ -172,21 +173,22 @@ export default function GoalsPanel({
     };
 
     for (const proposal of filteredProposals) {
-      const normalizedStatus = normalizeStatus(proposal.status);
+        const normalizedStatus = normalizeStatus(proposal.status);
 
-      if (!(normalizedStatus === "approved" || normalizedStatus === "published")) {
-        continue;
+        if (!(normalizedStatus === "approved" || normalizedStatus === "published")) {
+          continue;
+        }
+
+        const approvalDateRaw = proposal.approved_at || proposal.created_at;
+        if (!approvalDateRaw) continue;
+
+        const date = new Date(approvalDateRaw);
+        if (Number.isNaN(date.getTime())) continue;
+        if (date.getFullYear() !== selectedYear) continue;
+
+        const month = date.getMonth() + 1;
+        result[month] += extractProposalValue(proposal);
       }
-
-      if (!proposal.created_at) continue;
-
-      const date = new Date(proposal.created_at);
-      if (Number.isNaN(date.getTime())) continue;
-      if (date.getFullYear() !== selectedYear) continue;
-
-      const month = date.getMonth() + 1;
-      result[month] += extractProposalValue(proposal);
-    }
 
     return result;
   }, [filteredProposals, extractProposalValue, normalizeStatus, selectedYear]);
@@ -320,7 +322,7 @@ export default function GoalsPanel({
           <div>
             <h2 className="text-xl font-bold text-slate-900">Metas x aprovadas</h2>
             <p className="text-sm text-slate-600">
-              Comparativo mensal entre metas cadastradas e propostas aprovadas.
+              Comparativo mensal entre metas cadastradas e propostas aprovadas no mês da aprovação.
             </p>
           </div>
 
