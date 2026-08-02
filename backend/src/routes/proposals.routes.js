@@ -270,7 +270,7 @@ router.post("/", authMiddleware, async (req, res) => {
 
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, user } = req.query;
     const { page, limit, from, to } = normalizePagination(req.query);
 
     const accessContext = await getAccessContext(req.user);
@@ -291,9 +291,14 @@ router.get("/", authMiddleware, async (req, res) => {
       .order("created_at", { ascending: false });
 
     if (!accessContext.isAdmin) {
-      query = query.eq("created_by", req.user.id);
-      metricsQuery = metricsQuery.eq("created_by", req.user.id);
-    }
+        query = query.eq("created_by", req.user.id);
+        metricsQuery = metricsQuery.eq("created_by", req.user.id);
+      }
+
+      if (accessContext.isAdmin && user) {
+        query = query.eq("created_by", user);
+        metricsQuery = metricsQuery.eq("created_by", user);
+      }
 
     if (status) {
       const normalizedStatus = normalizeProposalStatus(status);

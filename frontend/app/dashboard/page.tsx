@@ -305,10 +305,18 @@ export default function DashboardPage() {
               .join(" ");
 
             if (backendSearch) {
-              params.set("search", backendSearch);
-            }
+                params.set("search", backendSearch);
+              }
 
-            return apiFetch(`/api/proposals?${params.toString()}`, session.access_token);
+              if (filters.user?.trim()) {
+                params.set("user", filters.user.trim());
+              }
+
+              if (filters.user?.trim()) {
+                params.set("user", filters.user.trim());
+              }
+
+              return apiFetch(`/api/proposals?${params.toString()}`, session.access_token);
           })(),
         ]);
 
@@ -382,7 +390,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [currentPage]);
+  }, [currentPage, filters.status, filters.client, filters.code, filters.user]);
 
   useEffect(() => {
     setCurrentPage(1);
