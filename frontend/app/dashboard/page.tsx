@@ -926,8 +926,17 @@ export default function DashboardPage() {
     );
   }, [isAdmin, proposals, profile?.id]);
 
+  const useConsolidatedLocalSource =
+    (agendaFilter !== "all" || scopeFilter !== "all") &&
+    metricsSource.length > 0;
+
+  const localFilterSource = useMemo(
+    () => (useConsolidatedLocalSource ? metricsSource : proposals),
+    [useConsolidatedLocalSource, metricsSource, proposals]
+  );
+
   const filteredProposals = useMemo(() => {
-    const filtered = proposals.filter((proposal) => {
+    const filtered = localFilterSource.filter((proposal) => {
       if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
         return false;
       }
@@ -968,10 +977,10 @@ export default function DashboardPage() {
         : true;
 
       return (
-          matchesStatus &&
-          matchesClient &&
-          matchesCode
-        );
+        matchesStatus &&
+        matchesClient &&
+        matchesCode
+      );
     });
 
     if (!autoSortByAgenda) {
@@ -1003,7 +1012,7 @@ export default function DashboardPage() {
       return updatedB.localeCompare(updatedA);
     });
   }, [
-    proposals,
+    localFilterSource,
     filters,
     isAdmin,
     scopeFilter,
@@ -1127,7 +1136,9 @@ export default function DashboardPage() {
     );
   }, [metricsSource]);
 
-  const totalPages = serverPageCount || Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
+  const totalPages = useConsolidatedLocalSource
+    ? Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE))
+    : serverPageCount || Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1136,7 +1147,9 @@ export default function DashboardPage() {
   }, [currentPage, totalPages]);
 
   const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const paginatedProposals = filteredProposals;
+  const paginatedProposals = useConsolidatedLocalSource
+    ? filteredProposals.slice(startIndex, startIndex + PAGE_SIZE)
+    : filteredProposals;
 
   async function updateProposalStatus(proposalId: string, newStatus: EditableStatus) {
     if (!proposalId || !accessToken) return;
@@ -1688,7 +1701,7 @@ export default function DashboardPage() {
 
                 <div className="flex flex-col items-start gap-2 text-sm text-slate-500 md:items-end">
                   <div>
-                    Total filtrado: <strong>{serverTotalCount || filteredProposals.length}</strong>
+                    Total filtrado: <strong>{useConsolidatedLocalSource ? filteredProposals.length : (serverTotalCount || filteredProposals.length)}</strong>
                   </div>
 
                   <div className="flex flex-col gap-1">
