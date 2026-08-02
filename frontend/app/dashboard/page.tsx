@@ -312,10 +312,6 @@ export default function DashboardPage() {
                 params.set("user", filters.user.trim());
               }
 
-              if (filters.user?.trim()) {
-                params.set("user", filters.user.trim());
-              }
-
               return apiFetch(`/api/proposals?${params.toString()}`, session.access_token);
           })(),
         ]);
