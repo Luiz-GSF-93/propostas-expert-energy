@@ -84,11 +84,11 @@ function MetricCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-3xl border border-slate-200/80 bg-white/95 p-5 shadow-sm backdrop-blur">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {title}
       </p>
-      <p className={`mt-2 text-2xl font-bold ${valueClassName}`}>{value}</p>
+      <p className={`mt-3 text-2xl font-bold ${valueClassName}`}>{value}</p>
       {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
     </div>
   );
@@ -98,6 +98,14 @@ function IconMenu() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconChevronLeft() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -132,11 +140,7 @@ function IconBolt() {
 function IconHelp() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path
-        d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M12 17h.01" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="12" cy="12" r="9" />
     </svg>
@@ -191,17 +195,25 @@ function SidebarActionButton({
   title?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title || label}
-      className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-white shadow-sm transition hover:scale-[1.01] hover:shadow-md ${collapsed ? "justify-center" : "justify-start"} ${className}`}
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-        {icon}
-      </span>
-      {!collapsed && <span className="truncate">{label}</span>}
-    </button>
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={onClick}
+        title={title || label}
+        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${collapsed ? "justify-center" : "justify-start"} ${className}`}
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+          {icon}
+        </span>
+        {!collapsed && <span className="truncate">{label}</span>}
+      </button>
+
+      {collapsed && (
+        <div className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-50 hidden -translate-y-1/2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white shadow-xl group-hover:block">
+          {label}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -714,10 +726,8 @@ export default function DashboardPage() {
     }
 
     const pricingRowsTotal = sumPricingRows(getNestedValue(editable, ["pricingRows"]));
-
     const pricingTaxes =
       parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_taxes"])) ?? 0;
-
     const pricingDiscount =
       parsePossibleNumber(getNestedValue(editable, ["fields", "pricing_discount"])) ?? 0;
 
@@ -1291,8 +1301,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100">
-      {/* Mobile button */}
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe_0%,_#f8fafc_32%,_#f1f5f9_100%)]">
       <button
         type="button"
         onClick={() => setMobileSidebarOpen(true)}
@@ -1302,15 +1311,13 @@ export default function DashboardPage() {
         <IconMenu />
       </button>
 
-      {/* Mobile overlay */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[1px] xl:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] xl:hidden"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
 
-      {/* Mobile sidebar */}
       <aside
         className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-800 bg-slate-950 text-white shadow-2xl transition-transform duration-300 xl:hidden ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -1318,7 +1325,7 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
               <IconDashboard />
             </span>
             <div>
@@ -1339,7 +1346,7 @@ export default function DashboardPage() {
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
               Acessos rápidos
             </p>
             <p className="mt-1 text-xs text-slate-500">
@@ -1373,40 +1380,38 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Desktop sidebar */}
       <aside
-        className={`fixed bottom-4 left-4 top-4 z-30 hidden flex-col rounded-[28px] border border-slate-800 bg-slate-950 text-white shadow-2xl transition-all duration-300 xl:flex ${
+        className={`fixed bottom-4 left-4 top-4 z-30 hidden flex-col overflow-visible rounded-[30px] border border-slate-800/80 bg-slate-950/95 text-white shadow-2xl backdrop-blur xl:flex ${
           quickAccessCollapsed ? "w-24" : "w-72"
-        }`}
+        } transition-all duration-300`}
       >
         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-4">
-          {!quickAccessCollapsed && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-                <IconDashboard />
-              </span>
-              <div>
-                <p className="text-sm font-bold">Dashboard</p>
-                <p className="text-xs text-slate-400">Expert Energy</p>
+          {!quickAccessCollapsed ? (
+            <>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+                  <IconDashboard />
+                </span>
+                <div>
+                  <p className="text-sm font-bold">Dashboard</p>
+                  <p className="text-xs text-slate-400">Expert Energy</p>
+                </div>
               </div>
-            </div>
-          )}
 
-          {quickAccessCollapsed && (
+              <button
+                type="button"
+                onClick={() => setQuickAccessCollapsed(true)}
+                className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
+                aria-label="Recolher menu"
+                title="Recolher menu"
+              >
+                <IconChevronLeft />
+              </button>
+            </>
+          ) : (
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
               <IconDashboard />
             </div>
-          )}
-
-          {!quickAccessCollapsed && (
-            <button
-              type="button"
-              onClick={() => setQuickAccessCollapsed(true)}
-              className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
-              aria-label="Recolher menu"
-            >
-              <IconMenu />
-            </button>
           )}
         </div>
 
@@ -1427,7 +1432,7 @@ export default function DashboardPage() {
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {!quickAccessCollapsed && (
             <div className="px-1 pb-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                 Acessos rápidos
               </p>
               <p className="mt-1 text-xs text-slate-500">
@@ -1465,61 +1470,61 @@ export default function DashboardPage() {
         }`}
       >
         <div className="mx-auto max-w-7xl space-y-6 px-4 pb-6 pt-20 xl:px-6 xl:pt-6">
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Área interna
+          <div className="overflow-hidden rounded-[32px] border border-white/60 bg-white/80 shadow-sm backdrop-blur">
+            <div className="bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#334155_100%)] px-8 py-8 text-white">
+              <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    Área interna
+                  </div>
+
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    Dashboard comercial
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                    Gestão de propostas, metas, agenda comercial e produtividade do time.
+                  </p>
                 </div>
 
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                  Dashboard comercial
-                </h1>
-                <p className="mt-2 text-sm text-slate-600">
-                  Gestão de propostas, agenda comercial, metas e acompanhamento da operação.
-                </p>
+                <div className="xl:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMobileSidebarOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                  >
+                    <IconMenu />
+                    Menu
+                  </button>
+                </div>
               </div>
 
-              <div className="xl:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileSidebarOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <IconMenu />
-                  Menu
-                </button>
-              </div>
-            </div>
-
-            {profile ? (
-              <>
-                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
+              {profile ? (
+                <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:grid-cols-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                       Nome
                     </p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
+                    <p className="mt-1 text-sm font-medium text-white">
                       {profile.full_name || profile.name || "Não informado"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                       E-mail
                     </p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
+                    <p className="mt-1 text-sm font-medium text-white">
                       {profile.email || "Não informado"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                       Perfil
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-white">
                         {profile.profile ||
                           profile.role_label ||
                           formatRole(profile.role) ||
@@ -1527,23 +1532,22 @@ export default function DashboardPage() {
                       </p>
 
                       {isAdmin && (
-                        <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                        <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-900">
                           Administrador
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
+              ) : (
+                <p className="text-sm text-red-200">Perfil não encontrado.</p>
+              )}
+            </div>
 
-                {isAdmin && (
-                  <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                    Você está em modo administrador e pode visualizar propostas de
-                    todos os usuários, inclusive as criadas por você.
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-red-600">Perfil não encontrado.</p>
+            {isAdmin && (
+              <div className="border-t border-slate-200 bg-blue-50 px-8 py-3 text-sm text-blue-900">
+                Você está em modo administrador e pode visualizar propostas de todos os usuários, inclusive as criadas por você.
+              </div>
             )}
           </div>
 
@@ -1631,7 +1635,7 @@ export default function DashboardPage() {
             normalizeStatus={normalizeStatus}
           />
 
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
+          <div className="rounded-[32px] border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
             <div className="mb-6 flex flex-col gap-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -1655,7 +1659,7 @@ export default function DashboardPage() {
                     <select
                       value={agendaFilter}
                       onChange={(e) => setAgendaFilter(e.target.value as AgendaFilter)}
-                      className="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                      className="min-w-[220px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                     >
                       <option value="all">Todos</option>
                       <option value="scheduled">Somente com agenda</option>
@@ -1676,7 +1680,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-7">
+              <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-7">
                 {isAdmin && (
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1685,7 +1689,7 @@ export default function DashboardPage() {
                     <select
                       value={scopeFilter}
                       onChange={(e) => setScopeFilter(e.target.value as ScopeFilter)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                     >
                       <option value="all">Todas as propostas</option>
                       <option value="mine">Somente minhas</option>
@@ -1701,7 +1705,7 @@ export default function DashboardPage() {
                     <select
                       value={filters.user}
                       onChange={(e) => handleFilterChange("user", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                     >
                       <option value="">Todos os usuários</option>
                       {creatorOptions.map((option) => (
@@ -1720,7 +1724,7 @@ export default function DashboardPage() {
                   <select
                     value={filters.status}
                     onChange={(e) => handleFilterChange("status", e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   >
                     <option value="">Todos</option>
                     <option value="draft">Rascunho</option>
@@ -1739,7 +1743,7 @@ export default function DashboardPage() {
                     value={filters.client}
                     onChange={(e) => handleFilterChange("client", e.target.value)}
                     placeholder="Pesquisar cliente"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1752,7 +1756,7 @@ export default function DashboardPage() {
                     value={filters.code}
                     onChange={(e) => handleFilterChange("code", e.target.value)}
                     placeholder="Pesquisar código"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1764,7 +1768,7 @@ export default function DashboardPage() {
                     type="date"
                     value={filters.dateStart}
                     onChange={(e) => handleFilterChange("dateStart", e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1776,7 +1780,7 @@ export default function DashboardPage() {
                     type="date"
                     value={filters.dateEnd}
                     onChange={(e) => handleFilterChange("dateEnd", e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -1784,7 +1788,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                   >
                     Limpar filtros
                   </button>
@@ -1793,7 +1797,7 @@ export default function DashboardPage() {
             </div>
 
             {filteredProposals.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                 <p className="text-slate-600">
                   Nenhuma proposta encontrada com os filtros aplicados.
                 </p>
@@ -1804,7 +1808,7 @@ export default function DashboardPage() {
                   {paginatedProposals.map((proposal) => (
                     <div
                       key={proposal.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
                       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
@@ -1840,7 +1844,7 @@ export default function DashboardPage() {
 
                             return (
                               <div
-                                className={`rounded-xl border p-3 ${nextContactStatus.containerClassName}`}
+                                className={`rounded-2xl border p-3 ${nextContactStatus.containerClassName}`}
                               >
                                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1865,14 +1869,14 @@ export default function DashboardPage() {
                                     onChange={(e) =>
                                       handleNextContactDraftChange(proposal.id, e.target.value)
                                     }
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 md:max-w-[220px]"
                                   />
 
                                   <button
                                     type="button"
                                     onClick={() => saveNextContactDate(proposal)}
                                     disabled={updatingNextContactId === proposal.id}
-                                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     {updatingNextContactId === proposal.id
                                       ? "Salvando..."
@@ -1883,7 +1887,7 @@ export default function DashboardPage() {
                                     type="button"
                                     onClick={() => clearNextContactDate(proposal)}
                                     disabled={updatingNextContactId === proposal.id}
-                                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     Limpar
                                   </button>
@@ -1918,7 +1922,7 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleEditProposal(proposal.id)}
                               disabled={!proposal.id}
-                              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Abrir / editar
                             </button>
@@ -1927,7 +1931,7 @@ export default function DashboardPage() {
                               <button
                                 type="button"
                                 onClick={() => window.open(`/public/${proposal.public_slug}`, "_blank")}
-                                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
                               >
                                 Ver versão pública
                               </button>
@@ -1948,7 +1952,7 @@ export default function DashboardPage() {
                                 )
                               }
                               disabled={!proposal.id || updatingStatusId === proposal.id}
-                              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <option value="draft">Rascunho</option>
                               <option value="pending">Enviada</option>
@@ -1972,7 +1976,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                       disabled={currentPage === 1}
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Anterior
                     </button>
@@ -1985,7 +1989,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                       disabled={currentPage === totalPages}
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Próxima
                     </button>
