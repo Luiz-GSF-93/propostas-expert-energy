@@ -936,7 +936,12 @@ export default function DashboardPage() {
   );
 
   const filteredProposals = useMemo(() => {
-    const todayDateOnly = getDateOnly(new Date().toISOString()) || "";
+    const today = new Date();
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
 
     const filtered = localFilterSource.filter((proposal) => {
       if (isAdmin && scopeFilter === "mine" && !isOwnProposal(proposal)) {
@@ -947,23 +952,36 @@ export default function DashboardPage() {
         return false;
       }
 
-      const nextContactDate = getNextContactDate(proposal);
-      const isOverdueAgenda =
-        !!nextContactDate && !!todayDateOnly && nextContactDate < todayDateOnly;
-
-      if (agendaFilter === "scheduled" && !nextContactDate) {
-        return false;
-      }
-
-      if (agendaFilter === "unscheduled" && !!nextContactDate) {
-        return false;
-      }
-
-      if (agendaFilter === "overdue" && !isOverdueAgenda) {
-        return false;
-      }
-
       const proposalStatus = String(normalizeStatus(proposal.status) || "").toLowerCase();
+      const isAgendaStatus =
+        proposalStatus === "draft" || proposalStatus === "pending";
+
+      const nextContactDate = getNextContactDate(proposal);
+
+      let isOverdueAgenda = false;
+
+      if (isAgendaStatus && nextContactDate) {
+        const nextContact = new Date(`${nextContactDate}T00:00:00`);
+        const nextContactOnly = new Date(
+          nextContact.getFullYear(),
+          nextContact.getMonth(),
+          nextContact.getDate()
+        );
+
+        isOverdueAgenda = nextContactOnly.getTime() < todayOnly.getTime();
+      }
+
+      if (agendaFilter === "scheduled" && (!isAgendaStatus || !nextContactDate)) {
+        return false;
+      }
+
+      if (agendaFilter === "unscheduled" && (!isAgendaStatus || !!nextContactDate)) {
+        return false;
+      }
+
+      if (agendaFilter === "overdue" && (!isAgendaStatus || !isOverdueAgenda)) {
+        return false;
+      }
       const clientName = String(proposal.client_name || "").toLowerCase();
       const proposalCode = String(proposal.proposal_code || "").toLowerCase();
 
