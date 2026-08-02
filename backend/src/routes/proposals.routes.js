@@ -324,7 +324,18 @@ router.get("/", authMiddleware, async (req, res) => {
       meta: {
         page,
         limit,
-        total: count || 0
+        total: count || 0,
+        totalPages: Math.max(1, Math.ceil((count || 0) / limit)),
+        hasNextPage: page < Math.ceil((count || 0) / limit),
+        hasPrevPage: page > 1
+      },
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.max(1, Math.ceil((count || 0) / limit)),
+        hasNextPage: page < Math.ceil((count || 0) / limit),
+        hasPrevPage: page > 1
       }
     });
   } catch (error) {
