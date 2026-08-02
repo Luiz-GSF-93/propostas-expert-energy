@@ -97,7 +97,7 @@ function normalizeProposalStatus(status) {
 
 function normalizePagination(query) {
   const page = Math.max(parseInt(query.page || "1", 10), 1);
-  const limit = Math.min(Math.max(parseInt(query.limit || "20", 10), 1), 100);
+  const limit = Math.max(parseInt(query.limit || "20", 10), 1);
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
