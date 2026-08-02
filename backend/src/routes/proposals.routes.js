@@ -270,7 +270,7 @@ router.post("/", authMiddleware, async (req, res) => {
 
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const { status, search, user } = req.query;
+    const { status, search, user, dateStart, dateEnd } = req.query;
     const { page, limit, from, to } = normalizePagination(req.query);
 
     const accessContext = await getAccessContext(req.user);
@@ -300,6 +300,17 @@ router.get("/", authMiddleware, async (req, res) => {
         metricsQuery = metricsQuery.eq("created_by", user);
       }
 
+      const normalizedDateStart =
+        typeof dateStart === "string" ? dateStart.trim() : "";
+      const normalizedDateEnd =
+        typeof dateEnd === "string" ? dateEnd.trim() : "";
+
+      const buildEndExclusiveIso = (value) => {
+        const end = new Date(`${value}T00:00:00.000Z`);
+        end.setUTCDate(end.getUTCDate() + 1);
+        return end.toISOString();
+      };
+
     if (status) {
       const normalizedStatus = normalizeProposalStatus(status);
 
@@ -322,6 +333,17 @@ router.get("/", authMiddleware, async (req, res) => {
       metricsQuery = metricsQuery.or(
         `client_name.ilike.%${term}%,proposal_code.ilike.%${term}%,title.ilike.%${term}%`
       );
+    }
+
+    if (normalizedDateStart) {
+      query = query.gte("created_at", `${normalizedDateStart}T00:00:00.000Z`);
+      metricsQuery = metricsQuery.gte("created_at", `${normalizedDateStart}T00:00:00.000Z`);
+    }
+
+    if (normalizedDateEnd) {
+      const endExclusiveIso = buildEndExclusiveIso(normalizedDateEnd);
+      query = query.lt("created_at", endExclusiveIso);
+      metricsQuery = metricsQuery.lt("created_at", endExclusiveIso);
     }
 
     const [
