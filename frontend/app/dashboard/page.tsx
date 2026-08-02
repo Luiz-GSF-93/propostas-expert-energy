@@ -288,7 +288,7 @@ export default function DashboardPage() {
 
         const [profileResponse, proposalsResponse] = await Promise.all([
           apiFetch("/api/auth/me", session.access_token),
-          apiFetch("/api/proposals?page=1&limit=100", session.access_token),
+          apiFetch(`/api/proposals?page=${currentPage}&limit=${PAGE_SIZE}`, session.access_token),
         ]);
 
         if (!profileResponse.ok) {
@@ -329,9 +329,18 @@ export default function DashboardPage() {
             ? ((proposalsData as ApiEnvelope<Proposal[]>)?.rows as Proposal[])
             : [];
 
+          const proposalsEnvelope = proposalsResponse as any;
+          const totalFromApi =
+            proposalsEnvelope?.pagination?.total ??
+            proposalsEnvelope?.meta?.total ??
+            normalizedProposals.length;
+          const totalPagesFromApi =
+            proposalsEnvelope?.pagination?.totalPages ??
+            Math.max(1, Math.ceil((totalFromApi || normalizedProposals.length) / PAGE_SIZE));
+
           setServerTotalCount(totalFromApi || normalizedProposals.length);
-        setServerPageCount(totalPagesFromApi || 1);
-        setProposals(normalizedProposals);
+          setServerPageCount(totalPagesFromApi || 1);
+          setProposals(normalizedProposals);
         } else {
           setProposals([]);
         }
@@ -1098,10 +1107,7 @@ export default function DashboardPage() {
   }, [currentPage, totalPages]);
 
   const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const paginatedProposals = filteredProposals.slice(
-    startIndex,
-    startIndex + PAGE_SIZE
-  );
+  const paginatedProposals = filteredProposals;
 
   async function updateProposalStatus(proposalId: string, newStatus: EditableStatus) {
     if (!proposalId || !accessToken) return;
@@ -1972,7 +1978,7 @@ export default function DashboardPage() {
 
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 md:flex-row md:items-center md:justify-between">
                   <p className="text-sm text-slate-500">
-                    Exibindo <strong>{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, filteredProposals.length)}</strong> de <strong>{filteredProposals.length}</strong> propostas
+                    Exibindo <strong>{paginatedProposals.length === 0 ? 0 : startIndex + 1}-{startIndex + paginatedProposals.length}</strong> de <strong>{serverTotalCount || filteredProposals.length}</strong> propostas
                   </p>
 
                   <div className="flex items-center gap-2">
