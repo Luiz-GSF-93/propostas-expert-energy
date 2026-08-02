@@ -312,6 +312,14 @@ export default function DashboardPage() {
                 params.set("user", filters.user.trim());
               }
 
+              if (filters.dateStart?.trim()) {
+                params.set("dateStart", filters.dateStart.trim());
+              }
+
+              if (filters.dateEnd?.trim()) {
+                params.set("dateEnd", filters.dateEnd.trim());
+              }
+
               return apiFetch(`/api/proposals?${params.toString()}`, session.access_token);
           })(),
         ]);
@@ -386,7 +394,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [currentPage, filters.status, filters.client, filters.code, filters.user]);
+  }, [currentPage, filters.status, filters.client, filters.code, filters.user, filters.dateStart, filters.dateEnd]);
 
   useEffect(() => {
     setCurrentPage(1);
