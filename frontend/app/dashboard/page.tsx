@@ -334,21 +334,21 @@ export default function DashboardPage() {
 
         if (proposalsResponse.ok) {
           const proposalsData = (await proposalsResponse.json()) as
-            | ApiEnvelope<Proposal[]>
-            | Proposal[]
+            | ApiEnvelope<Proposal[currentPage]>
+            | Proposal[currentPage]
             | null;
 
           const normalizedProposals = Array.isArray(proposalsData)
             ? proposalsData
-            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.items)
-            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.items as Proposal[])
-            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.data)
-            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.data as Proposal[])
-            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.proposals)
-            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.proposals as Proposal[])
-            : Array.isArray((proposalsData as ApiEnvelope<Proposal[]>)?.rows)
-            ? ((proposalsData as ApiEnvelope<Proposal[]>)?.rows as Proposal[])
-            : [];
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.items)
+            ? ((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.items as Proposal[currentPage])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.data)
+            ? ((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.data as Proposal[currentPage])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.proposals)
+            ? ((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.proposals as Proposal[currentPage])
+            : Array.isArray((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.rows)
+            ? ((proposalsData as ApiEnvelope<Proposal[currentPage]>)?.rows as Proposal[currentPage])
+            : [currentPage];
 
           const proposalsEnvelope = proposalsData as any;
           const totalFromApi =
@@ -364,12 +364,12 @@ export default function DashboardPage() {
           setServerMetricsRows(
             Array.isArray(proposalsEnvelope?.metrics?.rows)
               ? (proposalsEnvelope.metrics.rows as Array<Partial<Proposal>>)
-              : []
+              : [currentPage]
           );
           setProposals(normalizedProposals);
         } else {
-          setServerMetricsRows([]);
-          setProposals([]);
+          setServerMetricsRows([currentPage]);
+          setProposals([currentPage]);
         }
 
         setMessage("");
@@ -382,7 +382,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
