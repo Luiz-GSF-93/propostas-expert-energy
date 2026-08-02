@@ -926,13 +926,17 @@ export default function DashboardPage() {
     );
   }, [isAdmin, proposals, profile?.id]);
 
+  const consolidatedProposalRows = useMemo(
+    () => (serverMetricsRows.length ? (serverMetricsRows as Proposal[]) : proposals),
+    [serverMetricsRows, proposals]
+  );
+
   const useConsolidatedLocalSource =
-    (agendaFilter !== "all" || scopeFilter !== "all") &&
-    metricsSource.length > 0;
+    agendaFilter !== "all" || scopeFilter !== "all";
 
   const localFilterSource = useMemo(
-    () => (useConsolidatedLocalSource ? metricsSource : proposals),
-    [useConsolidatedLocalSource, metricsSource, proposals]
+    () => (useConsolidatedLocalSource ? consolidatedProposalRows : proposals),
+    [useConsolidatedLocalSource, consolidatedProposalRows, proposals]
   );
 
   const filteredProposals = useMemo(() => {
@@ -1160,6 +1164,10 @@ export default function DashboardPage() {
   const totalPages = useConsolidatedLocalSource
     ? Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE))
     : serverPageCount || Math.max(1, Math.ceil(filteredProposals.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [agendaFilter, scopeFilter]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
