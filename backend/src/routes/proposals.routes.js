@@ -212,6 +212,10 @@ router.post("/", authMiddleware, async (req, res) => {
       client_phone: client_phone || null,
       editable_json: editable_json || {},
       status: normalizedStatus,
+      approved_at:
+        normalizedStatus === "approved" || normalizedStatus === "published"
+          ? new Date().toISOString()
+          : null,
       current_version: 1,
       public_enabled: false,
       created_by: req.user.id,
@@ -461,7 +465,7 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       const isApprovedStatus =
         normalizedStatus === "approved" || normalizedStatus === "published";
 
-      if (isApprovedStatus && !proposal?.approved_at) {
+      if (isApprovedStatus && !existingProposal?.approved_at) {
         updatePayload.approved_at = new Date().toISOString();
       }
     }
@@ -554,6 +558,31 @@ router.put("/:id", authMiddleware, async (req, res) => {
 
     const accessContext = await getAccessContext(req.user);
 
+    let existingProposalQuery = adminSupabase
+      .from("proposals")
+      .select("id, created_by, status, approved_at")
+      .eq("id", id);
+
+    if (!accessContext.isAdmin) {
+      existingProposalQuery = existingProposalQuery.eq("created_by", req.user.id);
+    }
+
+    const { data: existingProposal, error: existingProposalError } =
+      await existingProposalQuery.maybeSingle();
+
+    if (existingProposalError) {
+      return res.status(500).json({
+        message: "Erro ao localizar a proposta antes da atualização.",
+        error: existingProposalError.message
+      });
+    }
+
+    if (!existingProposal) {
+      return res.status(404).json({
+        message: "Proposta não encontrada."
+      });
+    }
+
     const updatePayload = {
       updated_by: req.user.id
     };
@@ -564,7 +593,17 @@ router.put("/:id", authMiddleware, async (req, res) => {
     if (client_email !== undefined) updatePayload.client_email = client_email;
     if (client_phone !== undefined) updatePayload.client_phone = client_phone;
     if (editable_json !== undefined) updatePayload.editable_json = editable_json;
-    if (status !== undefined) updatePayload.status = normalizeProposalStatus(status);
+    if (status !== undefined) {
+      const normalizedNextStatus = normalizeProposalStatus(status);
+      updatePayload.status = normalizedNextStatus;
+
+      const isApprovedStatus =
+        normalizedNextStatus === "approved" || normalizedNextStatus === "published";
+
+      if (isApprovedStatus && !existingProposal?.approved_at) {
+        updatePayload.approved_at = new Date().toISOString();
+      }
+    }
 
     let updateProposalQuery = adminSupabase
       .from("proposals")
