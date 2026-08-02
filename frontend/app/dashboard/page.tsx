@@ -1672,7 +1672,7 @@ export default function DashboardPage() {
           <GoalsPanel
             isAdmin={isAdmin}
             accessToken={accessToken}
-            filteredProposals={filteredProposals}
+            filteredProposals={metricsSource}
             extractProposalValue={extractProposalValue}
             normalizeStatus={normalizeStatus}
           />
