@@ -4,7 +4,8 @@ const cors = require("cors");
 const env = require("./config/env");
 const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
-const proposalsRoutes = require("./routes/proposals.routes");
+\1
+const financeRoutes = require("./routes/finance.routes");
 const monthlyGoalsRoutes = require("./routes/monthly-goals.routes");
 const contactsRoutes = require("./routes/contacts.routes");
 
@@ -30,7 +31,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/proposals", proposalsRoutes);
+\1
+app.use("/api/finance", financeRoutes);
 app.use("/api/monthly-goals", monthlyGoalsRoutes);
 app.use("/api/contacts", contactsRoutes);
 
