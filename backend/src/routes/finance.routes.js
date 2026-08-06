@@ -873,6 +873,91 @@ router.get("/emprestimos", authMiddleware, requireAdmin, async (req, res) => {
 });
 
 
+
+
+router.get("/emprestimos/resumo", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { getLoansDashboardData } = require("../services/finance/finance-loans.service");
+    const payload = await getLoansDashboardData(adminSupabase);
+
+    return res.status(200).json({
+      latest_batch: payload.latest_batch,
+      summary: payload.summary,
+      total_contracts: payload.contracts.length,
+    });
+  } catch (error) {
+    console.error("[finance.emprestimos.resumo]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar resumo de empréstimos."
+    });
+  }
+});
+
+router.get("/emprestimos/contratos", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { getLoansDashboardData } = require("../services/finance/finance-loans.service");
+    const payload = await getLoansDashboardData(adminSupabase);
+
+    return res.status(200).json({
+      latest_batch: payload.latest_batch,
+      headers: payload.headers,
+      contracts: payload.contracts,
+    });
+  } catch (error) {
+    console.error("[finance.emprestimos.contratos]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar contratos de empréstimos."
+    });
+  }
+});
+
+router.get("/emprestimos/contratos/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { getLoanContractDetail } = require("../services/finance/finance-loans.service");
+    const payload = await getLoanContractDetail(adminSupabase, req.params.id);
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error("[finance.emprestimos.contrato]", error);
+    return res.status(404).json({
+      message: error.message || "Erro ao carregar contrato de empréstimo."
+    });
+  }
+});
+
+router.get("/emprestimos/contratos/:id/parcelas", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { getLoanContractDetail } = require("../services/finance/finance-loans.service");
+    const payload = await getLoanContractDetail(adminSupabase, req.params.id);
+
+    return res.status(200).json({
+      contract_id: payload.contract.id,
+      schedule: payload.schedule,
+      schedule_summary: payload.schedule_summary,
+    });
+  } catch (error) {
+    console.error("[finance.emprestimos.parcelas]", error);
+    return res.status(404).json({
+      message: error.message || "Erro ao carregar parcelas do empréstimo."
+    });
+  }
+});
+
+router.post("/emprestimos/calcular", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { calculateLoanSimulation } = require("../services/finance/finance-loans.service");
+    const payload = calculateLoanSimulation(req.body || {});
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error("[finance.emprestimos.calcular]", error);
+    return res.status(400).json({
+      message: error.message || "Erro ao calcular empréstimo."
+    });
+  }
+});
+
+
 module.exports = router;
 
 function extractFinanceValues(row) {
@@ -920,6 +1005,10 @@ function isFinanceTitleRow(row) {
     first.includes("gestao de custos") ||
     first.includes("custos fixos e variáveis") ||
     first.includes("custos fixos e variaveis") ||
+    first.includes("controle de empréstimos") ||
+    first.includes("controle de emprestimos") ||
+    first.includes("resumo dos empréstimos") ||
+    first.includes("resumo dos emprestimos") ||
     first.includes("💰") ||
     first.includes("📑");
 
