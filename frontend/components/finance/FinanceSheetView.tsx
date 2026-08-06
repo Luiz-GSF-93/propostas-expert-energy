@@ -27,18 +27,34 @@ type Props = {
   endpoint: string;
 };
 
-function isNegativeValue(value: unknown) {
-  if (typeof value === "number") return value < 0;
-  if (typeof value !== "string") return false;
+function parseNumericValue(value: unknown): number | null {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return null;
 
   const cleaned = value
     .replace(/\s/g, "")
+    .replace("R$", "")
     .replace(/\./g, "")
     .replace(",", ".")
     .replace("%", "");
 
+  if (cleaned === "") return null;
+
   const parsed = Number(cleaned);
-  return !Number.isNaN(parsed) && parsed < 0;
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function isNegativeValue(value: unknown) {
+  const parsed = parseNumericValue(value);
+  return parsed !== null && parsed < 0;
+}
+
+function isNumericLike(value: unknown) {
+  return parseNumericValue(value) !== null;
+}
+
+function isPercentLike(value: unknown) {
+  return typeof value === "string" && value.includes("%");
 }
 
 function isExpenseRowLabel(value: unknown) {
@@ -57,6 +73,43 @@ function isExpenseRowLabel(value: unknown) {
     lower.includes("emprest") ||
     lower.includes("(-)")
   );
+}
+
+function isSummaryRowLabel(value: unknown) {
+  if (typeof value !== "string") return false;
+  const upper = value.toUpperCase();
+
+  return (
+    upper.includes("(=)") ||
+    upper.includes("TOTAL") ||
+    upper.includes("SALDO FINAL") ||
+    upper.includes("SALDO INICIAL") ||
+    upper.includes("RESULTADO") ||
+    upper.includes("LUCRO") ||
+    upper.includes("PREJUÍZO") ||
+    upper.includes("PREJUIZO") ||
+    upper.includes("EBITDA")
+  );
+}
+
+function formatDisplayValue(value: unknown) {
+  if (typeof value === "number") return String(value);
+  if (typeof value !== "string") return String(value ?? "");
+
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const parsed = parseNumericValue(trimmed);
+  if (parsed === null) return trimmed;
+
+  if (isPercentLike(trimmed)) {
+    return `${parsed.toFixed(2).replace(".", ",")}%`;
+  }
+
+  return parsed.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
@@ -107,7 +160,6 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
     }
 
     load();
-
     return () => {
       active = false;
     };
@@ -189,12 +241,6 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
         </div>
       </div>
 
-      {!Array.isArray(data.headers) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          A API não retornou cabeçalhos reais. Exibindo colunas provisórias.
-        </div>
-      )}
-
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-4 py-3">
           <p className="text-sm text-slate-600">
@@ -205,67 +251,85 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
           </p>
         </div>
 
-        <div className="max-w-full overflow-x-auto">
-          <table className="min-w-[1200px] border-collapse text-sm">
-            <thead className="sticky top-0 z-20 bg-slate-100">
-              <tr>
-                {headers.map((header, index) => (
-                  <th
-                    key={`${header}-${index}`}
-                    className={
-                      index === 0
-                        ? "sticky left-0 z-30 min-w-[280px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
-                        : "min-w-[130px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
-                    }
-                  >
-                    <div className="whitespace-normal break-words">{header}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
+        {rows.length === 0 ? (
+          <div className="px-4 py-8 text-sm text-slate-500">
+            Nenhuma linha útil encontrada para esta planilha.
+          </div>
+        ) : (
+          <div className="max-w-full overflow-x-auto">
+            <table className="min-w-[1250px] border-collapse text-sm">
+              <thead className="sticky top-0 z-20 bg-slate-100">
+                <tr>
+                  {headers.map((header, index) => (
+                    <th
+                      key={`${header}-${index}`}
+                      className={
+                        index === 0
+                          ? "sticky left-0 z-30 min-w-[340px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
+                          : "min-w-[120px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-right font-semibold text-slate-800"
+                      }
+                    >
+                      <div className={index === 0 ? "whitespace-normal break-words text-left" : "text-right"}>
+                        {header}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
 
-            <tbody>
-              {rows.map((row, rowIndex) => {
-                const values = Array.isArray(row?.values) ? row.values : [];
-                const expenseRow = isExpenseRowLabel(values[0]);
-                const rowKey = row?.id || `row-${rowIndex}`;
+              <tbody>
+                {rows.map((row, rowIndex) => {
+                  const values = Array.isArray(row?.values) ? row.values : [];
+                  const expenseRow = isExpenseRowLabel(values[0]);
+                  const summaryRow = isSummaryRowLabel(values[0]);
+                  const rowKey = row?.id || `row-${rowIndex}`;
 
-                return (
-                  <tr
-                    key={rowKey}
-                    className={expenseRow ? "bg-red-50/40" : "odd:bg-white even:bg-slate-50/40"}
-                  >
-                    {headers.map((_, index) => {
-                      const value = values[index] ?? "";
-                      const negative = isNegativeValue(value);
+                  return (
+                    <tr
+                      key={rowKey}
+                      className={
+                        summaryRow
+                          ? "bg-slate-100/90"
+                          : expenseRow
+                          ? "bg-red-50/40"
+                          : "odd:bg-white even:bg-slate-50/40"
+                      }
+                    >
+                      {headers.map((_, index) => {
+                        const value = values[index] ?? "";
+                        const negative = isNegativeValue(value);
+                        const numeric = index > 0 && isNumericLike(value);
 
-                      return (
-                        <td
-                          key={`${rowKey}-${index}`}
-                          className={
-                            index === 0
-                              ? "sticky left-0 z-10 min-w-[280px] border-b border-r border-slate-200 bg-inherit px-4 py-3 align-top"
-                              : "min-w-[130px] border-b border-r border-slate-200 px-4 py-3 align-top"
-                          }
-                        >
-                          <div
-                            className={[
-                              "whitespace-normal break-words",
-                              negative ? "font-semibold text-red-600" : "",
-                              !negative && expenseRow && index > 0 ? "text-red-500" : "text-slate-700",
-                            ].join(" ")}
+                        return (
+                          <td
+                            key={`${rowKey}-${index}`}
+                            className={
+                              index === 0
+                                ? "sticky left-0 z-10 min-w-[340px] border-b border-r border-slate-200 bg-inherit px-4 py-3 align-top"
+                                : "min-w-[120px] border-b border-r border-slate-200 px-3 py-3 align-top"
+                            }
                           >
-                            {String(value)}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                            <div
+                              className={[
+                                "whitespace-normal break-words",
+                                index === 0 ? "text-left" : numeric ? "text-right tabular-nums" : "text-left",
+                                negative ? "font-semibold text-red-600" : "text-slate-700",
+                                !negative && expenseRow && index > 0 ? "text-red-500" : "",
+                                summaryRow ? "font-semibold text-slate-900" : "",
+                              ].join(" ")}
+                            >
+                              {formatDisplayValue(value)}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
