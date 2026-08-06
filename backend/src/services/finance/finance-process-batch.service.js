@@ -1,18 +1,10 @@
-function normalizeText(value) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function parseNumber(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
 
-  const raw = String(value ?? "").trim();
+  let raw = String(value ?? "").trim();
+
   if (!raw) {
     return null;
   }
@@ -20,19 +12,33 @@ function parseNumber(value) {
   const hasPercent = raw.includes("%");
   const negativeByParentheses = raw.startsWith("(") && raw.endsWith(")");
 
-  let sanitized = raw
+  raw = raw
     .replace(/[R$\s]/g, "")
-    .replace(/\(/g, "")
-    .replace(/\)/g, "")
-    .replace(/\./g, "")
-    .replace(/,/g, ".")
-    .replace(/[^0-9.-]/g, "");
+    .replace(/[^\d,.\-()%]/g, "")
+    .replace(/[()]/g, "");
 
-  if (!sanitized || sanitized === "-" || sanitized === "." || sanitized === "-.") {
+  if (!raw) {
     return null;
   }
 
-  let parsed = Number(sanitized);
+  if (raw.includes(",") && raw.includes(".")) {
+    if (raw.lastIndexOf(",") > raw.lastIndexOf(".")) {
+      raw = raw.replace(/\./g, "").replace(",", ".");
+    } else {
+      raw = raw.replace(/,/g, "");
+    }
+  } else if (raw.includes(",")) {
+    raw = raw.replace(/\./g, "").replace(",", ".");
+  } else {
+    raw = raw.replace(/,/g, "");
+  }
+
+  const dotParts = raw.split(".");
+  if (dotParts.length > 2) {
+    raw = `${dotParts.slice(0, -1).join("")}.${dotParts[dotParts.length - 1]}`;
+  }
+
+  let parsed = Number(raw);
 
   if (!Number.isFinite(parsed)) {
     return null;
@@ -49,81 +55,123 @@ function parseNumber(value) {
   return parsed;
 }
 
-function flattenValues(input, acc = []) {
-  if (input == null) {
-    return acc;
+function normalizeCurrency(value) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return 0;
   }
 
-  if (Array.isArray(input)) {
-    for (const item of input) {
-      flattenValues(item, acc);
-    }
-    return acc;
+  if (Math.abs(numeric) > 9999999999.99) {
+    return 0;
   }
 
-  if (typeof input === "object") {
-    for (const value of Object.values(input)) {
-      flattenValues(value, acc);
-    }
-    return acc;
-  }
-
-  acc.push(input);
-  return acc;
+  return Number(numeric.toFixed(2));
 }
 
-function buildPreparedRows(stagingRows) {
-  return stagingRows.map((row) => {
-    const rawValues = flattenValues(row.payload_json ?? {});
-    const textValues = rawValues
-      .map((value) => String(value ?? "").trim())
-      .filter(Boolean);
+function normalizeRate(value) {
+  const numeric = Number(value);
 
-    const numbers = rawValues
-      .map((value) => parseNumber(value))
-      .filter((value) => Number.isFinite(value));
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
 
-    return {
-      sheet_name: row.sheet_name,
-      row_number: row.row_number,
-      text: normalizeText(textValues.join(" | ")),
-      numbers
-    };
-  });
+  if (Math.abs(numeric) > 10) {
+    return 0;
+  }
+
+  return Number(numeric.toFixed(6));
 }
 
-function findMetric(preparedRows, options) {
-  const {
-    sheetNames = [],
-    patterns = [],
-    fallbackPatterns = []
-  } = options;
+function normalizeYear(value) {
+  const numeric = Number(value);
 
-  const rows = preparedRows.filter((row) => sheetNames.includes(row.sheet_name));
+  if (!Number.isFinite(numeric) || numeric < 2000 || numeric > 2100) {
+    return new Date().getFullYear();
+  }
 
-  for (const row of rows) {
-    const matched = patterns.some((pattern) => pattern.test(row.text));
-    if (!matched) {
-      continue;
+  return Math.trunc(numeric);
+}
+
+async function loadAllStagingRows(adminSupabase, batchId) {
+  const pageSize = 1000;
+  let from = 0;
+  let allRows = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+
+    const { data, error } = await adminSupabase
+      .from("financial_import_staging")
+      .select("sheet_name, row_number, payload_json, created_at")
+      .eq("batch_id", batchId)
+      .order("sheet_name", { ascending: true })
+      .order("row_number", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Erro ao ler staging: ${error.message}`);
     }
 
-    if (row.numbers.length > 0) {
-      return row.numbers[row.numbers.length - 1];
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    allRows = allRows.concat(data);
+
+    if (data.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
+function buildSheetRowMap(stagingRows) {
+  const map = new Map();
+
+  for (const row of stagingRows) {
+    if (!map.has(row.sheet_name)) {
+      map.set(row.sheet_name, new Map());
+    }
+
+    const rowMap = map.get(row.sheet_name);
+    const values = Array.isArray(row.payload_json?.row) ? row.payload_json.row : [];
+    rowMap.set(row.row_number, values);
+  }
+
+  return map;
+}
+
+function getCell(sheetRowMap, sheetName, rowNumber, columnIndex) {
+  const sheet = sheetRowMap.get(sheetName);
+
+  if (!sheet) {
+    return null;
+  }
+
+  const row = sheet.get(rowNumber);
+
+  if (!row || !Array.isArray(row)) {
+    return null;
+  }
+
+  return row[columnIndex] ?? null;
+}
+
+function pickNumber(sheetRowMap, sources) {
+  for (const source of sources) {
+    const raw = getCell(sheetRowMap, source.sheet, source.row, source.col);
+    const parsed = parseNumber(raw);
+
+    if (parsed !== null && Number.isFinite(parsed)) {
+      return parsed;
     }
   }
 
-  for (const row of rows) {
-    const matched = fallbackPatterns.some((pattern) => pattern.test(row.text));
-    if (!matched) {
-      continue;
-    }
-
-    if (row.numbers.length > 0) {
-      return row.numbers[row.numbers.length - 1];
-    }
-  }
-
-  return null;
+  return 0;
 }
 
 async function processImportedBatch({ batchId, referenceYear, adminSupabase }) {
@@ -137,88 +185,85 @@ async function processImportedBatch({ batchId, referenceYear, adminSupabase }) {
     throw new Error("Lote de importação não encontrado.");
   }
 
-  const { data: stagingRows, error: stagingError } = await adminSupabase
-    .from("financial_import_staging")
-    .select("sheet_name, row_number, payload_json, created_at")
-    .eq("batch_id", batchId)
-    .order("sheet_name", { ascending: true })
-    .order("row_number", { ascending: true });
-
-  if (stagingError) {
-    throw new Error(`Erro ao ler staging: ${stagingError.message}`);
-  }
+  const stagingRows = await loadAllStagingRows(adminSupabase, batchId);
 
   if (!stagingRows || stagingRows.length === 0) {
     throw new Error("Nenhuma linha encontrada no staging para este lote.");
   }
 
-  const preparedRows = buildPreparedRows(stagingRows);
+  const sheetRowMap = buildSheetRowMap(stagingRows);
 
-  const grossRevenue =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "DRE"],
-      patterns: [/receita bruta/, /faturamento bruto/, /faturamento total/],
-      fallbackPatterns: [/faturamento/, /receita/]
-    }) ?? 0;
-
-  const netProfit =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "DRE"],
-      patterns: [/lucro liquido/, /resultado liquido/, /prejuizo liquido/],
-      fallbackPatterns: [/lucro/, /resultado/]
-    }) ?? 0;
-
-  const netMargin =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "DRE"],
-      patterns: [/margem liquida/],
-      fallbackPatterns: [/margem/]
-    }) ?? 0;
-
-  const ebitda =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "DRE"],
-      patterns: [/ebitda/]
-    }) ?? 0;
-
-  const cashBalance =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "Fluxo de Caixa"],
-      patterns: [/saldo final de caixa/, /saldo de caixa/, /caixa final/, /saldo final/],
-      fallbackPatterns: [/caixa/]
-    }) ?? 0;
-
-  const fixedCosts =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "Ponto de Equilíbrio", "Custos"],
-      patterns: [/custos fixos totais/, /custo fixo total/, /custos fixos/]
-    }) ?? 0;
-
-  const variableCostRate =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "Ponto de Equilíbrio", "Markup e Preço"],
-      patterns: [/taxa de custo variavel/, /percentual de custo variavel/, /custo variavel/]
-    }) ?? 0;
-
-  const breakEven =
-    findMetric(preparedRows, {
-      sheetNames: ["Dashboard", "Ponto de Equilíbrio"],
-      patterns: [/ponto de equilibrio/, /break even/]
-    }) ?? 0;
+  const rawMetrics = {
+    gross_revenue: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 6, col: 0 },
+      { sheet: "Dashboard", row: 19, col: 13 },
+      { sheet: "DRE", row: 27, col: 2 },
+      { sheet: "DRE", row: 5, col: 13 }
+    ]),
+    net_profit: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 6, col: 3 },
+      { sheet: "Dashboard", row: 21, col: 13 },
+      { sheet: "DRE", row: 32, col: 2 },
+      { sheet: "DRE", row: 22, col: 13 }
+    ]),
+    net_margin: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 6, col: 6 },
+      { sheet: "Dashboard", row: 27, col: 4 },
+      { sheet: "DRE", row: 33, col: 2 },
+      { sheet: "DRE", row: 23, col: 13 }
+    ]),
+    ebitda: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 6, col: 9 },
+      { sheet: "DRE", row: 30, col: 2 }
+    ]),
+    cash_balance: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 6, col: 12 },
+      { sheet: "Dashboard", row: 22, col: 13 },
+      { sheet: "Fluxo de Caixa", row: 32, col: 2 },
+      { sheet: "Fluxo de Caixa", row: 24, col: 13 }
+    ]),
+    fixed_costs: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 10, col: 3 },
+      { sheet: "Ponto de Equilíbrio", row: 6, col: 1 }
+    ]),
+    variable_cost_rate: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 10, col: 6 },
+      { sheet: "Ponto de Equilíbrio", row: 7, col: 1 }
+    ]),
+    break_even: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 10, col: 0 },
+      { sheet: "Ponto de Equilíbrio", row: 15, col: 1 },
+      { sheet: "Ponto de Equilíbrio", row: 22, col: 2 }
+    ]),
+    total_loans: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 14, col: 0 }
+    ]),
+    loan_installments_year: pickNumber(sheetRowMap, [
+      { sheet: "Dashboard", row: 14, col: 3 },
+      { sheet: "Dashboard", row: 23, col: 13 },
+      { sheet: "Fluxo de Caixa", row: 20, col: 14 }
+    ])
+  };
 
   const snapshotPayload = {
-    reference_year: Number(referenceYear) || new Date().getFullYear(),
-    gross_revenue: grossRevenue,
-    net_profit: netProfit,
-    net_margin: netMargin,
-    ebitda,
-    cash_balance: cashBalance,
-    fixed_costs: fixedCosts,
-    variable_cost_rate: variableCostRate,
-    break_even: breakEven,
-    total_loans: 0,
-    loan_installments_year: 0
+    reference_year: normalizeYear(referenceYear),
+    gross_revenue: normalizeCurrency(rawMetrics.gross_revenue),
+    net_profit: normalizeCurrency(rawMetrics.net_profit),
+    net_margin: normalizeRate(rawMetrics.net_margin),
+    ebitda: normalizeCurrency(rawMetrics.ebitda),
+    cash_balance: normalizeCurrency(rawMetrics.cash_balance),
+    fixed_costs: normalizeCurrency(rawMetrics.fixed_costs),
+    variable_cost_rate: normalizeRate(rawMetrics.variable_cost_rate),
+    break_even: normalizeCurrency(rawMetrics.break_even),
+    total_loans: normalizeCurrency(rawMetrics.total_loans),
+    loan_installments_year: normalizeCurrency(rawMetrics.loan_installments_year)
   };
+
+  console.log("[finance.process.snapshot]", {
+    batchId,
+    rawMetrics,
+    snapshotPayload
+  });
 
   const { data: snapshot, error: snapshotError } = await adminSupabase
     .from("financial_dashboard_snapshots")
@@ -227,23 +272,14 @@ async function processImportedBatch({ batchId, referenceYear, adminSupabase }) {
     .single();
 
   if (snapshotError) {
-    throw new Error(`Erro ao gravar snapshot: ${snapshotError.message}`);
+    throw new Error(`Erro ao gravar snapshot: ${snapshotError.message}. payload=${JSON.stringify(snapshotPayload)}`);
   }
 
   const notes = JSON.stringify({
     processed_at: new Date().toISOString(),
-    processor: "phase-1c-a",
+    processor: "phase-1c-a.2",
     snapshot_id: snapshot.id,
-    metrics_found: {
-      gross_revenue: grossRevenue,
-      net_profit: netProfit,
-      net_margin: netMargin,
-      ebitda,
-      cash_balance: cashBalance,
-      fixed_costs: fixedCosts,
-      variable_cost_rate: variableCostRate,
-      break_even: breakEven
-    }
+    metrics_found: snapshotPayload
   });
 
   const { error: updateBatchError } = await adminSupabase
