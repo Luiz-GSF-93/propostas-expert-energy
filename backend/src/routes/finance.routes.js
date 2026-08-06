@@ -805,6 +805,40 @@ router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
+
+
+router.get("/custos", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const latestBatch = await getLatestFinanceBatch();
+
+    if (!latestBatch) {
+      return res.status(200).json({
+        batch_id: null,
+        source_file_name: null,
+        source_version: null,
+        import_status: "empty",
+        sheet_name: "Custos",
+        row_count: 0,
+        header_row_number: null,
+        headers: [],
+        rows: []
+      });
+    }
+
+    const rows = await getFinanceSheetRows(latestBatch.id, "Custos");
+
+    return res.status(200).json(
+      formatFinanceSheetPayload("Custos", rows, latestBatch)
+    );
+  } catch (error) {
+    console.error("[finance.custos]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar custos."
+    });
+  }
+});
+
+
 module.exports = router;
 
 function extractFinanceValues(row) {
