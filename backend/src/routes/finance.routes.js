@@ -66,6 +66,124 @@ function parseBatchNotes(notes) {
     return {};
   }
 
+
+function extractFinanceValues(row) {
+  if (Array.isArray(row?.values)) return row.values;
+  if (Array.isArray(row?.row_data)) return row.row_data;
+  if (Array.isArray(row?.row)) return row.row;
+  return [];
+}
+
+function normalizeFinanceCell(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function isMeaningfulFinanceCell(value) {
+  const normalized = normalizeFinanceCell(value);
+  if (normalized === "") return false;
+  if (typeof normalized === "number") return true;
+  return normalized !== "-" && normalized !== "—";
+}
+
+function isFinanceRowEmpty(row) {
+  const values = extractFinanceValues(row);
+  return !values.some(isMeaningfulFinanceCell);
+}
+
+function scoreFinanceHeader(values) {
+  const cells = values.map(normalizeFinanceCell);
+  let score = 0;
+
+  for (const cell of cells) {
+    if (!cell) continue;
+    const lower = String(cell).toLowerCase();
+
+    if (
+      lower.includes("conta") ||
+      lower.includes("descr") ||
+      lower.includes("categoria") ||
+      lower.includes("tipo") ||
+      lower.includes("jan") ||
+      lower.includes("fev") ||
+      lower.includes("mar") ||
+      lower.includes("abr") ||
+      lower.includes("mai") ||
+      lower.includes("jun") ||
+      lower.includes("jul") ||
+      lower.includes("ago") ||
+      lower.includes("set") ||
+      lower.includes("out") ||
+      lower.includes("nov") ||
+      lower.includes("dez") ||
+      lower.includes("total") ||
+      lower.includes("real") ||
+      lower.includes("orçado") ||
+      lower.includes("orcado")
+    ) {
+      score += 2;
+    } else {
+      score += 0.15;
+    }
+  }
+
+  return score;
+}
+
+function detectFinanceHeaderIndex(rows) {
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < Math.min(rows.length, 30); i += 1) {
+    const values = extractFinanceValues(rows[i]);
+    const score = scoreFinanceHeader(values);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+}
+
+function buildFinanceHeaders(row) {
+  const values = extractFinanceValues(row);
+  return values.map((value, index) => {
+    const normalized = normalizeFinanceCell(value);
+    return normalized || `Coluna ${index + 1}`;
+  });
+}
+
+function formatFinanceSheetPayload(sheetName, allRows, latestBatch) {
+  const usefulRows = allRows.filter((row) => !isFinanceRowEmpty(row));
+  const headerIndex = detectFinanceHeaderIndex(usefulRows);
+  const headerRow = usefulRows[headerIndex] || { row_number: null };
+  const headers = buildFinanceHeaders(headerRow);
+
+  const rows = usefulRows
+    .filter((_, index) => index !== headerIndex)
+    .map((row, index) => ({
+      id: row.id || `${sheetName}-${row.row_number || index + 1}`,
+      row_number: row.row_number ?? index + 1,
+      values: extractFinanceValues(row).map(normalizeFinanceCell),
+    }));
+
+  return {
+    batch_id: latestBatch.id,
+    source_file_name: latestBatch.source_file_name,
+    source_version: latestBatch.source_version,
+    import_status: latestBatch.import_status,
+    sheet_name: sheetName,
+    row_count: rows.length,
+    header_row_number: headerRow?.row_number ?? null,
+    headers,
+    rows,
+  };
+}
+
+
   if (typeof notes === "object") {
     return notes;
   }
@@ -76,6 +194,114 @@ function parseBatchNotes(notes) {
     return {};
   }
 }
+
+
+function normalizeCellValue(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function isMeaningfulCell(value) {
+  const v = normalizeCellValue(value);
+  if (v === "") return false;
+  if (typeof v === "number") return true;
+  return v !== "-" && v !== "—";
+}
+
+function isEmptyFinanceRow(row) {
+  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  return !values.some(isMeaningfulCell);
+}
+
+function scoreHeaderRow(values) {
+  const normalized = values.map(normalizeCellValue);
+  let score = 0;
+  for (const cell of normalized) {
+    if (!cell) continue;
+    const lower = String(cell).toLowerCase();
+    if (
+      lower.includes("descr") ||
+      lower.includes("conta") ||
+      lower.includes("categoria") ||
+      lower.includes("tipo") ||
+      lower.includes("jan") ||
+      lower.includes("fev") ||
+      lower.includes("mar") ||
+      lower.includes("abr") ||
+      lower.includes("mai") ||
+      lower.includes("jun") ||
+      lower.includes("jul") ||
+      lower.includes("ago") ||
+      lower.includes("set") ||
+      lower.includes("out") ||
+      lower.includes("nov") ||
+      lower.includes("dez") ||
+      lower.includes("total") ||
+      lower.includes("real") ||
+      lower.includes("orçado") ||
+      lower.includes("orcado")
+    ) {
+      score += 2;
+    } else if (cell) {
+      score += 0.25;
+    }
+  }
+  return score;
+}
+
+function detectHeaderIndex(rows) {
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+    const values = Array.isArray(rows[i]?.row_data) ? rows[i].row_data : [];
+    const score = scoreHeaderRow(values);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+}
+
+function buildHeadersFromRow(row) {
+  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  return values.map((value, index) => {
+    const normalized = normalizeCellValue(value);
+    return normalized || `Coluna ${index + 1}`;
+  });
+}
+
+function formatFinanceSheetResponse(sheetName, allRows, latestBatch) {
+  const filteredRows = allRows.filter((row) => !isEmptyFinanceRow(row));
+  const headerIndex = detectHeaderIndex(filteredRows);
+  const headerRow = filteredRows[headerIndex] || { row_data: [] };
+  const headers = buildHeadersFromRow(headerRow);
+
+  const rows = filteredRows
+    .filter((_, index) => index !== headerIndex)
+    .map((row) => ({
+      id: row.id,
+      row_number: row.row_number,
+      values: Array.isArray(row.row_data) ? row.row_data.map(normalizeCellValue) : [],
+    }));
+
+  return {
+    batch_id: latestBatch.id,
+    source_file_name: latestBatch.source_file_name,
+    source_version: latestBatch.source_version,
+    import_status: latestBatch.import_status,
+    sheet_name: sheetName,
+    row_count: rows.length,
+    header_row_number: headerRow?.row_number ?? null,
+    headers,
+    rows,
+  };
+}
+
+
 
 const XLSX = require("xlsx");
 const { adminSupabase } = require("../config/supabase");
@@ -588,3 +814,115 @@ router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
+
+function normalizeFinanceCell(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function isMeaningfulFinanceCell(value) {
+  const normalized = normalizeFinanceCell(value);
+  if (normalized === "") return false;
+  if (typeof normalized === "number") return true;
+  return normalized !== "-" && normalized !== "—";
+}
+
+function isFinanceRowEmpty(row) {
+  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  return !values.some(isMeaningfulFinanceCell);
+}
+
+function scoreFinanceHeader(values) {
+  const cells = values.map(normalizeFinanceCell);
+  let score = 0;
+
+  for (const cell of cells) {
+    if (!cell) continue;
+    const lower = String(cell).toLowerCase();
+
+    if (
+      lower.includes("conta") ||
+      lower.includes("descr") ||
+      lower.includes("categoria") ||
+      lower.includes("tipo") ||
+      lower.includes("jan") ||
+      lower.includes("fev") ||
+      lower.includes("mar") ||
+      lower.includes("abr") ||
+      lower.includes("mai") ||
+      lower.includes("jun") ||
+      lower.includes("jul") ||
+      lower.includes("ago") ||
+      lower.includes("set") ||
+      lower.includes("out") ||
+      lower.includes("nov") ||
+      lower.includes("dez") ||
+      lower.includes("total") ||
+      lower.includes("real") ||
+      lower.includes("orçado") ||
+      lower.includes("orcado")
+    ) {
+      score += 2;
+    } else {
+      score += 0.15;
+    }
+  }
+
+  return score;
+}
+
+function detectFinanceHeaderIndex(rows) {
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < Math.min(rows.length, 20); i += 1) {
+    const values = Array.isArray(rows[i]?.row_data) ? rows[i].row_data : [];
+    const score = scoreFinanceHeader(values);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+}
+
+function buildFinanceHeaders(row) {
+  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  return values.map((value, index) => {
+    const normalized = normalizeFinanceCell(value);
+    return normalized || `Coluna ${index + 1}`;
+  });
+}
+
+function formatFinanceSheetPayload(sheetName, allRows, latestBatch) {
+  const usefulRows = allRows.filter((row) => !isFinanceRowEmpty(row));
+  const headerIndex = detectFinanceHeaderIndex(usefulRows);
+  const headerRow = usefulRows[headerIndex] || { row_data: [], row_number: null };
+  const headers = buildFinanceHeaders(headerRow);
+
+  const rows = usefulRows
+    .filter((_, index) => index !== headerIndex)
+    .map((row) => ({
+      id: row.id,
+      row_number: row.row_number,
+      values: Array.isArray(row.row_data)
+        ? row.row_data.map(normalizeFinanceCell)
+        : [],
+    }));
+
+  return {
+    batch_id: latestBatch.id,
+    source_file_name: latestBatch.source_file_name,
+    source_version: latestBatch.source_version,
+    import_status: latestBatch.import_status,
+    sheet_name: sheetName,
+    row_count: rows.length,
+    header_row_number: headerRow?.row_number ?? null,
+    headers,
+    rows,
+  };
+}
+
