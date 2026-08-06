@@ -754,21 +754,17 @@ router.get("/fluxo-caixa", authMiddleware, requireAdmin, async (req, res) => {
         import_status: "empty",
         sheet_name: "Fluxo de Caixa",
         row_count: 0,
+        header_row_number: null,
+        headers: [],
         rows: []
       });
     }
 
     const rows = await getFinanceSheetRows(latestBatch.id, "Fluxo de Caixa");
 
-    return res.status(200).json({
-      batch_id: latestBatch.id,
-      source_file_name: latestBatch.source_file_name,
-      source_version: latestBatch.source_version,
-      import_status: latestBatch.import_status,
-      sheet_name: "Fluxo de Caixa",
-      row_count: rows.length,
-      rows
-    });
+    return res.status(200).json(
+      formatFinanceSheetPayload("Fluxo de Caixa", rows, latestBatch)
+    );
   } catch (error) {
     console.error("[finance.fluxo-caixa]", error);
     return res.status(500).json({
@@ -790,21 +786,17 @@ router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
         import_status: "empty",
         sheet_name: "DRE",
         row_count: 0,
+        header_row_number: null,
+        headers: [],
         rows: []
       });
     }
 
     const rows = await getFinanceSheetRows(latestBatch.id, "DRE");
 
-    return res.status(200).json({
-      batch_id: latestBatch.id,
-      source_file_name: latestBatch.source_file_name,
-      source_version: latestBatch.source_version,
-      import_status: latestBatch.import_status,
-      sheet_name: "DRE",
-      row_count: rows.length,
-      rows
-    });
+    return res.status(200).json(
+      formatFinanceSheetPayload("DRE", rows, latestBatch)
+    );
   } catch (error) {
     console.error("[finance.dre]", error);
     return res.status(500).json({
@@ -814,6 +806,13 @@ router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
+
+function extractFinanceValues(row) {
+  if (Array.isArray(row?.values)) return row.values;
+  if (Array.isArray(row?.row_data)) return row.row_data;
+  if (Array.isArray(row?.row)) return row.row;
+  return [];
+}
 
 function normalizeFinanceCell(value) {
   if (value === null || value === undefined) return "";
@@ -829,7 +828,7 @@ function isMeaningfulFinanceCell(value) {
 }
 
 function isFinanceRowEmpty(row) {
-  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  const values = extractFinanceValues(row);
   return !values.some(isMeaningfulFinanceCell);
 }
 
@@ -876,8 +875,8 @@ function detectFinanceHeaderIndex(rows) {
   let bestIndex = 0;
   let bestScore = -1;
 
-  for (let i = 0; i < Math.min(rows.length, 20); i += 1) {
-    const values = Array.isArray(rows[i]?.row_data) ? rows[i].row_data : [];
+  for (let i = 0; i < Math.min(rows.length, 30); i += 1) {
+    const values = extractFinanceValues(rows[i]);
     const score = scoreFinanceHeader(values);
 
     if (score > bestScore) {
@@ -890,7 +889,7 @@ function detectFinanceHeaderIndex(rows) {
 }
 
 function buildFinanceHeaders(row) {
-  const values = Array.isArray(row?.row_data) ? row.row_data : [];
+  const values = extractFinanceValues(row);
   return values.map((value, index) => {
     const normalized = normalizeFinanceCell(value);
     return normalized || `Coluna ${index + 1}`;
@@ -900,17 +899,15 @@ function buildFinanceHeaders(row) {
 function formatFinanceSheetPayload(sheetName, allRows, latestBatch) {
   const usefulRows = allRows.filter((row) => !isFinanceRowEmpty(row));
   const headerIndex = detectFinanceHeaderIndex(usefulRows);
-  const headerRow = usefulRows[headerIndex] || { row_data: [], row_number: null };
+  const headerRow = usefulRows[headerIndex] || { row_number: null };
   const headers = buildFinanceHeaders(headerRow);
 
   const rows = usefulRows
     .filter((_, index) => index !== headerIndex)
-    .map((row) => ({
-      id: row.id,
-      row_number: row.row_number,
-      values: Array.isArray(row.row_data)
-        ? row.row_data.map(normalizeFinanceCell)
-        : [],
+    .map((row, index) => ({
+      id: row.id || `${sheetName}-${row.row_number || index + 1}`,
+      row_number: row.row_number ?? index + 1,
+      values: extractFinanceValues(row).map(normalizeFinanceCell),
     }));
 
   return {
