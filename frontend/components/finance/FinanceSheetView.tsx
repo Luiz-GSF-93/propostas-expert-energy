@@ -1,43 +1,68 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
-import FinanceModuleShell from "@/components/finance/FinanceModuleShell";
-
-type FinanceSheetRow = {
-  row_number: number;
-  row: Array<string | number | null>;
-};
 
 type FinanceSheetResponse = {
-  batch_id: string | null;
-  source_file_name: string | null;
-  source_version: string | null;
+  batch_id: string;
+  source_file_name: string;
+  source_version: string;
   import_status: string;
   sheet_name: string;
   row_count: number;
-  rows: FinanceSheetRow[];
+  header_row_number: number | null;
+  headers: string[];
+  rows: {
+    id: string;
+    row_number: number;
+    values: Array<string | number>;
+  }[];
 };
 
-function displayCell(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === "") return "—";
-  return String(value);
-}
-
-export default function FinanceSheetView({
-  title,
-  subtitle,
-  endpoint,
-}: {
+type Props = {
   title: string;
   subtitle: string;
   endpoint: string;
-}) {
-  const [loading, setLoading] = useState(true);
-  const [forbidden, setForbidden] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+};
+
+function isNegative(value: unknown) {
+  if (typeof value === "number") return value < 0;
+  if (typeof value !== "string") return false;
+
+  const cleaned = value
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace("%", "");
+
+  const parsed = Number(cleaned);
+  if (Number.isNaN(parsed)) return false;
+  return parsed < 0;
+}
+
+function looksLikeExpenseLabel(value: unknown) {
+  if (typeof value !== "string") return false;
+  const lower = value.toLowerCase();
+
+  return (
+    lower.includes("despesa") ||
+    lower.includes("custo") ||
+    lower.includes("imposto") ||
+    lower.includes("saída") ||
+    lower.includes("saida") ||
+    lower.includes("pagamento") ||
+    lower.includes("emprést") ||
+    lower.includes("emprest") ||
+    lower.includes("parcela") ||
+    lower.includes("(-)")
+  );
+}
+
+export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
   const [data, setData] = useState<FinanceSheetResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -45,148 +70,169 @@ export default function FinanceSheetView({
     async function load() {
       try {
         setLoading(true);
-        setForbidden(false);
-        setErrorMessage("");
+        setError("");
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session?.access_token) {
-          window.location.href = "/";
-          return;
-        }
-
-        const response = await apiFetch(endpoint, session.access_token);
-
-        if (!active) return;
-
-        if (response.status === 403) {
-          setForbidden(true);
-          setLoading(false);
-          return;
-        }
+        const response = await apiFetch(endpoint);
+        const json = await response.json();
 
         if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body?.message || "Erro ao carregar planilha financeira.");
+          throw new Error(json?.message || "Erro ao carregar dados");
         }
 
-        const payload = (await response.json()) as FinanceSheetResponse;
-        setData(payload);
-      } catch (error) {
-        if (!active) return;
-        setErrorMessage(
-          error instanceof Error ? error.message : "Erro ao carregar dados."
-        );
+        if (active) {
+          setData(json);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Erro inesperado");
+        }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     load();
-
     return () => {
       active = false;
     };
   }, [endpoint]);
 
-  const maxColumns = useMemo(() => {
-    return Math.max(0, ...(data?.rows || []).map((item) => item.row.length));
-  }, [data]);
-
   if (loading) {
     return (
-      <FinanceModuleShell title={title} subtitle={subtitle}>
-        <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-slate-600">Carregando dados...</p>
-        </section>
-      </FinanceModuleShell>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-500">Carregando planilha...</p>
+      </div>
     );
   }
 
-  if (forbidden) {
+  if (error) {
     return (
-      <FinanceModuleShell title={title} subtitle={subtitle}>
-        <section className="rounded-[28px] border border-rose-200 bg-rose-50 p-8 shadow-sm">
-          <p className="text-rose-600">Acesso restrito ao administrador.</p>
-        </section>
-      </FinanceModuleShell>
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+        <p className="text-sm font-medium text-red-700">Erro: {error}</p>
+      </div>
     );
   }
 
-  if (errorMessage) {
+  if (!data) {
     return (
-      <FinanceModuleShell title={title} subtitle={subtitle}>
-        <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-8 shadow-sm">
-          <p className="text-amber-700">{errorMessage}</p>
-        </section>
-      </FinanceModuleShell>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-500">Nenhum dado encontrado.</p>
+      </div>
     );
   }
 
   return (
-    <FinanceModuleShell title={title} subtitle={subtitle}>
-      <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 px-6 py-4 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
-          <div><strong>Aba:</strong> {data?.sheet_name || "—"}</div>
-          <div><strong>Linhas:</strong> {data?.row_count || 0}</div>
-          <div><strong>Arquivo:</strong> {data?.source_file_name || "—"}</div>
-          <div><strong>Versão:</strong> {data?.source_version || "—"}</div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+          <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
         </div>
-      </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Visualização da aba</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Leitura direta do staging financeiro já importado e validado.
+        <div className="flex gap-2">
+          <Link
+            href="/financeiro"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Voltar para Gestão Financeira
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Planilha</p>
+          <p className="mt-2 font-semibold text-slate-900">{data.sheet_name}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Linhas úteis</p>
+          <p className="mt-2 font-semibold text-slate-900">{data.row_count}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Arquivo</p>
+          <p className="mt-2 text-sm font-medium text-slate-900 break-words">
+            {data.source_file_name}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Versão / Status</p>
+          <p className="mt-2 font-semibold text-slate-900">
+            {data.source_version} · {data.import_status}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-sm text-slate-600">
+            Cabeçalho detectado na linha:{" "}
+            <span className="font-semibold text-slate-900">
+              {data.header_row_number ?? "não identificado"}
+            </span>
           </p>
         </div>
 
-        <div className="border-b border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">
-          Dica: role horizontalmente para visualizar todos os meses e colunas da planilha.
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-[1600px] border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700">
+        <div className="max-w-full overflow-x-auto">
+          <table className="min-w-[1200px] border-collapse text-sm">
+            <thead className="sticky top-0 z-20 bg-slate-100">
               <tr>
-                <th className="sticky left-0 z-20 min-w-[90px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">
-                  Linha
-                </th>
-                {Array.from({ length: maxColumns }).map((_, index) => (
+                {data.headers.map((header, index) => (
                   <th
-                    key={index}
-                    className="min-w-[140px] border-b border-slate-200 px-3 py-3 text-left font-semibold whitespace-nowrap"
+                    key={`${header}-${index}`}
+                    className={
+                      index === 0
+                        ? "sticky left-0 z-30 min-w-[260px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
+                        : "min-w-[120px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
+                    }
                   >
-                    Col {index + 1}
+                    <div className="whitespace-normal break-words">{header}</div>
                   </th>
                 ))}
               </tr>
             </thead>
+
             <tbody>
-              {(data?.rows || []).map((item) => (
-                <tr key={item.row_number} className="odd:bg-white even:bg-slate-50">
-                  <td className="sticky left-0 z-10 min-w-[90px] border-b border-r border-slate-100 bg-inherit px-3 py-3 font-medium text-slate-500">
-                    {item.row_number}
-                  </td>
-                  {Array.from({ length: maxColumns }).map((_, index) => (
-                    <td
-                      key={index}
-                      className="min-w-[140px] border-b border-slate-100 px-3 py-3 align-top text-slate-800"
-                    >
-                      <div className="max-w-[240px] whitespace-normal break-words">
-                        {displayCell(item.row[index])}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {data.rows.map((row) => {
+                const firstValue = row.values[0];
+                const expenseRow = looksLikeExpenseLabel(firstValue);
+
+                return (
+                  <tr
+                    key={row.id}
+                    className={expenseRow ? "bg-red-50/40" : "odd:bg-white even:bg-slate-50/40"}
+                  >
+                    {data.headers.map((_, index) => {
+                      const value = row.values[index] ?? "";
+                      const negative = isNegative(value);
+
+                      const cellClass =
+                        index === 0
+                          ? "sticky left-0 z-10 min-w-[260px] border-b border-r border-slate-200 bg-inherit px-4 py-3 align-top"
+                          : "min-w-[120px] border-b border-r border-slate-200 px-4 py-3 align-top";
+
+                      const textClass = negative
+                        ? "font-semibold text-red-600"
+                        : expenseRow && index > 0
+                        ? "text-red-500"
+                        : "text-slate-700";
+
+                      return (
+                        <td key={`${row.id}-${index}`} className={cellClass}>
+                          <div className={`whitespace-normal break-words ${textClass}`}>
+                            {String(value)}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </section>
-    </FinanceModuleShell>
+      </div>
+    </div>
   );
 }
