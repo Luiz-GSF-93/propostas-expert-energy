@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 type FinanceSheetResponse = {
   batch_id: string;
@@ -72,7 +73,20 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
         setLoading(true);
         setError("");
 
-        const response = await apiFetch(endpoint);
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw new Error("Erro ao obter sessão do usuário");
+        }
+
+        if (!session?.access_token) {
+          throw new Error("Sessão expirada. Faça login novamente.");
+        }
+
+        const response = await apiFetch(endpoint, session.access_token);
         const json = await response.json();
 
         if (!response.ok) {
