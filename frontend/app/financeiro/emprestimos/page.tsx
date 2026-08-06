@@ -1,592 +1,1118 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import FinanceModuleShell from "@/components/finance/FinanceModuleShell";
+import { supabase } from "@/lib/supabase";
 
-type LoansSummary = {
-  total_contracts: number;
-  total_principal: number;
-  total_net_amount: number;
-  total_balance_outstanding: number;
-  total_installments_paid: number;
-  total_installments_open: number;
-  total_installments_overdue: number;
-  total_monthly_cost: number;
-  avg_monthly_rate: number;
-  avg_annual_rate: number;
-  next_due_date: string | null;
-};
+type AnyRecord = Record<string, any>;
 
 type LoanContract = {
   id: string;
-  contract_number: string;
-  lender: string;
-  loan_type: string;
-  principal_amount: number;
-  net_amount: number;
-  installment_amount: number | null;
-  installments_total: number;
-  installments_paid_count: number;
-  installments_open_count: number;
-  installments_overdue_count: number;
-  balance_outstanding: number;
-  current_installment_amount: number;
-  next_due_date: string | null;
-  monthly_rate: number;
-  annual_rate: number;
-  monthly_index_rate: number;
-  annual_index_rate: number;
-  iof: number;
-  fees: number;
-  grace_months: number;
-  amortization_system: string;
-  start_date: string | null;
-  release_date: string | null;
-  first_due_date: string | null;
-  final_due_date: string | null;
-  notes: string;
-  status: string;
+  contract_code?: string;
+  contract_number?: string;
+  contract_name?: string;
+  loan_type?: string;
+  lender?: string;
+  principal_amount?: number | string;
+  net_amount?: number | string;
+  installments_total?: number | string;
+  installments_paid?: number | string;
+  installment_amount?: number | string;
+  current_installment_amount?: number | string;
+  monthly_rate?: number | string;
+  annual_rate?: number | string;
+  iof?: number | string;
+  fees?: number | string;
+  grace_months?: number | string;
+  first_due_date?: string | null;
+  final_due_date?: string | null;
+  amortization_system?: string;
+  status?: string;
+  notes?: string;
+  total_paid?: number | string;
+  total_paid_amount?: number | string;
+  total_open?: number | string;
+  paid_installments?: number | string;
+  open_installments?: number | string;
+  overdue_installments?: number | string;
+  installments_paid_count?: number | string;
+  installments_open_count?: number | string;
+  installments_overdue_count?: number | string;
+  next_due_date?: string | null;
+  current_balance?: number | string;
+  balance_outstanding?: number | string;
 };
 
 type LoanInstallment = {
-  number: number;
-  due_date: string | null;
-  installment_amount: number;
-  amortization_amount: number;
-  interest_amount: number;
-  extra_cost_amount: number;
-  balance_before: number;
-  balance_after: number;
-  status: "paid" | "open" | "overdue";
+  id: string;
+  contract_id: string;
+  installment_number: number;
+  due_date?: string | null;
+  installment_amount?: number | string;
+  amortization_amount?: number | string;
+  interest_amount?: number | string;
+  extra_cost_amount?: number | string;
+  balance_before?: number | string;
+  balance_after?: number | string;
+  paid_amount?: number | string;
+  paid_at?: string | null;
+  status?: string;
 };
 
-type LoanDetailResponse = {
-  contract: LoanContract;
-  schedule: LoanInstallment[];
-  schedule_summary: {
-    total_installments: number;
-    paid_installments: number;
-    open_installments: number;
-    overdue_installments: number;
-    total_interest: number;
-    total_amortization: number;
-    total_extra_costs: number;
-  };
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+const EMPTY_FORM = {
+  contract_code: "",
+  contract_name: "",
+  lender: "",
+  principal_amount: "100000",
+  installments_total: "24",
+  monthly_rate: "1.8",
+  annual_rate: "23.86",
+  iof: "3800",
+  fees: "1200",
+  grace_months: "0",
+  first_due_date: "2026-09-10",
+  amortization_system: "PRICE",
+  status: "active",
+  notes: "",
 };
 
-type CalcResponse = {
-  contract: LoanContract;
-  schedule: LoanInstallment[];
-  schedule_summary: LoanDetailResponse["schedule_summary"];
-};
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const normalized = value
+      .replace(/\s/g, "")
+      .replace("R$", "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
 
-function formatCurrency(value?: number | null) {
+function toText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+function formatMoney(value: unknown): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(value || 0));
+  }).format(toNumber(value));
 }
 
-function formatPercent(value?: number | null) {
-  return `${new Intl.NumberFormat("pt-BR", {
+function formatPercent(value: unknown): string {
+  const numeric = toNumber(value);
+  return `${numeric.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(value || 0))}%`;
+  })}%`;
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  const [yyyy, mm, dd] = value.split("-");
-  if (!yyyy || !mm || !dd) return value;
-  return `${dd}/${mm}/${yyyy}`;
+function formatDateBr(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR");
 }
 
-async function getToken() {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
+function pickNumber(source: AnyRecord | null | undefined, keys: string[], fallback = 0): number {
+  if (!source) return fallback;
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return toNumber(value);
+    }
+  }
+  return fallback;
+}
 
-  if (error) throw new Error("Erro ao obter sessão");
-  if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
-  return session.access_token;
+function pickString(source: AnyRecord | null | undefined, keys: string[], fallback = ""): string {
+  if (!source) return fallback;
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return String(value);
+    }
+  }
+  return fallback;
+}
+
+function statusClasses(status?: string): string {
+  const normalized = (status || "").toLowerCase();
+  if (normalized === "paid" || normalized === "pago") {
+    return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+  }
+  if (normalized === "overdue" || normalized === "vencido") {
+    return "bg-rose-100 text-rose-700 border border-rose-200";
+  }
+  if (normalized === "active" || normalized === "ativo" || normalized === "open" || normalized === "aberto") {
+    return "bg-amber-100 text-amber-800 border border-amber-200";
+  }
+  if (normalized === "closed" || normalized === "encerrado") {
+    return "bg-slate-200 text-slate-700 border border-slate-300";
+  }
+  return "bg-slate-100 text-slate-700 border border-slate-200";
+}
+
+function debtLevel(ratio: number | null): { label: string; tone: string } {
+  if (ratio === null || !Number.isFinite(ratio)) {
+    return {
+      label: "Sem base suficiente",
+      tone: "bg-slate-100 text-slate-700 border border-slate-200",
+    };
+  }
+  if (ratio <= 0.1) {
+    return {
+      label: "✅ Saudável (≤10%)",
+      tone: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+    };
+  }
+  if (ratio <= 0.3) {
+    return {
+      label: "⚠️ Moderado (10-30%)",
+      tone: "bg-amber-100 text-amber-800 border border-amber-200",
+    };
+  }
+  return {
+    label: "🔴 Alto (>30%) - revisar endividamento",
+    tone: "bg-rose-100 text-rose-700 border border-rose-200",
+  };
+}
+
+async function authJson(path: string, init?: RequestInit) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+
+  if (!token) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers || {}),
+    },
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(json?.message || `Erro HTTP ${response.status}`);
+  }
+
+  return json;
 }
 
 export default function EmprestimosPage() {
-  const [summary, setSummary] = useState<LoansSummary | null>(null);
+  const [summary, setSummary] = useState<AnyRecord | null>(null);
   const [contracts, setContracts] = useState<LoanContract[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [detail, setDetail] = useState<LoanDetailResponse | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedContract, setSelectedContract] = useState<LoanContract | null>(null);
+  const [schedule, setSchedule] = useState<LoanInstallment[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const [calcForm, setCalcForm] = useState({
-    principal_amount: "100000",
-    installments_total: "24",
-    monthly_rate: "1.8",
-    annual_rate: "",
-    iof: "0",
-    fees: "0",
-    grace_months: "0",
-    amortization_system: "PRICE",
-    first_due_date: "",
-  });
-  const [calcResult, setCalcResult] = useState<CalcResponse | null>(null);
+  const rollup = useMemo(() => {
+    const totalContracts = contracts.length;
+    const activeContracts = contracts.filter(
+      (item) => !["closed", "encerrado"].includes((item.status || "").toLowerCase())
+    ).length;
+
+    const totalPrincipal = contracts.reduce(
+      (acc, item) => acc + toNumber(item.principal_amount),
+      0
+    );
+
+    const totalOpen = contracts.reduce(
+      (acc, item) =>
+        acc +
+        toNumber(
+          item.current_balance ?? item.balance_outstanding ?? item.total_open ?? item.principal_amount
+        ),
+      0
+    );
+
+    const totalPaid = contracts.reduce(
+      (acc, item) => acc + toNumber(item.total_paid ?? item.total_paid_amount),
+      0
+    );
+
+    const totalMonthly = contracts.reduce(
+      (acc, item) => acc + toNumber(item.installment_amount ?? item.current_installment_amount),
+      0
+    );
+
+    const monthlyRates = contracts
+      .map((item) => toNumber(item.monthly_rate))
+      .filter((value) => value > 0);
+
+    const annualRates = contracts
+      .map((item) => toNumber(item.annual_rate))
+      .filter((value) => value > 0);
+
+    const avgMonthlyRate =
+      monthlyRates.length > 0
+        ? monthlyRates.reduce((acc, value) => acc + value, 0) / monthlyRates.length
+        : 0;
+
+    const avgAnnualRate =
+      annualRates.length > 0
+        ? annualRates.reduce((acc, value) => acc + value, 0) / annualRates.length
+        : 0;
+
+    const openInstallments = contracts.reduce(
+      (acc, item) => acc + toNumber(item.open_installments ?? item.installments_open_count),
+      0
+    );
+
+    const overdueInstallments = contracts.reduce(
+      (acc, item) => acc + toNumber(item.overdue_installments ?? item.installments_overdue_count),
+      0
+    );
+
+    const nextDueDate = contracts
+      .map((item) => item.next_due_date)
+      .filter(Boolean)
+      .sort()[0] || "";
+
+    return {
+      totalContracts,
+      activeContracts,
+      totalPrincipal,
+      totalOpen,
+      totalPaid,
+      totalMonthly,
+      avgMonthlyRate,
+      avgAnnualRate,
+      openInstallments,
+      overdueInstallments,
+      nextDueDate,
+    };
+  }, [contracts]);
+
+  const dashboard = useMemo(() => {
+    const totalContracts = pickNumber(summary, ["total_contracts", "contracts_total"], rollup.totalContracts);
+    const activeContracts = pickNumber(summary, ["active_contracts"], rollup.activeContracts);
+    const totalPrincipal = pickNumber(summary, ["total_principal", "principal_total", "total_amount"], rollup.totalPrincipal);
+    const totalOpen = pickNumber(summary, ["total_open", "outstanding_balance", "total_outstanding", "total_balance_outstanding"], rollup.totalOpen);
+    const totalPaid = pickNumber(summary, ["total_paid", "total_paid_amount"], rollup.totalPaid);
+    const totalMonthly = pickNumber(summary, ["monthly_cost_total", "total_monthly_cost"], rollup.totalMonthly);
+    const avgMonthlyRate = pickNumber(summary, ["avg_monthly_rate", "average_monthly_rate"], rollup.avgMonthlyRate);
+    const avgAnnualRate = pickNumber(summary, ["avg_annual_rate", "average_annual_rate"], rollup.avgAnnualRate);
+    const openInstallments = pickNumber(summary, ["open_installments", "installments_open_total", "total_installments_open"], rollup.openInstallments);
+    const overdueInstallments = pickNumber(summary, ["overdue_installments", "installments_overdue_total", "total_installments_overdue"], rollup.overdueInstallments);
+    const nextDueDate = pickString(summary, ["next_due_date", "nearest_due_date"], rollup.nextDueDate);
+    const debtRatioRaw = summary
+      ? pickNumber(summary, ["debt_ratio", "debt_level_ratio", "indebtedness_ratio"], Number.NaN)
+      : Number.NaN;
+
+    const debtRatio = Number.isFinite(debtRatioRaw) ? debtRatioRaw : null;
+
+    return {
+      totalContracts,
+      activeContracts,
+      totalPrincipal,
+      totalOpen,
+      totalPaid,
+      totalMonthly,
+      avgMonthlyRate,
+      avgAnnualRate,
+      openInstallments,
+      overdueInstallments,
+      nextDueDate,
+      debtRatio,
+    };
+  }, [rollup, summary]);
+
+  const debtBadge = debtLevel(dashboard.debtRatio);
+
+  async function loadBaseData(preferredId?: string | null) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [summaryResponse, contractsResponse] = await Promise.all([
+        authJson("/api/finance/emprestimos/resumo"),
+        authJson("/api/finance/emprestimos/contratos"),
+      ]);
+
+      const nextSummary = summaryResponse?.summary ?? summaryResponse ?? {};
+      const nextContracts = contractsResponse?.contracts ?? contractsResponse?.rows ?? [];
+
+      setSummary(nextSummary);
+      setContracts(nextContracts);
+
+      const nextSelectedId =
+        preferredId ||
+        selectedId ||
+        nextContracts?.[0]?.id ||
+        null;
+
+      setSelectedId(nextSelectedId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar empréstimos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadContractDetail(contractId: string) {
+    setDetailLoading(true);
+    setError("");
+
+    try {
+      const [detailResponse, scheduleResponse] = await Promise.all([
+        authJson(`/api/finance/emprestimos/contratos/${contractId}`),
+        authJson(`/api/finance/emprestimos/contratos/${contractId}/parcelas`),
+      ]);
+
+      setSelectedContract(detailResponse?.contract ?? detailResponse ?? null);
+      setSchedule(scheduleResponse?.schedule ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar detalhes do contrato.");
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-        const token = await getToken();
-
-        const [summaryRes, contractsRes] = await Promise.all([
-          apiFetch("/api/finance/emprestimos/resumo", token),
-          apiFetch("/api/finance/emprestimos/contratos", token),
-        ]);
-
-        const summaryJson = await summaryRes.json();
-        const contractsJson = await contractsRes.json();
-
-        if (!summaryRes.ok) throw new Error(summaryJson?.message || "Erro ao carregar resumo");
-        if (!contractsRes.ok) throw new Error(contractsJson?.message || "Erro ao carregar contratos");
-
-        if (!active) return;
-
-        setSummary(summaryJson.summary || null);
-        setContracts(Array.isArray(contractsJson.contracts) ? contractsJson.contracts : []);
-
-        const firstId = contractsJson.contracts?.[0]?.id || "";
-        setSelectedId((prev) => prev || firstId);
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Erro inesperado");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    load();
-    return () => {
-      active = false;
-    };
+    loadBaseData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    let active = true;
-    if (!selectedId) {
-      setDetail(null);
-      return;
+    if (selectedId) {
+      loadContractDetail(selectedId);
+    } else {
+      setSelectedContract(null);
+      setSchedule([]);
     }
-
-    async function loadDetail() {
-      try {
-        setDetailLoading(true);
-        const token = await getToken();
-        const res = await apiFetch(`/api/finance/emprestimos/contratos/${selectedId}`, token);
-        const json = await res.json();
-
-        if (!res.ok) throw new Error(json?.message || "Erro ao carregar detalhe do empréstimo");
-        if (active) {
-          setDetail(json);
-
-          setCalcForm((prev) => ({
-            ...prev,
-            principal_amount: String(json.contract?.principal_amount ?? prev.principal_amount),
-            installments_total: String(json.contract?.installments_total ?? prev.installments_total),
-            monthly_rate: String(json.contract?.monthly_rate ?? prev.monthly_rate),
-            annual_rate: String(json.contract?.annual_rate ?? prev.annual_rate),
-            iof: String(json.contract?.iof ?? prev.iof),
-            fees: String(json.contract?.fees ?? prev.fees),
-            grace_months: String(json.contract?.grace_months ?? prev.grace_months),
-            amortization_system: json.contract?.amortization_system || prev.amortization_system,
-            first_due_date: json.contract?.first_due_date || prev.first_due_date,
-          }));
-        }
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Erro ao carregar detalhe");
-        }
-      } finally {
-        if (active) {
-          setDetailLoading(false);
-        }
-      }
-    }
-
-    loadDetail();
-    return () => {
-      active = false;
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  useEffect(() => {
-    let active = true;
+  function resetForm() {
+    setForm(EMPTY_FORM);
+  }
 
-    async function calculate() {
-      if (!calcForm.principal_amount || !calcForm.installments_total) {
-        setCalcResult(null);
-        return;
+  async function handleCreateContract(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = {
+        contract_code: form.contract_code,
+        contract_name: form.contract_name,
+        lender: form.lender,
+        principal_amount: Number(form.principal_amount),
+        installments_total: Number(form.installments_total),
+        monthly_rate: Number(form.monthly_rate),
+        annual_rate: Number(form.annual_rate),
+        iof: Number(form.iof),
+        fees: Number(form.fees),
+        grace_months: Number(form.grace_months),
+        first_due_date: form.first_due_date,
+        amortization_system: form.amortization_system,
+        status: form.status,
+        notes: form.notes,
+      };
+
+      const response = await authJson("/api/finance/emprestimos/contratos", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      const newId = response?.contract?.id ?? response?.id ?? null;
+
+      setSuccess("Contrato criado com sucesso.");
+      setIsModalOpen(false);
+      resetForm();
+      await loadBaseData(newId);
+
+      if (newId) {
+        setSelectedId(newId);
       }
-
-      if (!calcForm.monthly_rate && !calcForm.annual_rate) {
-        setCalcResult(null);
-        return;
-      }
-
-      try {
-        const token = await getToken();
-        const res = await apiFetch("/api/finance/emprestimos/calcular", token, {
-          method: "POST",
-          body: JSON.stringify({
-            principal_amount: calcForm.principal_amount,
-            installments_total: calcForm.installments_total,
-            monthly_rate: calcForm.monthly_rate,
-            annual_rate: calcForm.annual_rate,
-            iof: calcForm.iof,
-            fees: calcForm.fees,
-            grace_months: calcForm.grace_months,
-            amortization_system: calcForm.amortization_system,
-            first_due_date: calcForm.first_due_date,
-          }),
-        });
-
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.message || "Erro ao calcular empréstimo");
-
-        if (active) {
-          setCalcResult(json);
-        }
-      } catch {
-        if (active) {
-          setCalcResult(null);
-        }
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar contrato.");
+    } finally {
+      setSaving(false);
     }
+  }
 
-    const timer = setTimeout(calculate, 350);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [calcForm]);
+  async function handleInstallmentAction(item: LoanInstallment) {
+    if (!selectedId) return;
 
-  const cards = useMemo(() => {
-    if (!summary) return [];
-    return [
-      { label: "Total de contratos", value: String(summary.total_contracts || 0) },
-      { label: "Saldo devedor total", value: formatCurrency(summary.total_balance_outstanding) },
-      { label: "Parcelas pagas", value: String(summary.total_installments_paid || 0) },
-      { label: "Parcelas em aberto", value: String(summary.total_installments_open || 0) },
-      { label: "Parcelas vencidas", value: String(summary.total_installments_overdue || 0) },
-      { label: "Custo mensal total", value: formatCurrency(summary.total_monthly_cost) },
-      { label: "Juros médios a.m.", value: formatPercent(summary.avg_monthly_rate) },
-      { label: "Juros médios a.a.", value: formatPercent(summary.avg_annual_rate) },
-      { label: "Próximo vencimento", value: formatDate(summary.next_due_date) },
-    ];
-  }, [summary]);
+    const isPaid = (item.status || "").toLowerCase() === "paid";
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      let payload: AnyRecord;
+
+      if (isPaid) {
+        payload = {
+          status: "open",
+          paid_amount: 0,
+        };
+      } else {
+        const suggested = String(toNumber(item.installment_amount).toFixed(2));
+        const paidAmountInput = window.prompt("Valor pago da parcela", suggested);
+        if (paidAmountInput === null) {
+          setSaving(false);
+          return;
+        }
+
+        const paidDateInput =
+          window.prompt(
+            "Data do pagamento (AAAA-MM-DD)",
+            new Date().toISOString().slice(0, 10)
+          ) || new Date().toISOString().slice(0, 10);
+
+        payload = {
+          status: "paid",
+          paid_amount: Number(
+            paidAmountInput.replace(/\./g, "").replace(",", ".")
+          ),
+          paid_date: paidDateInput,
+        };
+      }
+
+      await authJson(
+        `/api/finance/emprestimos/contratos/${selectedId}/parcelas/${item.installment_number}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }
+      );
+
+      setSuccess(isPaid ? "Parcela reaberta com sucesso." : "Parcela marcada como paga.");
+      await Promise.all([loadContractDetail(selectedId), loadBaseData(selectedId)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao atualizar parcela.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <FinanceModuleShell
       title="Empréstimos"
-      subtitle="Gestão consolidada de contratos, parcelas, taxas, custos adicionais e simulação automática."
+      subtitle="Gestão profissional de contratos, parcelas, custos financeiros e acompanhamento do endividamento."
     >
-      {loading ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Carregando módulo de empréstimos...</p>
-        </div>
-      ) : error ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
-          <p className="text-sm font-medium text-red-700">Erro: {error}</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {cards.map((card) => (
-              <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
-                <p className="mt-3 text-2xl font-bold text-slate-900">{card.value}</p>
-              </div>
-            ))}
-          </section>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Painel consolidado de empréstimos
+            </h2>
+            <p className="text-sm text-slate-500">
+              Visão gerencial com totais, custo mensal, juros médios e controle de parcelas.
+            </p>
+          </div>
 
-          <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Contratos</h2>
-                  <p className="text-sm text-slate-500">Selecione um empréstimo para ver parcelas, custos e cronograma.</p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => loadBaseData(selectedId)}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Atualizar painel
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Novo contrato
+            </button>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        {success ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {success}
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <DashboardCard
+            label="Total contratado"
+            value={formatMoney(dashboard.totalPrincipal)}
+            hint="Soma dos valores originais dos contratos"
+          />
+          <DashboardCard
+            label="Saldo em aberto"
+            value={formatMoney(dashboard.totalOpen)}
+            hint="Total ainda a pagar"
+          />
+          <DashboardCard
+            label="Total pago"
+            value={formatMoney(dashboard.totalPaid)}
+            hint="Parcelas liquidadas"
+          />
+          <DashboardCard
+            label="Custo mensal total"
+            value={formatMoney(dashboard.totalMonthly)}
+            hint="Impacto mensal consolidado"
+          />
+          <DashboardCard
+            label="Contratos"
+            value={`${dashboard.activeContracts}/${dashboard.totalContracts}`}
+            hint="Ativos / totais"
+          />
+          <DashboardCard
+            label="Juros médios"
+            value={`${formatPercent(dashboard.avgMonthlyRate)} a.m. • ${formatPercent(dashboard.avgAnnualRate)} a.a.`}
+            hint="Média simples dos contratos"
+          />
+          <DashboardCard
+            label="Próximo vencimento"
+            value={dashboard.nextDueDate ? formatDateBr(dashboard.nextDueDate) : "—"}
+            hint={`${dashboard.openInstallments} parcelas em aberto`}
+          />
+          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Nível de endividamento
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className={`rounded-full px-3 py-1 text-sm font-semibold ${debtBadge.tone}`}>
+                {debtBadge.label}
+              </span>
+              {dashboard.debtRatio !== null ? (
+                <span className="text-sm text-slate-500">
+                  Índice: {formatPercent(dashboard.debtRatio * 100)}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Baseado no consolidado financeiro disponível no resumo do backend.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_1.85fr]">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Contratos cadastrados
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Clique em “Abrir” para visualizar detalhes e ajustar parcelas.
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {contracts.length} registros
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {loading ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+                  Carregando contratos...
                 </div>
+              ) : contracts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+                  Nenhum contrato cadastrado. Use o botão <strong>Novo contrato</strong>.
+                </div>
+              ) : (
+                contracts.map((contract) => {
+                  const isActive = contract.id === selectedId;
+                  return (
+                    <button
+                      key={contract.id}
+                      type="button"
+                      onClick={() => setSelectedId(contract.id)}
+                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white shadow-md"
+                          : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>
+                            {(contract.contract_code || contract.contract_number || "Sem código")}
+                          </p>
+                          <h4 className="mt-1 text-sm font-semibold">
+                            {(contract.contract_name || contract.loan_type || "Contrato sem nome")}
+                          </h4>
+                          <p className={`mt-1 text-sm ${isActive ? "text-slate-300" : "text-slate-500"}`}>
+                            {contract.lender || "Instituição não informada"}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? "bg-white/10 text-white border border-white/20" : statusClasses(contract.status)}`}>
+                          {contract.status || "open"}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <InfoMini
+                          label="Valor"
+                          value={formatMoney(contract.principal_amount)}
+                          inverted={isActive}
+                        />
+                        <InfoMini
+                          label="Parcela"
+                          value={formatMoney(contract.installment_amount ?? contract.current_installment_amount)}
+                          inverted={isActive}
+                        />
+                        <InfoMini
+                          label="Saldo"
+                          value={formatMoney(contract.current_balance ?? contract.balance_outstanding ?? contract.total_open)}
+                          inverted={isActive}
+                        />
+                        <InfoMini
+                          label="Próx. venc."
+                          value={formatDateBr(contract.next_due_date ?? contract.first_due_date)}
+                          inverted={isActive}
+                        />
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Detalhe do contrato
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Visão completa do cadastro, taxas, custos e situação das parcelas.
+                  </p>
+                </div>
+                {selectedContract ? (
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(selectedContract.status)}`}>
+                    {selectedContract.status || "active"}
+                  </span>
+                ) : null}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
+              {detailLoading ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+                  Carregando detalhe do contrato...
+                </div>
+              ) : !selectedContract ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+                  Selecione um contrato para visualizar os detalhes.
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <DetailItem label="Código" value={(selectedContract.contract_code || selectedContract.contract_number || "—")} />
+                    <DetailItem label="Instituição" value={selectedContract.lender || "—"} />
+                    <DetailItem label="Valor do empréstimo" value={formatMoney(selectedContract.principal_amount)} />
+                    <DetailItem label="Saldo atual" value={formatMoney(selectedContract.current_balance ?? selectedContract.balance_outstanding ?? selectedContract.total_open)} />
+                    <DetailItem label="Parcela estimada" value={formatMoney(selectedContract.installment_amount ?? selectedContract.current_installment_amount)} />
+                    <DetailItem label="Parcelas totais" value={toText(selectedContract.installments_total || "—")} />
+                    <DetailItem label="Juros a.m." value={formatPercent(selectedContract.monthly_rate)} />
+                    <DetailItem label="Juros a.a." value={formatPercent(selectedContract.annual_rate)} />
+                    <DetailItem label="IOF" value={formatMoney(selectedContract.iof)} />
+                    <DetailItem label="Tarifas / custos" value={formatMoney(selectedContract.fees)} />
+                    <DetailItem label="Carência" value={`${toNumber(selectedContract.grace_months)} mês(es)`} />
+                    <DetailItem label="Amortização" value={selectedContract.amortization_system || "—"} />
+                    <DetailItem label="Primeiro vencimento" value={formatDateBr(selectedContract.first_due_date)} />
+                    <DetailItem label="Próximo vencimento" value={formatDateBr(selectedContract.next_due_date)} />
+                    <DetailItem label="Parcelas pagas" value={toText(selectedContract.paid_installments ?? selectedContract.installments_paid_count ?? "0")} />
+                    <DetailItem label="Parcelas em aberto" value={toText(selectedContract.open_installments ?? selectedContract.installments_open_count ?? "0")} />
+                  </div>
+
+                  {selectedContract.notes ? (
+                    <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                      <p className="mb-1 font-semibold text-slate-800">Observações</p>
+                      <p>{selectedContract.notes}</p>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Ajuste mensal de parcelas
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Marque como paga ou reabra parcelas conforme vencimento.
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {schedule.length} parcelas
+                </span>
+              </div>
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-[1100px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-slate-500">
-                      <th className="px-3 py-3">Contrato</th>
-                      <th className="px-3 py-3">Banco</th>
-                      <th className="px-3 py-3 text-right">Saldo</th>
-                      <th className="px-3 py-3 text-right">Parcela</th>
-                      <th className="px-3 py-3 text-right">a.m.</th>
-                      <th className="px-3 py-3 text-right">Ações</th>
+                      <th className="px-3 py-3 font-semibold">Parcela</th>
+                      <th className="px-3 py-3 font-semibold">Vencimento</th>
+                      <th className="px-3 py-3 font-semibold text-right">Valor</th>
+                      <th className="px-3 py-3 font-semibold text-right">Amortização</th>
+                      <th className="px-3 py-3 font-semibold text-right">Juros</th>
+                      <th className="px-3 py-3 font-semibold text-right">Custos extras</th>
+                      <th className="px-3 py-3 font-semibold text-right">Saldo após</th>
+                      <th className="px-3 py-3 font-semibold">Status</th>
+                      <th className="px-3 py-3 font-semibold">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {contracts.map((contract) => {
-                      const active = selectedId === contract.id;
-                      return (
-                        <tr
-                          key={contract.id}
-                          className={active ? "bg-slate-100" : "border-b border-slate-100 hover:bg-slate-50"}
-                        >
-                          <td className="px-3 py-3">
-                            <div className="font-semibold text-slate-900">{contract.contract_number}</div>
-                            <div className="text-xs text-slate-500">{contract.loan_type || "Empréstimo"}</div>
-                          </td>
-                          <td className="px-3 py-3 text-slate-700">{contract.lender || "-"}</td>
-                          <td className="px-3 py-3 text-right font-medium text-slate-900">
-                            {formatCurrency(contract.balance_outstanding)}
-                          </td>
-                          <td className="px-3 py-3 text-right text-slate-700">
-                            {formatCurrency(contract.current_installment_amount)}
-                          </td>
-                          <td className="px-3 py-3 text-right text-slate-700">
-                            {formatPercent(contract.monthly_rate)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedId(contract.id)}
-                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-                                active
-                                  ? "bg-slate-900 text-white"
-                                  : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              {active ? "Selecionado" : "Abrir"}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {detailLoading ? (
+                      <tr>
+                        <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                          Carregando cronograma...
+                        </td>
+                      </tr>
+                    ) : schedule.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                          Nenhuma parcela encontrada para este contrato.
+                        </td>
+                      </tr>
+                    ) : (
+                      schedule.map((item) => {
+                        const isPaid = (item.status || "").toLowerCase() === "paid";
+                        return (
+                          <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                            <td className="px-3 py-3 font-medium text-slate-900">
+                              {item.installment_number}
+                            </td>
+                            <td className="px-3 py-3 text-slate-600">
+                              {formatDateBr(item.due_date)}
+                            </td>
+                            <td className="px-3 py-3 text-right font-medium text-slate-900">
+                              {formatMoney(item.installment_amount)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-600">
+                              {formatMoney(item.amortization_amount)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-600">
+                              {formatMoney(item.interest_amount)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-600">
+                              {formatMoney(item.extra_cost_amount)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-600">
+                              {formatMoney(item.balance_after)}
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
+                                {item.status || "open"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => handleInstallmentAction(item)}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isPaid ? "Reabrir" : "Marcar paga"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Detalhe do contrato</h2>
-              <p className="mt-1 text-sm text-slate-500">Campos completos do cadastro, taxas e situação das parcelas.</p>
-
-              {detailLoading ? (
-                <p className="mt-6 text-sm text-slate-500">Carregando detalhe...</p>
-              ) : !detail ? (
-                <p className="mt-6 text-sm text-slate-500">Selecione um contrato para visualizar.</p>
-              ) : (
-                <div className="mt-5 space-y-5">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {[
-                      ["Banco", detail.contract.lender || "-"],
-                      ["Contrato", detail.contract.contract_number || "-"],
-                      ["Modalidade", detail.contract.loan_type || "-"],
-                      ["Amortização", detail.contract.amortization_system || "-"],
-                      ["Valor principal", formatCurrency(detail.contract.principal_amount)],
-                      ["Valor líquido", formatCurrency(detail.contract.net_amount)],
-                      ["Saldo devedor", formatCurrency(detail.contract.balance_outstanding)],
-                      ["Parcela atual", formatCurrency(detail.contract.current_installment_amount)],
-                      ["Juros a.m.", formatPercent(detail.contract.monthly_rate)],
-                      ["Juros a.a.", formatPercent(detail.contract.annual_rate)],
-                      ["Índice a.m.", formatPercent(detail.contract.monthly_index_rate)],
-                      ["Índice a.a.", formatPercent(detail.contract.annual_index_rate)],
-                      ["IOF", formatCurrency(detail.contract.iof)],
-                      ["Tarifas / custos", formatCurrency(detail.contract.fees)],
-                      ["Carência", `${detail.contract.grace_months || 0} mês(es)`],
-                      ["1º vencimento", formatDate(detail.contract.first_due_date)],
-                      ["Vencimento final", formatDate(detail.contract.final_due_date)],
-                      ["Status", detail.contract.status || "-"],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-                        <p className="mt-2 font-semibold text-slate-900">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h3 className="text-sm font-bold text-slate-900">Resumo do cronograma</h3>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Pagas</p>
-                        <p className="mt-1 text-lg font-semibold text-slate-900">{detail.schedule_summary.paid_installments}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Em aberto</p>
-                        <p className="mt-1 text-lg font-semibold text-slate-900">{detail.schedule_summary.open_installments}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Vencidas</p>
-                        <p className="mt-1 text-lg font-semibold text-red-600">{detail.schedule_summary.overdue_installments}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Parcelas do contrato</h2>
-              <p className="mt-1 text-sm text-slate-500">Acompanhamento de vencimento, amortização, juros e saldo.</p>
-
-              {!detail?.schedule?.length ? (
-                <p className="mt-6 text-sm text-slate-500">Sem cronograma calculado para este contrato.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left text-slate-500">
-                        <th className="px-3 py-3">Parcela</th>
-                        <th className="px-3 py-3">Vencimento</th>
-                        <th className="px-3 py-3 text-right">Valor</th>
-                        <th className="px-3 py-3 text-right">Amortização</th>
-                        <th className="px-3 py-3 text-right">Juros</th>
-                        <th className="px-3 py-3 text-right">Custos</th>
-                        <th className="px-3 py-3 text-right">Saldo após</th>
-                        <th className="px-3 py-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.schedule.map((item) => (
-                        <tr key={item.number} className="border-b border-slate-100">
-                          <td className="px-3 py-3 font-medium text-slate-900">{item.number}</td>
-                          <td className="px-3 py-3 text-slate-700">{formatDate(item.due_date)}</td>
-                          <td className="px-3 py-3 text-right text-slate-900">{formatCurrency(item.installment_amount)}</td>
-                          <td className="px-3 py-3 text-right text-slate-700">{formatCurrency(item.amortization_amount)}</td>
-                          <td className="px-3 py-3 text-right text-slate-700">{formatCurrency(item.interest_amount)}</td>
-                          <td className="px-3 py-3 text-right text-slate-700">{formatCurrency(item.extra_cost_amount)}</td>
-                          <td className="px-3 py-3 text-right text-slate-900">{formatCurrency(item.balance_after)}</td>
-                          <td className="px-3 py-3 text-right">
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                                item.status === "paid"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : item.status === "overdue"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-amber-100 text-amber-700"
-                              }`}
-                            >
-                              {item.status === "paid"
-                                ? "Paga"
-                                : item.status === "overdue"
-                                ? "Vencida"
-                                : "Em aberto"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Calculadora automática</h2>
-              <p className="mt-1 text-sm text-slate-500">Simule o contrato com atualização automática ao editar os campos.</p>
-
-              <div className="mt-5 grid gap-3">
-                {[
-                  ["principal_amount", "Valor principal", "number"],
-                  ["installments_total", "Quantidade de parcelas", "number"],
-                  ["monthly_rate", "Juros a.m. (%)", "number"],
-                  ["annual_rate", "Juros a.a. (%)", "number"],
-                  ["iof", "IOF (R$)", "number"],
-                  ["fees", "Tarifas / custos (R$)", "number"],
-                  ["grace_months", "Carência (meses)", "number"],
-                  ["first_due_date", "Primeiro vencimento", "date"],
-                ].map(([key, label, type]) => (
-                  <label key={key} className="grid gap-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-                    <input
-                      type={type}
-                      value={(calcForm as Record<string, string>)[key]}
-                      onChange={(e) => setCalcForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 focus:border-slate-500"
-                    />
-                  </label>
-                ))}
-
-                <label className="grid gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sistema de amortização</span>
-                  <select
-                    value={calcForm.amortization_system}
-                    onChange={(e) => setCalcForm((prev) => ({ ...prev, amortization_system: e.target.value }))}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
-                  >
-                    <option value="PRICE">PRICE</option>
-                    <option value="SAC">SAC</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="text-sm font-bold text-slate-900">Resultado da simulação</h3>
-
-                {!calcResult ? (
-                  <p className="mt-3 text-sm text-slate-500">Preencha principal, parcelas e taxa para calcular.</p>
-                ) : (
-                  <div className="mt-4 grid gap-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-white px-3 py-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Parcela estimada</p>
-                        <p className="mt-1 font-semibold text-slate-900">
-                          {formatCurrency(calcResult.contract.current_installment_amount)}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Saldo final</p>
-                        <p className="mt-1 font-semibold text-slate-900">
-                          {formatCurrency(calcResult.contract.balance_outstanding)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-white px-3 py-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Juros totais</p>
-                        <p className="mt-1 font-semibold text-slate-900">
-                          {formatCurrency(calcResult.schedule_summary.total_interest)}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Custos extras</p>
-                        <p className="mt-1 font-semibold text-slate-900">
-                          {formatCurrency(calcResult.schedule_summary.total_extra_costs)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-500">
-                      A simulação é recalculada automaticamente ao alterar valor, prazo, taxa, IOF, tarifas e carência.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
-      )}
+      </div>
+
+      {isModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[32px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">
+                  Novo contrato de empréstimo
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Preencha os campos para gerar automaticamente o cronograma das parcelas.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetForm();
+                }}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateContract} className="mt-6 space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Field
+                  label="Código do contrato"
+                  value={form.contract_code}
+                  onChange={(value) => setForm((prev) => ({ ...prev, contract_code: value }))}
+                  placeholder="BNDES-001"
+                />
+                <Field
+                  label="Nome do contrato"
+                  value={form.contract_name}
+                  onChange={(value) => setForm((prev) => ({ ...prev, contract_name: value }))}
+                  placeholder="Capital de Giro"
+                />
+                <Field
+                  label="Instituição"
+                  value={form.lender}
+                  onChange={(value) => setForm((prev) => ({ ...prev, lender: value }))}
+                  placeholder="BNDES"
+                />
+                <SelectField
+                  label="Status"
+                  value={form.status}
+                  onChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
+                  options={[
+                    { value: "active", label: "Ativo" },
+                    { value: "open", label: "Aberto" },
+                    { value: "closed", label: "Encerrado" },
+                  ]}
+                />
+
+                <Field
+                  label="Valor do empréstimo"
+                  value={form.principal_amount}
+                  onChange={(value) => setForm((prev) => ({ ...prev, principal_amount: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Parcelas totais"
+                  value={form.installments_total}
+                  onChange={(value) => setForm((prev) => ({ ...prev, installments_total: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Juros a.m."
+                  value={form.monthly_rate}
+                  onChange={(value) => setForm((prev) => ({ ...prev, monthly_rate: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Juros a.a."
+                  value={form.annual_rate}
+                  onChange={(value) => setForm((prev) => ({ ...prev, annual_rate: value }))}
+                  type="number"
+                />
+
+                <Field
+                  label="IOF"
+                  value={form.iof}
+                  onChange={(value) => setForm((prev) => ({ ...prev, iof: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Tarifas / custos"
+                  value={form.fees}
+                  onChange={(value) => setForm((prev) => ({ ...prev, fees: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Carência (meses)"
+                  value={form.grace_months}
+                  onChange={(value) => setForm((prev) => ({ ...prev, grace_months: value }))}
+                  type="number"
+                />
+                <Field
+                  label="Primeiro vencimento"
+                  value={form.first_due_date}
+                  onChange={(value) => setForm((prev) => ({ ...prev, first_due_date: value }))}
+                  type="date"
+                />
+
+                <SelectField
+                  label="Sistema de amortização"
+                  value={form.amortization_system}
+                  onChange={(value) => setForm((prev) => ({ ...prev, amortization_system: value }))}
+                  options={[
+                    { value: "PRICE", label: "PRICE" },
+                    { value: "SAC", label: "SAC" },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Observações
+                </label>
+                <textarea
+                  value={form.notes}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, notes: event.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+                  placeholder="Informações complementares do contrato"
+                />
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetForm();
+                  }}
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Salvando..." : "Salvar contrato"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </FinanceModuleShell>
+  );
+}
+
+function DashboardCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-3 text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 text-sm text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function InfoMini({
+  label,
+  value,
+  inverted = false,
+}: {
+  label: string;
+  value: string;
+  inverted?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl px-3 py-2 ${inverted ? "bg-white/10" : "bg-white"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${inverted ? "text-slate-300" : "text-slate-400"}`}>
+        {label}
+      </p>
+      <p className={`mt-1 text-sm font-semibold ${inverted ? "text-white" : "text-slate-900"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        type={type}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+      />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
