@@ -260,7 +260,7 @@ function summarizeContract(contract, schedule) {
     0;
 
   const totalPaid = paidItems.reduce(
-    (sum, item) => sum + Number(item.paid_amount ?? item.installment_amount || 0),
+    (sum, item) => sum + Number((item.paid_amount ?? item.installment_amount) || 0),
     0
   );
 
