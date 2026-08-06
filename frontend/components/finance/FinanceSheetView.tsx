@@ -31,17 +31,44 @@ function parseNumericValue(value: unknown): number | null {
   if (typeof value === "number") return value;
   if (typeof value !== "string") return null;
 
-  const cleaned = value
-    .replace(/\s/g, "")
-    .replace("R$", "")
-    .replace(/\./g, "")
-    .replace(",", ".")
-    .replace("%", "");
+  const trimmed = value.trim();
+  if (!trimmed) return null;
 
-  if (cleaned === "") return null;
+  const withoutCurrency = trimmed.replace(/R\$\s?/g, "").replace(/\s/g, "");
 
-  const parsed = Number(cleaned);
-  return Number.isNaN(parsed) ? null : parsed;
+  if (withoutCurrency.includes("%")) {
+    const percentRaw = withoutCurrency.replace("%", "");
+
+    if (/^-?\d+(\.\d+)?$/.test(percentRaw)) {
+      const parsed = Number(percentRaw);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    if (
+      /^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(percentRaw) ||
+      /^-?\d+(,\d+)?$/.test(percentRaw)
+    ) {
+      const normalized = percentRaw.replace(/\./g, "").replace(",", ".");
+      const parsed = Number(normalized);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(withoutCurrency)) {
+    const parsed = Number(withoutCurrency);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  if (
+    /^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(withoutCurrency) ||
+    /^-?\d+(,\d+)?$/.test(withoutCurrency)
+  ) {
+    const normalized = withoutCurrency.replace(/\./g, "").replace(",", ".");
+    const parsed = Number(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
 }
 
 function isNegativeValue(value: unknown) {
@@ -55,6 +82,22 @@ function isNumericLike(value: unknown) {
 
 function isPercentLike(value: unknown) {
   return typeof value === "string" && value.includes("%");
+}
+
+function formatCurrencyBRL(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatNumberBR(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function isExpenseRowLabel(value: unknown) {
@@ -92,8 +135,11 @@ function isSummaryRowLabel(value: unknown) {
   );
 }
 
-function formatDisplayValue(value: unknown) {
-  if (typeof value === "number") return String(value);
+function formatDisplayValue(value: unknown, options?: { asCurrency?: boolean }) {
+  if (typeof value === "number") {
+    return options?.asCurrency ? formatCurrencyBRL(value) : formatNumberBR(value);
+  }
+
   if (typeof value !== "string") return String(value ?? "");
 
   const trimmed = value.trim();
@@ -103,13 +149,14 @@ function formatDisplayValue(value: unknown) {
   if (parsed === null) return trimmed;
 
   if (isPercentLike(trimmed)) {
-    return `${parsed.toFixed(2).replace(".", ",")}%`;
+    return `${formatNumberBR(parsed)}%`;
   }
 
-  return parsed.toLocaleString("pt-BR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+  if (options?.asCurrency) {
+    return formatCurrencyBRL(parsed);
+  }
+
+  return formatNumberBR(parsed);
 }
 
 export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
@@ -299,6 +346,8 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
                         const value = values[index] ?? "";
                         const negative = isNegativeValue(value);
                         const numeric = index > 0 && isNumericLike(value);
+                        const percent = isPercentLike(value);
+                        const asCurrency = numeric && !percent;
 
                         return (
                           <td
@@ -318,7 +367,7 @@ export default function FinanceSheetView({ title, subtitle, endpoint }: Props) {
                                 summaryRow ? "font-semibold text-slate-900" : "",
                               ].join(" ")}
                             >
-                              {formatDisplayValue(value)}
+                              {formatDisplayValue(value, { asCurrency })}
                             </div>
                           </td>
                         );
