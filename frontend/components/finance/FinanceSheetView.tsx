@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
+import FinanceModuleShell from "@/components/finance/FinanceModuleShell";
 
 type FinanceSheetRow = {
   row_number: number;
@@ -18,16 +19,6 @@ type FinanceSheetResponse = {
   row_count: number;
   rows: FinanceSheetRow[];
 };
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-}
 
 function displayCell(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") return "—";
@@ -101,114 +92,101 @@ export default function FinanceSheetView({
   }, [endpoint]);
 
   const maxColumns = useMemo(() => {
-    return Math.max(
-      0,
-      ...(data?.rows || []).map((item) => item.row.length)
-    );
+    return Math.max(0, ...(data?.rows || []).map((item) => item.row.length));
   }, [data]);
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-7xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
-          <p className="mt-2 text-slate-600">Carregando dados...</p>
-        </div>
-      </main>
+      <FinanceModuleShell title={title} subtitle={subtitle}>
+        <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+          <p className="text-slate-600">Carregando dados...</p>
+        </section>
+      </FinanceModuleShell>
     );
   }
 
   if (forbidden) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-7xl rounded-3xl border border-rose-200 bg-rose-50 p-8 shadow-sm">
-          <h1 className="text-3xl font-bold text-rose-700">{title}</h1>
-          <p className="mt-2 text-rose-600">Acesso restrito ao administrador.</p>
-        </div>
-      </main>
+      <FinanceModuleShell title={title} subtitle={subtitle}>
+        <section className="rounded-[28px] border border-rose-200 bg-rose-50 p-8 shadow-sm">
+          <p className="text-rose-600">Acesso restrito ao administrador.</p>
+        </section>
+      </FinanceModuleShell>
     );
   }
 
   if (errorMessage) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-7xl rounded-3xl border border-amber-200 bg-amber-50 p-8 shadow-sm">
-          <h1 className="text-3xl font-bold text-amber-800">{title}</h1>
-          <p className="mt-2 text-amber-700">{errorMessage}</p>
-        </div>
-      </main>
+      <FinanceModuleShell title={title} subtitle={subtitle}>
+        <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-8 shadow-sm">
+          <p className="text-amber-700">{errorMessage}</p>
+        </section>
+      </FinanceModuleShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[32px] border border-white/60 bg-white/90 shadow-sm backdrop-blur">
-          <div className="bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#334155_100%)] px-8 py-8 text-white">
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-300">{subtitle}</p>
-          </div>
+    <FinanceModuleShell title={title} subtitle={subtitle}>
+      <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="grid gap-3 border-b border-slate-200 px-6 py-4 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
+          <div><strong>Aba:</strong> {data?.sheet_name || "—"}</div>
+          <div><strong>Linhas:</strong> {data?.row_count || 0}</div>
+          <div><strong>Arquivo:</strong> {data?.source_file_name || "—"}</div>
+          <div><strong>Versão:</strong> {data?.source_version || "—"}</div>
+        </div>
+      </section>
 
-          <div className="grid gap-3 border-t border-slate-200 bg-slate-50 px-8 py-4 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <strong>Aba:</strong> {data?.sheet_name || "—"}
-            </div>
-            <div>
-              <strong>Linhas:</strong> {data?.row_count || 0}
-            </div>
-            <div>
-              <strong>Arquivo:</strong> {data?.source_file_name || "—"}
-            </div>
-            <div>
-              <strong>Versão:</strong> {data?.source_version || "—"}
-            </div>
-          </div>
-        </section>
+      <section className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-6 py-4">
+          <h2 className="text-lg font-semibold text-slate-900">Visualização da aba</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Leitura direta do staging financeiro já importado e validado.
+          </p>
+        </div>
 
-        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Visualização da aba</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Leitura direta do staging financeiro já importado e validado.
-            </p>
-          </div>
+        <div className="border-b border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">
+          Dica: role horizontalmente para visualizar todos os meses e colunas da planilha.
+        </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-slate-100 text-slate-700">
-                <tr>
-                  <th className="border-b border-slate-200 px-3 py-2 text-left font-semibold">Linha</th>
+        <div className="overflow-x-auto">
+          <table className="min-w-[1600px] border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700">
+              <tr>
+                <th className="sticky left-0 z-20 min-w-[90px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">
+                  Linha
+                </th>
+                {Array.from({ length: maxColumns }).map((_, index) => (
+                  <th
+                    key={index}
+                    className="min-w-[140px] border-b border-slate-200 px-3 py-3 text-left font-semibold whitespace-nowrap"
+                  >
+                    Col {index + 1}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.rows || []).map((item) => (
+                <tr key={item.row_number} className="odd:bg-white even:bg-slate-50">
+                  <td className="sticky left-0 z-10 min-w-[90px] border-b border-r border-slate-100 bg-inherit px-3 py-3 font-medium text-slate-500">
+                    {item.row_number}
+                  </td>
                   {Array.from({ length: maxColumns }).map((_, index) => (
-                    <th
+                    <td
                       key={index}
-                      className="border-b border-slate-200 px-3 py-2 text-left font-semibold"
+                      className="min-w-[140px] border-b border-slate-100 px-3 py-3 align-top text-slate-800"
                     >
-                      Col {index + 1}
-                    </th>
+                      <div className="max-w-[240px] whitespace-normal break-words">
+                        {displayCell(item.row[index])}
+                      </div>
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {(data?.rows || []).map((item) => (
-                  <tr key={item.row_number} className="odd:bg-white even:bg-slate-50">
-                    <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-500">
-                      {item.row_number}
-                    </td>
-                    {Array.from({ length: maxColumns }).map((_, index) => (
-                      <td
-                        key={index}
-                        className="border-b border-slate-100 px-3 py-2 align-top text-slate-800"
-                      >
-                        {displayCell(item.row[index])}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </main>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </FinanceModuleShell>
   );
 }
