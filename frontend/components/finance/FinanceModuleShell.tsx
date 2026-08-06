@@ -22,8 +22,8 @@ const navItems = [
   },
   {
     label: "Custos",
-    href: "#",
-    enabled: false,
+    href: "/financeiro/custos",
+    enabled: true,
   },
   {
     label: "Planejamento",
