@@ -1,6 +1,24 @@
 const express = require("express");
 const { processImportedBatch } = require("../services/finance/finance-process-batch.service");
 const router = express.Router();
+
+
+function parseBatchNotes(notes) {
+  if (!notes) {
+    return {};
+  }
+
+  if (typeof notes === "object") {
+    return notes;
+  }
+
+  try {
+    return JSON.parse(notes);
+  } catch (error) {
+    return {};
+  }
+}
+
 const XLSX = require("xlsx");
 const { adminSupabase } = require("../config/supabase");
 const authMiddleware = require("../middlewares/auth");
@@ -336,6 +354,105 @@ router.post("/import/batches/:id/process", authMiddleware, requireAdmin, async (
     console.error("[finance.import.process]", error);
     return res.status(500).json({
       message: error.message || "Erro ao processar lote financeiro."
+    });
+  }
+});
+
+router.get("/bootstrap", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const [
+      { data: latestSnapshot, error: snapshotError },
+      { data: latestImportBatch, error: importError }
+    ] = await Promise.all([
+      adminSupabase
+        .from("financial_dashboard_snapshots")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      adminSupabase
+        .from("financial_import_batches")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ]);
+
+    if (snapshotError) {
+      throw new Error(`Erro ao buscar snapshot: ${snapshotError.message}`);
+    }
+
+    if (importError) {
+      throw new Error(`Erro ao buscar lote de importação: ${importError.message}`);
+    }
+
+    const parsedNotes = parseBatchNotes(latestImportBatch?.notes);
+
+    const summary = latestSnapshot
+      ? {
+          reference_year: Number(latestSnapshot.reference_year) || new Date().getFullYear(),
+          reference_month: latestSnapshot.reference_month ?? null,
+          gross_revenue: Number(latestSnapshot.gross_revenue || 0),
+          net_profit: Number(latestSnapshot.net_profit || 0),
+          net_margin: Number(latestSnapshot.net_margin || 0),
+          ebitda: Number(latestSnapshot.ebitda || 0),
+          cash_balance: Number(latestSnapshot.cash_balance || 0),
+          fixed_costs: Number(latestSnapshot.fixed_costs || 0),
+          variable_cost_rate: Number(latestSnapshot.variable_cost_rate || 0),
+          break_even: Number(latestSnapshot.break_even || 0),
+          total_loans: Number(latestSnapshot.total_loans || 0),
+          loan_installments_year: Number(latestSnapshot.loan_installments_year || 0),
+          created_at: latestSnapshot.created_at,
+          updated_at: latestSnapshot.updated_at
+        }
+      : {
+          reference_year: new Date().getFullYear(),
+          reference_month: null,
+          gross_revenue: 0,
+          net_profit: 0,
+          net_margin: 0,
+          ebitda: 0,
+          cash_balance: 0,
+          fixed_costs: 0,
+          variable_cost_rate: 0,
+          break_even: 0,
+          total_loans: 0,
+          loan_installments_year: 0,
+          created_at: null,
+          updated_at: null
+        };
+
+    const latestImport = latestImportBatch
+      ? {
+          id: latestImportBatch.id,
+          source_file_name: latestImportBatch.source_file_name,
+          source_version: latestImportBatch.source_version,
+          import_status: latestImportBatch.import_status,
+          imported_by: latestImportBatch.imported_by,
+          created_at: latestImportBatch.created_at,
+          updated_at: latestImportBatch.updated_at,
+          notes: parsedNotes
+        }
+      : null;
+
+    const processingStatus = {
+      has_snapshot: !!latestSnapshot,
+      has_import_batch: !!latestImportBatch,
+      latest_snapshot_id: parsedNotes?.snapshot_id || latestSnapshot?.id || null,
+      processor: parsedNotes?.processor || null,
+      processed_at: parsedNotes?.processed_at || null,
+      metrics_found: parsedNotes?.metrics_found || null
+    };
+
+    return res.status(200).json({
+      summary,
+      latest_import_batch: latestImport,
+      processing_status: processingStatus
+    });
+  } catch (error) {
+    console.error("[finance.bootstrap]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar bootstrap financeiro."
     });
   }
 });
