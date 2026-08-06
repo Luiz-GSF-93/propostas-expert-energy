@@ -1,5 +1,7 @@
 const express = require("express");
+const { processImportedBatch } = require("../services/finance/finance-process-batch.service");
 const router = express.Router();
+const XLSX = require("xlsx");
 const { adminSupabase } = require("../config/supabase");
 const authMiddleware = require("../middlewares/auth");
 
@@ -34,6 +36,20 @@ async function requireAdmin(req, res, next) {
 
 router.use(authMiddleware);
 router.use(requireAdmin);
+
+
+function normalizeExcelValue(value) {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value === undefined) {
+    return null;
+  }
+
+  return value;
+}
+
 
 router.get("/summary", async (req, res) => {
   try {
@@ -154,6 +170,173 @@ router.get("/import/batches", async (req, res) => {
   } catch (error) {
     console.error("finance.batches.catch", error);
     return res.status(500).json({ message: "Erro interno ao listar importações." });
+  }
+});
+
+
+router.post("/import/excel", async (req, res) => {
+  try {
+    const sourceFilePath = String(req.body?.source_file_path || "").trim();
+    const sourceFileName = String(req.body?.source_file_name || "").trim() || "finance.xlsx";
+    const sourceVersion = String(req.body?.source_version || "").trim() || "fase_1b";
+
+    if (!sourceFilePath) {
+      return res.status(400).json({ message: "source_file_path é obrigatório." });
+    }
+
+    const fs = require("fs");
+    const pathModule = require("path");
+
+    if (!fs.existsSync(sourceFilePath)) {
+      return res.status(400).json({ message: "Arquivo Excel não encontrado no caminho informado." });
+    }
+
+    const workbook = XLSX.readFile(sourceFilePath, { cellDates: true });
+    const sheetNames = workbook.SheetNames || [];
+
+    const { data: batch, error: batchError } = await adminSupabase
+      .from("financial_import_batches")
+      .insert({
+        source_file_name: sourceFileName,
+        source_version: sourceVersion,
+        imported_by: req.user.id,
+        import_status: "processing",
+        notes: `Importação inicial de staging via backend. Arquivo: ${pathModule.basename(sourceFilePath)}`,
+      })
+      .select("*")
+      .single();
+
+    if (batchError || !batch) {
+      console.error("finance.import.batch.error", batchError);
+      return res.status(500).json({ message: "Não foi possível criar o lote de importação." });
+    }
+
+    const stagingRows = [];
+
+    for (const sheetName of sheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        defval: null,
+        raw: false,
+      });
+
+      rows.forEach((row, index) => {
+        const normalizedRow = Array.isArray(row)
+          ? row.map((value) => normalizeExcelValue(value))
+          : [];
+
+        stagingRows.push({
+          batch_id: batch.id,
+          sheet_name: sheetName,
+          row_number: index + 1,
+          payload_json: {
+            row: normalizedRow,
+          },
+        });
+      });
+    }
+
+    const chunkSize = 300;
+
+    for (let i = 0; i < stagingRows.length; i += chunkSize) {
+      const chunk = stagingRows.slice(i, i + chunkSize);
+
+      const { error: stagingError } = await adminSupabase
+        .from("financial_import_staging")
+        .insert(chunk);
+
+      if (stagingError) {
+        console.error("finance.import.staging.error", stagingError);
+
+        await adminSupabase
+          .from("financial_import_batches")
+          .update({
+            import_status: "error",
+            notes: `Falha ao inserir staging: ${stagingError.message || "erro desconhecido"}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", batch.id);
+
+        return res.status(500).json({
+          message: "Erro ao salvar linhas do Excel em staging.",
+          batch_id: batch.id,
+        });
+      }
+    }
+
+    const { error: finishError } = await adminSupabase
+      .from("financial_import_batches")
+      .update({
+        import_status: "completed",
+        updated_at: new Date().toISOString(),
+        notes: `Importação concluída com ${sheetNames.length} abas e ${stagingRows.length} linhas em staging.`,
+      })
+      .eq("id", batch.id);
+
+    if (finishError) {
+      console.error("finance.import.finish.error", finishError);
+    }
+
+    return res.status(200).json({
+      message: "Importação concluída com sucesso.",
+      batch_id: batch.id,
+      sheets: sheetNames.length,
+      rows_imported: stagingRows.length,
+      sheet_names: sheetNames,
+    });
+  } catch (error) {
+    console.error("finance.import.excel.catch", error);
+    return res.status(500).json({ message: "Erro interno ao importar Excel." });
+  }
+});
+
+
+router.get("/import/batches/:id/preview", async (req, res) => {
+  try {
+    const batchId = req.params.id;
+
+    const { data, error } = await adminSupabase
+      .from("financial_import_staging")
+      .select("sheet_name, row_number, payload_json")
+      .eq("batch_id", batchId)
+      .order("sheet_name", { ascending: true })
+      .order("row_number", { ascending: true })
+      .limit(200);
+
+    if (error) {
+      console.error("finance.import.preview.error", error);
+      return res.status(500).json({ message: "Erro ao carregar preview do staging." });
+    }
+
+    return res.status(200).json({ data: data ?? [] });
+  } catch (error) {
+    console.error("finance.import.preview.catch", error);
+    return res.status(500).json({ message: "Erro interno ao carregar preview." });
+  }
+});
+
+
+router.post("/import/batches/:id/process", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const batchId = req.params.id;
+    const referenceYear = req.body?.reference_year ?? new Date().getFullYear();
+
+    const result = await processImportedBatch({
+      batchId,
+      referenceYear,
+      adminSupabase
+    });
+
+    return res.status(200).json({
+      message: "Lote processado com sucesso.",
+      ...result
+    });
+  } catch (error) {
+    console.error("[finance.import.process]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao processar lote financeiro."
+    });
   }
 });
 
