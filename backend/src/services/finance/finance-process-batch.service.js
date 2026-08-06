@@ -15,7 +15,8 @@ function parseNumber(value) {
   raw = raw
     .replace(/[R$\s]/g, "")
     .replace(/[^\d,.\-()%]/g, "")
-    .replace(/[()]/g, "");
+    .replace(/[()]/g, "")
+    .replace(/%/g, "");
 
   if (!raw) {
     return null;
