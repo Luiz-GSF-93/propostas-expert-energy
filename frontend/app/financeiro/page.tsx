@@ -62,6 +62,7 @@ const hrefMap: Record<string, string> = {
   "fluxo-caixa": "/financeiro/fluxo-caixa",
   dre: "/financeiro/dre",
   custos: "/financeiro/custos",
+  emprestimos: "/financeiro/emprestimos",
 };
 
 export default function FinanceiroPage() {

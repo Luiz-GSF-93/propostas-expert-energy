@@ -839,6 +839,40 @@ router.get("/custos", authMiddleware, requireAdmin, async (req, res) => {
 });
 
 
+
+
+router.get("/emprestimos", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const latestBatch = await getLatestFinanceBatch();
+
+    if (!latestBatch) {
+      return res.status(200).json({
+        batch_id: null,
+        source_file_name: null,
+        source_version: null,
+        import_status: "empty",
+        sheet_name: "Empréstimos",
+        row_count: 0,
+        header_row_number: null,
+        headers: [],
+        rows: []
+      });
+    }
+
+    const rows = await getFinanceSheetRows(latestBatch.id, "Empréstimos");
+
+    return res.status(200).json(
+      formatFinanceSheetPayload("Empréstimos", rows, latestBatch)
+    );
+  } catch (error) {
+    console.error("[finance.emprestimos]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar empréstimos."
+    });
+  }
+});
+
+
 module.exports = router;
 
 function extractFinanceValues(row) {
@@ -882,6 +916,10 @@ function isFinanceTitleRow(row) {
     first.includes("demonstração do resultado") ||
     first.includes("demonstracao do resultado") ||
     first.includes("dre -") ||
+    first.includes("gestão de custos") ||
+    first.includes("gestao de custos") ||
+    first.includes("custos fixos e variáveis") ||
+    first.includes("custos fixos e variaveis") ||
     first.includes("💰") ||
     first.includes("📑");
 

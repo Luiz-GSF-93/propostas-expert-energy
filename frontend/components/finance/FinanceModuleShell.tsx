@@ -32,8 +32,8 @@ const navItems = [
   },
   {
     label: "Empréstimos",
-    href: "#",
-    enabled: false,
+    href: "/financeiro/emprestimos",
+    enabled: true,
   },
 ];
 
