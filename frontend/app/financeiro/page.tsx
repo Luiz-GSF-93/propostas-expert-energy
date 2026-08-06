@@ -61,6 +61,7 @@ const hrefMap: Record<string, string> = {
   "visao-geral": "/financeiro",
   "fluxo-caixa": "/financeiro/fluxo-caixa",
   dre: "/financeiro/dre",
+  custos: "/financeiro/custos",
 };
 
 export default function FinanceiroPage() {
@@ -226,7 +227,7 @@ export default function FinanceiroPage() {
                       </Link>
                     ) : (
                       <span className="inline-flex items-center rounded-lg bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">
-                        {section.key === "visao-geral" ? "Atual" : "Em breve"}
+                        {href ? "Abrir" : section.key === "visao-geral" ? "Atual" : "Em breve"}
                       </span>
                     )}
                   </div>
