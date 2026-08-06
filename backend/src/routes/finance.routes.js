@@ -832,6 +832,27 @@ function isFinanceRowEmpty(row) {
   return !values.some(isMeaningfulFinanceCell);
 }
 
+function isFinanceTitleRow(row) {
+  const values = extractFinanceValues(row).map(normalizeFinanceCell);
+  const meaningfulValues = values.filter(isMeaningfulFinanceCell);
+
+  if (meaningfulValues.length === 0) return false;
+
+  const first = String(meaningfulValues[0] || "").toLowerCase();
+
+  const looksLikeTitle =
+    first.includes("fluxo de caixa") ||
+    first.includes("projeção anual") ||
+    first.includes("projecao anual") ||
+    first.includes("demonstração do resultado") ||
+    first.includes("demonstracao do resultado") ||
+    first.includes("dre -") ||
+    first.includes("💰") ||
+    first.includes("📑");
+
+  return looksLikeTitle && meaningfulValues.length <= 2;
+}
+
 function scoreFinanceHeader(values) {
   const cells = values.map(normalizeFinanceCell);
   let score = 0;
@@ -897,13 +918,17 @@ function buildFinanceHeaders(row) {
 }
 
 function formatFinanceSheetPayload(sheetName, allRows, latestBatch) {
-  const usefulRows = allRows.filter((row) => !isFinanceRowEmpty(row));
-  const headerIndex = detectFinanceHeaderIndex(usefulRows);
-  const headerRow = usefulRows[headerIndex] || { row_number: null };
+  const prefilteredRows = allRows.filter(
+    (row) => !isFinanceRowEmpty(row) && !isFinanceTitleRow(row)
+  );
+
+  const headerIndex = detectFinanceHeaderIndex(prefilteredRows);
+  const headerRow = prefilteredRows[headerIndex] || { row_number: null };
   const headers = buildFinanceHeaders(headerRow);
 
-  const rows = usefulRows
+  const rows = prefilteredRows
     .filter((_, index) => index !== headerIndex)
+    .filter((row) => !isFinanceRowEmpty(row) && !isFinanceTitleRow(row))
     .map((row, index) => ({
       id: row.id || `${sheetName}-${row.row_number || index + 1}`,
       row_number: row.row_number ?? index + 1,
@@ -922,4 +947,3 @@ function formatFinanceSheetPayload(sheetName, allRows, latestBatch) {
     rows,
   };
 }
-
