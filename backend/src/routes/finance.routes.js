@@ -3,6 +3,64 @@ const { processImportedBatch } = require("../services/finance/finance-process-ba
 const router = express.Router();
 
 
+
+async function getLatestFinanceBatch() {
+  const { data, error } = await adminSupabase
+    .from("financial_import_batches")
+    .select("*")
+    .eq("import_status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Erro ao buscar último lote financeiro: ${error.message}`);
+  }
+
+  return data || null;
+}
+
+async function getFinanceSheetRows(batchId, sheetName) {
+  const pageSize = 1000;
+  let from = 0;
+  let allRows = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+
+    const { data, error } = await adminSupabase
+      .from("financial_import_staging")
+      .select("row_number, payload_json")
+      .eq("batch_id", batchId)
+      .eq("sheet_name", sheetName)
+      .order("row_number", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Erro ao buscar aba ${sheetName}: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    allRows = allRows.concat(
+      data.map((row) => ({
+        row_number: row.row_number,
+        row: Array.isArray(row.payload_json?.row) ? row.payload_json.row : [],
+      }))
+    );
+
+    if (data.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
 function parseBatchNotes(notes) {
   if (!notes) {
     return {};
@@ -453,6 +511,78 @@ router.get("/bootstrap", authMiddleware, requireAdmin, async (req, res) => {
     console.error("[finance.bootstrap]", error);
     return res.status(500).json({
       message: error.message || "Erro ao carregar bootstrap financeiro."
+    });
+  }
+});
+
+
+router.get("/fluxo-caixa", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const latestBatch = await getLatestFinanceBatch();
+
+    if (!latestBatch) {
+      return res.status(200).json({
+        batch_id: null,
+        source_file_name: null,
+        source_version: null,
+        import_status: "empty",
+        sheet_name: "Fluxo de Caixa",
+        row_count: 0,
+        rows: []
+      });
+    }
+
+    const rows = await getFinanceSheetRows(latestBatch.id, "Fluxo de Caixa");
+
+    return res.status(200).json({
+      batch_id: latestBatch.id,
+      source_file_name: latestBatch.source_file_name,
+      source_version: latestBatch.source_version,
+      import_status: latestBatch.import_status,
+      sheet_name: "Fluxo de Caixa",
+      row_count: rows.length,
+      rows
+    });
+  } catch (error) {
+    console.error("[finance.fluxo-caixa]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar fluxo de caixa."
+    });
+  }
+});
+
+
+router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const latestBatch = await getLatestFinanceBatch();
+
+    if (!latestBatch) {
+      return res.status(200).json({
+        batch_id: null,
+        source_file_name: null,
+        source_version: null,
+        import_status: "empty",
+        sheet_name: "DRE",
+        row_count: 0,
+        rows: []
+      });
+    }
+
+    const rows = await getFinanceSheetRows(latestBatch.id, "DRE");
+
+    return res.status(200).json({
+      batch_id: latestBatch.id,
+      source_file_name: latestBatch.source_file_name,
+      source_version: latestBatch.source_version,
+      import_status: latestBatch.import_status,
+      sheet_name: "DRE",
+      row_count: rows.length,
+      rows
+    });
+  } catch (error) {
+    console.error("[finance.dre]", error);
+    return res.status(500).json({
+      message: error.message || "Erro ao carregar DRE."
     });
   }
 });
