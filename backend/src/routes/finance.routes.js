@@ -839,8 +839,9 @@ function isFinanceTitleRow(row) {
   if (meaningfulValues.length === 0) return false;
 
   const first = String(meaningfulValues[0] || "").toLowerCase();
+  const firstRaw = String(meaningfulValues[0] || "");
 
-  const looksLikeTitle =
+  const looksLikeMainTitle =
     first.includes("fluxo de caixa") ||
     first.includes("projeção anual") ||
     first.includes("projecao anual") ||
@@ -850,7 +851,26 @@ function isFinanceTitleRow(row) {
     first.includes("💰") ||
     first.includes("📑");
 
-  return looksLikeTitle && meaningfulValues.length <= 2;
+  const looksLikeDescription =
+    first.includes("acompanhe entradas") ||
+    first.includes("identifique meses críticos") ||
+    first.includes("identifique meses criticos") ||
+    first.includes("planeje sua liquidez") ||
+    first.includes("apuração mensal") ||
+    first.includes("apuracao mensal") ||
+    first.includes("resultado contábil da empresa") ||
+    first.includes("resultado contabil da empresa");
+
+  const onlyFirstCellFilled = meaningfulValues.length === 1;
+  const longSentence =
+    firstRaw.length >= 45 &&
+    (firstRaw.includes(".") || firstRaw.includes(",") || firstRaw.includes(":"));
+
+  return (
+    (looksLikeMainTitle && meaningfulValues.length <= 2) ||
+    (looksLikeDescription && onlyFirstCellFilled) ||
+    (onlyFirstCellFilled && longSentence)
+  );
 }
 
 function scoreFinanceHeader(values) {
