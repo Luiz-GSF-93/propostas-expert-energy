@@ -448,6 +448,10 @@ export default function EmprestimosPage() {
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
 
+  const hasPaidInstallments = toNumber(
+    selectedContract?.installments_paid_count ?? selectedContract?.installments_paid ?? 0
+  ) > 0;
+
   return (
     <FinanceModuleShell
       title="Empréstimos"
@@ -619,18 +623,34 @@ export default function EmprestimosPage() {
                   </div>
 
                   {settlementQuote ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                      <p className="text-sm font-semibold text-emerald-800">Simulação de quitação antecipada</p>
-                      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 text-sm">
+                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-800">Simulação de quitação antecipada</p>
+                          <p className="mt-1 text-xs text-emerald-700">
+                            Economia calculada pelas parcelas futuras evitadas menos o valor presente da quitação.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-right shadow-sm">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-600">Economia estimada</p>
+                          <p className="mt-1 text-2xl font-bold text-emerald-700">
+                            {formatMoney(settlementQuote.settlement_savings)}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {settlementQuote.months_avoided} mês(es) evitados
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 text-sm">
                         <QuoteItem label="Total futuro em aberto" value={formatMoney(settlementQuote.future_scheduled_amount)} />
                         <QuoteItem label="Saldo presente" value={formatMoney(settlementQuote.principal_present_value)} />
                         <QuoteItem label="Juros do mês" value={formatMoney(settlementQuote.current_interest_value)} />
                         <QuoteItem label="Custos do mês" value={formatMoney(settlementQuote.current_extra_cost_value)} />
                         <QuoteItem label="Valor da quitação" value={formatMoney(settlementQuote.settlement_amount)} />
-                        <QuoteItem label="Economia estimada" value={formatMoney(settlementQuote.settlement_savings)} />
-                        <QuoteItem label="Meses evitados" value={String(settlementQuote.months_avoided)} />
                         <QuoteItem label="Data base" value={formatDateBr(settlementQuote.settlement_date)} />
                       </div>
+
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button onClick={() => { setSettlementMode("settlement"); setIsSettlementOpen(true); }} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Confirmar quitação</button>
                         <button onClick={() => setSettlementQuote(null)} className="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">Limpar simulação</button>
@@ -685,10 +705,12 @@ export default function EmprestimosPage() {
       {isNewOpen ? (
         <ContractModal
           title="Novo contrato"
+          mode="create"
           form={form}
           setForm={setForm}
           iofPreview={iofPreview}
           saving={saving}
+          structuralLocked={false}
           onClose={() => setIsNewOpen(false)}
           onSubmit={handleCreate}
         />
@@ -697,10 +719,12 @@ export default function EmprestimosPage() {
       {isEditOpen ? (
         <ContractModal
           title="Editar contrato"
+          mode="edit"
           form={editForm}
           setForm={setEditForm}
           iofPreview={0}
           saving={saving}
+          structuralLocked={hasPaidInstallments}
           onClose={() => setIsEditOpen(false)}
           onSubmit={handleUpdate}
         />
@@ -745,18 +769,22 @@ export default function EmprestimosPage() {
 
 function ContractModal({
   title,
+  mode,
   form,
   setForm,
   iofPreview,
   saving,
+  structuralLocked,
   onClose,
   onSubmit,
 }: {
   title: string;
+  mode: "create" | "edit";
   form: LoanForm;
   setForm: React.Dispatch<React.SetStateAction<LoanForm>>;
   iofPreview: number;
   saving: boolean;
+  structuralLocked: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent) => void;
 }) {
@@ -766,26 +794,31 @@ function ContractModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
-            <p className="mt-1 text-sm text-slate-500">IOF percentual sobre o valor do empréstimo.</p>
+            <p className="mt-1 text-sm text-slate-500">{mode === "create" ? "Cadastre um novo contrato com cálculo automático de IOF, parcelas e custos." : "Edite dados do contrato. Campos estruturais podem ser bloqueados quando já houver parcelas pagas."}</p>
           </div>
           <button onClick={onClose} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">Fechar</button>
         </div>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-5">
+          {mode === "edit" && structuralLocked ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Este contrato já possui parcelas pagas. Os campos estruturais ficam bloqueados para preservar o cronograma e o histórico financeiro.
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Código do contrato" value={form.contract_number} onChange={(value) => setForm((prev) => ({ ...prev, contract_number: value }))} />
             <Field label="Instituição" value={form.lender} onChange={(value) => setForm((prev) => ({ ...prev, lender: value }))} />
             <Field label="Modalidade" value={form.loan_type} onChange={(value) => setForm((prev) => ({ ...prev, loan_type: value }))} />
             <SelectField label="Status" value={form.status} onChange={(value) => setForm((prev) => ({ ...prev, status: value }))} options={[{ value: "active", label: "Ativo" }, { value: "open", label: "Aberto" }, { value: "encerrado", label: "Encerrado" }]} />
-            <Field label="Valor do empréstimo" value={form.principal_amount} onChange={(value) => setForm((prev) => ({ ...prev, principal_amount: value }))} type="number" />
-            <Field label="Parcelas totais" value={form.installments_total} onChange={(value) => setForm((prev) => ({ ...prev, installments_total: value }))} type="number" />
-            <Field label="Juros a.m." value={form.monthly_rate} onChange={(value) => setForm((prev) => ({ ...prev, monthly_rate: value }))} type="number" />
-            <Field label="Juros a.a." value={form.annual_rate} onChange={(value) => setForm((prev) => ({ ...prev, annual_rate: value }))} type="number" />
-            <Field label="IOF (%)" value={form.iof_percent} onChange={(value) => setForm((prev) => ({ ...prev, iof_percent: value }))} type="number" />
-            <Field label="Tarifas / custos" value={form.fees} onChange={(value) => setForm((prev) => ({ ...prev, fees: value }))} type="number" />
-            <Field label="Carência (meses)" value={form.grace_months} onChange={(value) => setForm((prev) => ({ ...prev, grace_months: value }))} type="number" />
-            <Field label="Primeiro vencimento" value={form.first_due_date} onChange={(value) => setForm((prev) => ({ ...prev, first_due_date: value }))} type="date" />
-            <SelectField label="Sistema de amortização" value={form.amortization_system} onChange={(value) => setForm((prev) => ({ ...prev, amortization_system: value }))} options={[{ value: "PRICE", label: "PRICE" }, { value: "SAC", label: "SAC" }]} />
+            <Field label="Valor do empréstimo" disabled={mode === "edit" && structuralLocked} value={form.principal_amount} onChange={(value) => setForm((prev) => ({ ...prev, principal_amount: value }))} type="number" />
+            <Field label="Parcelas totais" disabled={mode === "edit" && structuralLocked} value={form.installments_total} onChange={(value) => setForm((prev) => ({ ...prev, installments_total: value }))} type="number" />
+            <Field label="Juros a.m." disabled={mode === "edit" && structuralLocked} value={form.monthly_rate} onChange={(value) => setForm((prev) => ({ ...prev, monthly_rate: value }))} type="number" />
+            <Field label="Juros a.a." disabled={mode === "edit" && structuralLocked} value={form.annual_rate} onChange={(value) => setForm((prev) => ({ ...prev, annual_rate: value }))} type="number" />
+            <Field label="IOF (%)" disabled={mode === "edit" && structuralLocked} value={form.iof_percent} onChange={(value) => setForm((prev) => ({ ...prev, iof_percent: value }))} type="number" />
+            <Field label="Tarifas / custos" disabled={mode === "edit" && structuralLocked} value={form.fees} onChange={(value) => setForm((prev) => ({ ...prev, fees: value }))} type="number" />
+            <Field label="Carência (meses)" disabled={mode === "edit" && structuralLocked} value={form.grace_months} onChange={(value) => setForm((prev) => ({ ...prev, grace_months: value }))} type="number" />
+            <Field label="Primeiro vencimento" disabled={mode === "edit" && structuralLocked} value={form.first_due_date} onChange={(value) => setForm((prev) => ({ ...prev, first_due_date: value }))} type="date" />
+            <SelectField label="Sistema de amortização" disabled={mode === "edit" && structuralLocked} value={form.amortization_system} onChange={(value) => setForm((prev) => ({ ...prev, amortization_system: value }))} options={[{ value: "PRICE", label: "PRICE" }, { value: "SAC", label: "SAC" }]} />
           </div>
 
           {iofPreview > 0 ? (
@@ -853,11 +886,11 @@ function InfoMini({ label, value, inverted = false }: { label: string; value: st
   );
 }
 
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
+function Field({ label, value, onChange, type = "text", disabled = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; disabled?: boolean }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
-      <input value={value} onChange={(event) => onChange(event.target.value)} type={type} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900" />
+      <input value={value} onChange={(event) => onChange(event.target.value)} type={type} disabled={disabled} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" />
     </div>
   );
 }
@@ -867,16 +900,18 @@ function SelectField({
   value,
   onChange,
   options,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900">
+      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </div>
