@@ -575,6 +575,44 @@ export default function EmprestimosPage() {
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
 
+  const topCostContracts = useMemo(() => {
+    return [...filteredContracts]
+      .map((item) => {
+        const totalCost =
+          toNumber(
+            item.total_loan_cost ??
+              (
+                toNumber(item.total_scheduled_amount) -
+                toNumber(item.principal_amount)
+              )
+          ) || 0;
+
+        return {
+          id: item.id,
+          contract: item,
+          totalCost,
+        };
+      })
+      .sort((a, b) => b.totalCost - a.totalCost)
+      .slice(0, 4);
+  }, [filteredContracts]);
+
+  const next30DaysContracts = useMemo(() => {
+    const today = new Date();
+    const limit = new Date();
+    limit.setDate(limit.getDate() + 30);
+
+    return [...filteredContracts]
+      .filter((item) => item.next_due_date)
+      .map((item) => {
+        const due = new Date(`${item.next_due_date}T00:00:00`);
+        return { item, due };
+      })
+      .filter(({ due }) => !Number.isNaN(due.getTime()) && due >= today && due <= limit)
+      .sort((a, b) => a.due.getTime() - b.due.getTime())
+      .slice(0, 6);
+  }, [filteredContracts]);
+
   return (
     <FinanceModuleShell
       title="Empréstimos"
@@ -621,7 +659,7 @@ export default function EmprestimosPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3">
           <DashboardCard
             label="Total emprestado"
             value={formatMoney(dashboard.totalPrincipal)}
@@ -729,7 +767,7 @@ export default function EmprestimosPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_1.9fr]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -768,21 +806,21 @@ export default function EmprestimosPage() {
                       key={contract.id}
                       type="button"
                       onClick={() => setSelectedId(contract.id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                      className={`w-full rounded-2xl border p-3.5 text-left transition min-w-0 ${
                         isActive
                           ? "border-slate-900 bg-slate-900 text-white shadow-md"
                           : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-white"
                       }`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>
+                        <div className="min-w-0">
+                          <p className={`truncate text-[11px] font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>
                             {contract.contract_number || contract.contract_code || "Sem código"}
                           </p>
-                          <h4 className="mt-1 text-sm font-semibold">
+                          <h4 className="mt-1 break-words text-sm font-semibold leading-tight">
                             {contract.loan_type || contract.contract_name || "Contrato sem nome"}
                           </h4>
-                          <p className={`mt-1 text-sm ${isActive ? "text-slate-300" : "text-slate-500"}`}>
+                          <p className={`mt-1 truncate text-sm ${isActive ? "text-slate-300" : "text-slate-500"}`}>
                             {contract.lender || "Instituição não informada"}
                           </p>
                         </div>
@@ -791,7 +829,7 @@ export default function EmprestimosPage() {
                         </span>
                       </div>
 
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <div className="mt-4 grid grid-cols-2 gap-2">
                         <InfoMini
                           label="Principal"
                           value={formatMoney(contract.principal_amount)}
@@ -897,7 +935,7 @@ export default function EmprestimosPage() {
               </div>
 
               <div className="mt-4 overflow-x-auto">
-                <table className="min-w-[1120px] text-sm">
+                <table className="min-w-[980px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-slate-500">
                       <th className="px-3 py-3 font-semibold">Parcela</th>
@@ -1003,7 +1041,7 @@ export default function EmprestimosPage() {
             </div>
 
             <form onSubmit={handleCreateContract} className="mt-6 space-y-5">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3">
                 <Field
                   label="Código do contrato"
                   value={form.contract_number}
@@ -1151,12 +1189,14 @@ function DashboardCard({
   hint: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+    <div className="min-w-0 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
         {label}
       </p>
-      <p className="mt-3 text-2xl font-semibold text-slate-900">{value}</p>
-      <p className="mt-2 text-sm text-slate-500">{hint}</p>
+      <p className="mt-2 break-words text-[clamp(1.1rem,1.6vw,1.9rem)] font-semibold leading-tight text-slate-900">
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{hint}</p>
     </div>
   );
 }
@@ -1182,11 +1222,11 @@ function InfoMini({
   inverted?: boolean;
 }) {
   return (
-    <div className={`rounded-xl px-3 py-2 ${inverted ? "bg-white/10" : "bg-white"}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${inverted ? "text-slate-300" : "text-slate-400"}`}>
+    <div className={`min-w-0 rounded-xl px-3 py-2 ${inverted ? "bg-white/10" : "bg-white"}`}>
+      <p className={`truncate text-[10px] font-semibold uppercase tracking-[0.14em] ${inverted ? "text-slate-300" : "text-slate-400"}`}>
         {label}
       </p>
-      <p className={`mt-1 text-sm font-semibold ${inverted ? "text-white" : "text-slate-900"}`}>
+      <p className={`mt-1 break-words text-[13px] font-semibold leading-tight ${inverted ? "text-white" : "text-slate-900"}`}>
         {value}
       </p>
     </div>
