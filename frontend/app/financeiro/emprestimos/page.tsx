@@ -406,6 +406,275 @@ export default function EmprestimosPage() {
     }
   }
 
+  function escapeHtml(value: unknown): string {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function exportSelectedContractCsv() {
+    if (!selectedContract) {
+      setError("Selecione um contrato para exportar.");
+      return;
+    }
+
+    const header = [
+      ["Campo", "Valor"],
+      ["Código", selectedContract.contract_number || selectedContract.contract_code || ""],
+      ["Instituição", selectedContract.lender || ""],
+      ["Modalidade", selectedContract.loan_type || selectedContract.contract_name || ""],
+      ["Principal", String(toNumber(selectedContract.principal_amount).toFixed(2))],
+      ["Saldo consolidado", String(toNumber(selectedContract.remaining_scheduled_amount ?? selectedContract.balance_outstanding).toFixed(2))],
+      ["Custo do empréstimo", String(toNumber(selectedContract.total_loan_cost).toFixed(2))],
+      ["Parcela atual", String(toNumber(selectedContract.current_installment_amount ?? selectedContract.installment_amount).toFixed(2))],
+      ["Juros a.m.", String(toNumber(selectedContract.monthly_rate).toFixed(2))],
+      ["Juros a.a.", String(toNumber(selectedContract.annual_rate).toFixed(2))],
+      ["IOF", String(toNumber(selectedContract.iof).toFixed(2))],
+      ["Tarifas", String(toNumber(selectedContract.fees).toFixed(2))],
+      ["Primeiro vencimento", selectedContract.first_due_date || ""],
+      ["Próximo vencimento", selectedContract.next_due_date || ""],
+      ["Status", selectedContract.status || ""],
+      ["" , ""],
+      ["Cronograma", ""],
+      ["Parcela", "Vencimento;Valor;Amortização;Juros;Custos;Saldo após;Status;Pago em"],
+    ];
+
+    const scheduleRows = schedule.map((item) => [
+      String(item.installment_number),
+      [
+        item.due_date || "",
+        toNumber(item.installment_amount).toFixed(2),
+        toNumber(item.amortization_amount).toFixed(2),
+        toNumber(item.interest_amount).toFixed(2),
+        toNumber(item.extra_cost_amount).toFixed(2),
+        toNumber(item.balance_after).toFixed(2),
+        item.status || "",
+        item.paid_at || "",
+      ].join(";"),
+    ]);
+
+    const csv = [...header, ...scheduleRows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const code = selectedContract.contract_number || selectedContract.contract_code || "contrato";
+    link.href = url;
+    link.download = `emprestimo-${code}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function printSelectedContractReport() {
+    if (!selectedContract) {
+      setError("Selecione um contrato para imprimir.");
+      return;
+    }
+
+    const reportDate = new Date().toLocaleString("pt-BR");
+    const code = selectedContract.contract_number || selectedContract.contract_code || "—";
+    const lender = selectedContract.lender || "—";
+    const type = selectedContract.loan_type || selectedContract.contract_name || "—";
+    const principal = formatMoney(selectedContract.principal_amount);
+    const saldo = formatMoney(selectedContract.remaining_scheduled_amount ?? selectedContract.balance_outstanding);
+    const custo = formatMoney(selectedContract.total_loan_cost);
+    const parcela = formatMoney(selectedContract.current_installment_amount ?? selectedContract.installment_amount);
+    const jurosAm = formatPercent(selectedContract.monthly_rate);
+    const jurosAa = formatPercent(selectedContract.annual_rate);
+    const iof = formatMoney(selectedContract.iof);
+    const fees = formatMoney(selectedContract.fees);
+    const primeiroVenc = formatDateBr(selectedContract.first_due_date);
+    const proxVenc = formatDateBr(selectedContract.next_due_date);
+    const status = selectedContract.status || "—";
+    const notas = selectedContract.notes || "—";
+
+    const rows = schedule.map((item) => `
+      <tr>
+        <td>${escapeHtml(item.installment_number)}</td>
+        <td>${escapeHtml(formatDateBr(item.due_date))}</td>
+        <td>${escapeHtml(formatMoney(item.installment_amount))}</td>
+        <td>${escapeHtml(formatMoney(item.amortization_amount))}</td>
+        <td>${escapeHtml(formatMoney(item.interest_amount))}</td>
+        <td>${escapeHtml(formatMoney(item.extra_cost_amount))}</td>
+        <td>${escapeHtml(formatMoney(item.balance_after))}</td>
+        <td>${escapeHtml(item.status || "")}</td>
+      </tr>
+    `).join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <title>Relatório de Empréstimo - ${escapeHtml(code)}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 14mm;
+          }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            font-size: 12px;
+          }
+          .header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 20px;
+          }
+          .header p {
+            margin: 4px 0 0;
+            color: #475569;
+          }
+          .meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+          }
+          .box {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+          }
+          .box .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #64748b;
+            margin-bottom: 6px;
+          }
+          .box .value {
+            font-size: 13px;
+            font-weight: 700;
+            word-break: break-word;
+          }
+          .section-title {
+            margin: 18px 0 8px;
+            font-size: 14px;
+            font-weight: 700;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 11px;
+          }
+          th, td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 7px;
+            text-align: left;
+            vertical-align: top;
+          }
+          th {
+            background: #f1f5f9;
+          }
+          .summary {
+            margin-top: 18px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            background: #f8fafc;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+          }
+          .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #475569;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Expert Energy Perfomance em Energia</h1>
+          <p>Relatório do contrato de empréstimo selecionado</p>
+          <p>Data da impressão: ${escapeHtml(reportDate)}</p>
+        </div>
+
+        <div class="meta">
+          <div class="box"><div class="label">Código</div><div class="value">${escapeHtml(code)}</div></div>
+          <div class="box"><div class="label">Instituição</div><div class="value">${escapeHtml(lender)}</div></div>
+          <div class="box"><div class="label">Modalidade</div><div class="value">${escapeHtml(type)}</div></div>
+          <div class="box"><div class="label">Principal</div><div class="value">${escapeHtml(principal)}</div></div>
+          <div class="box"><div class="label">Saldo consolidado</div><div class="value">${escapeHtml(saldo)}</div></div>
+          <div class="box"><div class="label">Custo do empréstimo</div><div class="value">${escapeHtml(custo)}</div></div>
+          <div class="box"><div class="label">Parcela atual</div><div class="value">${escapeHtml(parcela)}</div></div>
+          <div class="box"><div class="label">Juros</div><div class="value">${escapeHtml(jurosAm)} a.m. • ${escapeHtml(jurosAa)} a.a.</div></div>
+          <div class="box"><div class="label">Status</div><div class="value">${escapeHtml(status)}</div></div>
+          <div class="box"><div class="label">IOF</div><div class="value">${escapeHtml(iof)}</div></div>
+          <div class="box"><div class="label">Tarifas</div><div class="value">${escapeHtml(fees)}</div></div>
+          <div class="box"><div class="label">Vencimentos</div><div class="value">${escapeHtml(primeiroVenc)} → ${escapeHtml(proxVenc)}</div></div>
+        </div>
+
+        <div class="section-title">Observações</div>
+        <div class="box">${escapeHtml(notas)}</div>
+
+        <div class="section-title">Cronograma</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Parcela</th>
+              <th>Vencimento</th>
+              <th>Valor</th>
+              <th>Amortização</th>
+              <th>Juros</th>
+              <th>Custos</th>
+              <th>Saldo após</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="summary">
+          <div class="section-title" style="margin-top:0">Resumo do contrato</div>
+          <div class="summary-grid">
+            <div class="box"><div class="label">Principal</div><div class="value">${escapeHtml(principal)}</div></div>
+            <div class="box"><div class="label">Saldo consolidado</div><div class="value">${escapeHtml(saldo)}</div></div>
+            <div class="box"><div class="label">Custo do empréstimo</div><div class="value">${escapeHtml(custo)}</div></div>
+            <div class="box"><div class="label">Parcela atual</div><div class="value">${escapeHtml(parcela)}</div></div>
+          </div>
+        </div>
+
+        <div class="footer">
+          Relatório gerado pelo módulo de gestão de empréstimos.
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setError("Não foi possível abrir a janela de impressão.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  }
+
   async function handleDeleteContract() {
     if (!selectedId) return;
 
@@ -682,6 +951,8 @@ export default function EmprestimosPage() {
                 {selectedContract ? (
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => setIsEditOpen(true)} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Editar contrato</button>
+                    <button onClick={exportSelectedContractCsv} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Download CSV</button>
+                    <button onClick={printSelectedContractReport} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Imprimir relatório</button>
                     <button onClick={handlePreviewSettlement} className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">Simular quitação</button>
                     <button onClick={() => { setSettlementMode("close"); setIsSettlementOpen(true); }} className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100">Encerrar sem quitação</button>
                     <button onClick={handleDeleteContract} className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir contrato</button>
@@ -956,7 +1227,9 @@ function DashboardCard({ label, value, hint }: { label: string; value: string; h
   return (
     <div className="min-w-0 rounded-[18px] border border-slate-200 bg-white p-3.5 shadow-sm">
       <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-      <p className="mt-2 break-words text-[clamp(1rem,1.35vw,1.65rem)] font-semibold leading-tight text-slate-900">{value}</p>
+      <p className="mt-2 overflow-hidden text-[clamp(0.92rem,1.1vw,1.45rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-slate-900 [font-variant-numeric:tabular-nums]">
+        {value}
+      </p>
       <p className="mt-1.5 text-[11px] leading-4 text-slate-500">{hint}</p>
     </div>
   );
