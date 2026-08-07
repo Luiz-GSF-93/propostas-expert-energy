@@ -949,7 +949,7 @@ export default function EmprestimosPage() {
                   <p className="text-xs text-slate-500">Edição, encerramento e quitação antecipada</p>
                 </div>
                 {selectedContract ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2 max-w-full">
                     <button onClick={() => setIsEditOpen(true)} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Editar contrato</button>
                     <button onClick={exportSelectedContractCsv} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Download CSV</button>
                     <button onClick={printSelectedContractReport} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Imprimir relatório</button>
