@@ -119,6 +119,12 @@ function normalizeLoanInput(input, current = {}) {
     iof: iofAmount,
     fees: parseNumber(input.fees ?? current.fees, 0),
     grace_months: parseInteger(input.grace_months ?? current.grace_months, 0),
+    pay_interest_during_grace: Boolean(
+      (input.pay_interest_during_grace ?? current.pay_interest_during_grace) === true ||
+      String(input.pay_interest_during_grace ?? current.pay_interest_during_grace ?? "").toLowerCase() === "true" ||
+      String(input.pay_interest_during_grace ?? current.pay_interest_during_grace ?? "").toLowerCase() === "sim" ||
+      String(input.pay_interest_during_grace ?? current.pay_interest_during_grace ?? "").toLowerCase() === "yes"
+    ),
     amortization_system: normalizeText(input.amortization_system ?? current.amortization_system).toUpperCase() || DEFAULT_AMORTIZATION,
     start_date: formatDateIso(parseDate(input.start_date ?? current.start_date)),
     release_date: formatDateIso(parseDate(input.release_date ?? current.release_date)),
@@ -137,6 +143,8 @@ function buildSchedule(contract) {
   const installmentsPaid = Number(contract.installments_paid || 0);
   const iof = Number(contract.iof || 0);
   const fees = Number(contract.fees || 0);
+  const graceMonths = Number(contract.grace_months || 0);
+  const payInterestDuringGrace = Boolean(contract.pay_interest_during_grace);
   const extraPerInstallment = installments > 0 ? (iof + fees) / installments : 0;
 
   if (!principal || !installments) return [];
@@ -147,6 +155,32 @@ function buildSchedule(contract) {
 
   const schedule = [];
   let balance = principal;
+  let seq = 1;
+
+  if (payInterestDuringGrace && graceMonths > 0) {
+    for (let g = 0; g < graceMonths; g += 1) {
+      const dueDate = addMonths(start, g);
+      const interest = balance * monthlyRate;
+      const paid = seq <= installmentsPaid;
+      const overdue = !paid && dueDate < new Date();
+
+      schedule.push({
+        installment_number: seq,
+        due_date: formatDateIso(dueDate),
+        installment_amount: Number(interest.toFixed(2)),
+        amortization_amount: 0,
+        interest_amount: Number(interest.toFixed(2)),
+        extra_cost_amount: 0,
+        balance_before: Number(balance.toFixed(2)),
+        balance_after: Number(balance.toFixed(2)),
+        status: paid ? "paid" : overdue ? "overdue" : "open",
+      });
+
+      seq += 1;
+    }
+  }
+
+  const amortStartShift = payInterestDuringGrace ? graceMonths : graceMonths;
 
   if ((contract.amortization_system || DEFAULT_AMORTIZATION).toUpperCase() === "SAC") {
     const amortization = principal / installments;
@@ -156,12 +190,12 @@ function buildSchedule(contract) {
       const interest = balanceBefore * monthlyRate;
       const installment = amortization + interest + extraPerInstallment;
       const balanceAfter = Math.max(balanceBefore - amortization, 0);
-      const dueDate = addMonths(start, i - 1 + Number(contract.grace_months || 0));
-      const paid = i <= installmentsPaid;
+      const dueDate = addMonths(start, amortStartShift + i - 1);
+      const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
 
       schedule.push({
-        installment_number: i,
+        installment_number: seq,
         due_date: formatDateIso(dueDate),
         installment_amount: Number(installment.toFixed(2)),
         amortization_amount: Number(amortization.toFixed(2)),
@@ -173,6 +207,7 @@ function buildSchedule(contract) {
       });
 
       balance = balanceAfter;
+      seq += 1;
     }
 
     return schedule;
@@ -191,12 +226,12 @@ function buildSchedule(contract) {
     const amortization = monthlyRate === 0 ? principal / installments : paymentBase - interest;
     const installment = paymentBase + extraPerInstallment;
     const balanceAfter = Math.max(balanceBefore - amortization, 0);
-    const dueDate = addMonths(start, i - 1 + Number(contract.grace_months || 0));
-    const paid = i <= installmentsPaid;
+    const dueDate = addMonths(start, amortStartShift + i - 1);
+    const paid = seq <= installmentsPaid;
     const overdue = !paid && dueDate < new Date();
 
     schedule.push({
-      installment_number: i,
+      installment_number: seq,
       due_date: formatDateIso(dueDate),
       installment_amount: Number(installment.toFixed(2)),
       amortization_amount: Number(amortization.toFixed(2)),
@@ -208,6 +243,7 @@ function buildSchedule(contract) {
     });
 
     balance = balanceAfter;
+    seq += 1;
   }
 
   return schedule;

@@ -69,6 +69,13 @@ function formatDateIso(date) {
   return date.toISOString().slice(0, 10);
 }
 
+function extractPayInterestDuringGraceFromNotes(notes) {
+  const raw = normalizeText(notes).toLowerCase();
+  if (!raw) return false;
+  return raw.includes("[juros_na_carencia=sim]") || raw.includes("[pay_interest_during_grace=true]");
+}
+
+
 function addMonths(date, months) {
   const d = new Date(date.getTime());
   d.setMonth(d.getMonth() + months);
@@ -147,13 +154,30 @@ function normalizeLoanInput(input) {
     iof: iofAmount,
     fees: parseNumber(input.fees, 0),
     grace_months: parseInteger(input.grace_months, 0),
+    pay_interest_during_grace: Boolean(
+      input.pay_interest_during_grace === true ||
+      String(input.pay_interest_during_grace || "").toLowerCase() === "true" ||
+      String(input.pay_interest_during_grace || "").toLowerCase() === "sim" ||
+      String(input.pay_interest_during_grace || "").toLowerCase() === "yes" ||
+      extractPayInterestDuringGraceFromNotes(input.notes)
+    ),
     amortization_system: normalizeText(input.amortization_system).toUpperCase() || DEFAULT_AMORTIZATION,
     start_date: formatDateIso(parseDate(input.start_date)),
     release_date: formatDateIso(parseDate(input.release_date)),
     first_due_date: formatDateIso(parseDate(input.first_due_date)),
     final_due_date: formatDateIso(parseDate(input.final_due_date)),
     status: normalizeText(input.status) || "ativo",
-    notes: normalizeText(input.notes),
+    notes: (() => {
+      const baseNotes = normalizeText(input.notes).replace(/\s*\[juros_na_carencia=(sim|nao)\]\s*/gi, "").trim();
+      const payGrace = Boolean(
+        input.pay_interest_during_grace === true ||
+        String(input.pay_interest_during_grace || "").toLowerCase() === "true" ||
+        String(input.pay_interest_during_grace || "").toLowerCase() === "sim" ||
+        String(input.pay_interest_during_grace || "").toLowerCase() === "yes" ||
+        extractPayInterestDuringGraceFromNotes(input.notes)
+      );
+      return `${baseNotes}${baseNotes ? " " : ""}[juros_na_carencia=${payGrace ? "sim" : "nao"}]`.trim();
+    })(),
     source: normalizeText(input.source) || "manual",
   };
 }
@@ -165,6 +189,8 @@ function buildSchedule(contract) {
   const installmentsPaid = Number(contract.installments_paid || 0);
   const iof = Number(contract.iof || 0);
   const fees = Number(contract.fees || 0);
+  const graceMonths = Number(contract.grace_months || 0);
+  const payInterestDuringGrace = Boolean(contract.pay_interest_during_grace);
   const extraPerInstallment = installments > 0 ? (iof + fees) / installments : 0;
 
   if (!principal || !installments) return [];
@@ -175,6 +201,35 @@ function buildSchedule(contract) {
 
   const schedule = [];
   let balance = principal;
+  let seq = 1;
+
+  if (payInterestDuringGrace && graceMonths > 0) {
+    for (let g = 0; g < graceMonths; g += 1) {
+      const dueDate = addMonths(start, g);
+      const dueDateIso = formatDateIso(dueDate);
+      const interest = balance * monthlyRate;
+      const paid = seq <= installmentsPaid;
+      const overdue = !paid && dueDate < new Date();
+
+      schedule.push({
+        installment_number: seq,
+        due_date: dueDateIso,
+        installment_amount: interest,
+        amortization_amount: 0,
+        interest_amount: interest,
+        extra_cost_amount: 0,
+        balance_before: balance,
+        balance_after: balance,
+        paid_amount: paid ? interest : null,
+        paid_at: paid ? dueDateIso : null,
+        status: paid ? "paid" : overdue ? "overdue" : "open",
+      });
+
+      seq += 1;
+    }
+  }
+
+  const amortStartShift = graceMonths;
 
   if ((contract.amortization_system || DEFAULT_AMORTIZATION).toUpperCase() === "SAC") {
     const amortization = principal / installments;
@@ -184,12 +239,12 @@ function buildSchedule(contract) {
       const interest = balanceBefore * monthlyRate;
       const installment = amortization + interest + extraPerInstallment;
       const balanceAfter = Math.max(balanceBefore - amortization, 0);
-      const dueDate = addMonths(start, i - 1 + Number(contract.grace_months || 0));
-      const paid = i <= installmentsPaid;
+      const dueDate = addMonths(start, amortStartShift + i - 1);
+      const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
 
       schedule.push({
-        installment_number: i,
+        installment_number: seq,
         due_date: formatDateIso(dueDate),
         installment_amount: installment,
         amortization_amount: amortization,
@@ -201,6 +256,7 @@ function buildSchedule(contract) {
       });
 
       balance = balanceAfter;
+      seq += 1;
     }
 
     return schedule;
@@ -219,12 +275,12 @@ function buildSchedule(contract) {
     const amortization = monthlyRate === 0 ? principal / installments : paymentBase - interest;
     const installment = paymentBase + extraPerInstallment;
     const balanceAfter = Math.max(balanceBefore - amortization, 0);
-    const dueDate = addMonths(start, i - 1 + Number(contract.grace_months || 0));
-    const paid = i <= installmentsPaid;
+    const dueDate = addMonths(start, amortStartShift + i - 1);
+    const paid = seq <= installmentsPaid;
     const overdue = !paid && dueDate < new Date();
 
     schedule.push({
-      installment_number: i,
+      installment_number: seq,
       due_date: formatDateIso(dueDate),
       installment_amount: installment,
       amortization_amount: amortization,
@@ -236,6 +292,7 @@ function buildSchedule(contract) {
     });
 
     balance = balanceAfter;
+    seq += 1;
   }
 
   return schedule;
@@ -248,11 +305,17 @@ function summarizeContract(contract, schedule) {
 
   const paidItems = activeSchedule.filter((item) => item.status === "paid");
   const paid = paidItems.length;
-  const overdue = activeSchedule.filter((item) => item.status === "overdue").length;
+  const overdueItems = activeSchedule.filter((item) => item.status === "overdue");
+  const overdue = overdueItems.length;
   const open = activeSchedule.filter((item) => item.status === "open").length;
   const nextDue = activeSchedule.find((item) => item.status !== "paid");
 
   const totalScheduled = activeSchedule.reduce(
+    (sum, item) => sum + Number(item.installment_amount || 0),
+    0
+  );
+
+  const totalOverdueAmount = overdueItems.reduce(
     (sum, item) => sum + Number(item.installment_amount || 0),
     0
   );
@@ -283,6 +346,7 @@ function summarizeContract(contract, schedule) {
     installments_paid_count: paid,
     installments_open_count: open,
     installments_overdue_count: overdue,
+    total_overdue_amount: totalOverdueAmount,
     next_due_date: nextDue?.due_date || null,
     current_installment_amount: monthlyCost,
     total_paid_amount: totalPaid,
@@ -349,6 +413,8 @@ async function replaceInstallments(adminSupabase, contractId, schedule) {
     extra_cost_amount: Number(item.extra_cost_amount || 0),
     balance_before: Number(item.balance_before || 0),
     balance_after: Number(item.balance_after || 0),
+    paid_amount: item.paid_amount ?? null,
+    paid_at: item.paid_at ?? null,
     status: item.status,
   }));
 
@@ -372,6 +438,8 @@ async function createLoanContract(adminSupabase, input) {
     current_installment_amount: Number(summary.current_installment_amount || 0),
     final_due_date: schedule[schedule.length - 1]?.due_date || contract.final_due_date || null,
   };
+
+  delete insertPayload.pay_interest_during_grace;
 
   const { data, error } = await adminSupabase
     .from("finance_loan_contracts")
@@ -400,6 +468,8 @@ async function updateLoanContract(adminSupabase, contractId, input) {
     final_due_date: schedule[schedule.length - 1]?.due_date || normalized.final_due_date || null,
     updated_at: new Date().toISOString(),
   };
+
+  delete updatePayload.pay_interest_during_grace;
 
   const { data, error } = await adminSupabase
     .from("finance_loan_contracts")
@@ -480,6 +550,7 @@ async function getLoansDashboardData(adminSupabase) {
     total_installments_paid: contracts.reduce((s, c) => s + Number(c.installments_paid_count || 0), 0),
     total_installments_open: contracts.reduce((s, c) => s + Number(c.installments_open_count || 0), 0),
     total_installments_overdue: contracts.reduce((s, c) => s + Number(c.installments_overdue_count || 0), 0),
+    total_overdue_amount: contracts.reduce((s, c) => s + Number(c.total_overdue_amount || 0), 0),
     total_monthly_cost: contracts.reduce((s, c) => s + Number(c.current_installment_amount || 0), 0),
     avg_monthly_rate: contracts.length
       ? contracts.reduce((s, c) => s + Number(c.monthly_rate || 0), 0) / contracts.length
