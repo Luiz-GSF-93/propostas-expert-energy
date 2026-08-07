@@ -475,8 +475,29 @@ async function applySettlement(adminSupabase, contractId, payload) {
   };
 }
 
+
+async function deleteLoanContract(adminSupabase, contractId) {
+  const { error: installmentsError } = await adminSupabase
+    .from("finance_loan_installments")
+    .delete()
+    .eq("contract_id", contractId);
+
+  if (installmentsError) throw installmentsError;
+
+  const { data, error } = await adminSupabase
+    .from("finance_loan_contracts")
+    .delete()
+    .eq("id", contractId)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   updateLoanContract,
   previewSettlement,
   applySettlement,
+  deleteLoanContract,
 };

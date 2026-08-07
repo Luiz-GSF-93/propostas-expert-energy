@@ -137,6 +137,12 @@ function formatDateBr(value?: string | null): string {
   return date.toLocaleDateString("pt-BR");
 }
 
+function normalizeFilterStatus(status?: string): "active" | "encerrado" {
+  const normalized = String(status || "").toLowerCase();
+  if (["encerrado", "closed", "settled", "cancelled"].includes(normalized)) return "encerrado";
+  return "active";
+}
+
 function statusClasses(status?: string): string {
   const normalized = (status || "").toLowerCase();
   if (normalized === "paid" || normalized === "pago") return "bg-emerald-100 text-emerald-700 border border-emerald-200";
@@ -173,6 +179,7 @@ async function authJson(path: string, init?: RequestInit) {
 
 export default function EmprestimosPage() {
   const [summary, setSummary] = useState<AnyRecord | null>(null);
+  const [latestBatch, setLatestBatch] = useState<AnyRecord | null>(null);
   const [contracts, setContracts] = useState<LoanContract[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedContract, setSelectedContract] = useState<LoanContract | null>(null);
@@ -204,6 +211,7 @@ export default function EmprestimosPage() {
       const nextSummary = summaryResponse?.summary ?? summaryResponse ?? {};
       const nextContracts = contractsResponse?.contracts ?? [];
       setSummary(nextSummary);
+      setLatestBatch(summaryResponse?.latest_batch ?? null);
       setContracts(nextContracts);
 
       const id = preferredId || selectedId || nextContracts?.[0]?.id || null;
@@ -273,9 +281,9 @@ export default function EmprestimosPage() {
         item.status,
       ].filter(Boolean).join(" ").toLowerCase();
 
-      const status = String(item.status || "").toLowerCase();
+      const normalizedStatus = normalizeFilterStatus(item.status);
       const matchSearch = !term || bag.includes(term);
-      const matchStatus = statusFilter === "all" ? true : status === statusFilter;
+      const matchStatus = statusFilter === "all" ? true : normalizedStatus === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [contracts, search, statusFilter]);
@@ -315,13 +323,14 @@ export default function EmprestimosPage() {
   }, [filteredContracts]);
 
   const totalPrincipal = filteredContracts.reduce((acc, item) => acc + toNumber(item.principal_amount), 0);
+  const annualRevenue = toNumber(latestBatch?.gross_revenue);
+  const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
   const totalPago = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_paid_amount), 0);
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
   const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
   const nextDueDate = [...filteredContracts.map((x) => x.next_due_date).filter(Boolean)].sort()[0] || "";
-  const debtRatio = summary?.debt_ratio ?? null;
-  const debtBadge = debtLevel(typeof debtRatio === "number" ? debtRatio : null);
+  const debtBadge = debtLevel(calculatedDebtRatio);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -392,6 +401,33 @@ export default function EmprestimosPage() {
       await Promise.all([loadBaseData(selectedId), loadContractDetail(selectedId)]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar contrato.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteContract() {
+    if (!selectedId) return;
+
+    const confirmed = window.confirm(
+      "Excluir definitivamente este contrato e todas as parcelas vinculadas? Esta ação não poderá ser desfeita."
+    );
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      await authJson(`/api/finance/emprestimos/contratos/${selectedId}`, {
+        method: "DELETE",
+      });
+
+      setSuccess("Contrato excluído com sucesso.");
+      setSelectedId(null);
+      setSelectedContract(null);
+      setSchedule([]);
+      setSettlementQuote(null);
+      await loadBaseData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao excluir contrato.");
     } finally {
       setSaving(false);
     }
@@ -485,7 +521,7 @@ export default function EmprestimosPage() {
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Nível de endividamento</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-sm font-semibold ${debtBadge.tone}`}>{debtBadge.label}</span>
-              {typeof debtRatio === "number" ? <span className="text-sm text-slate-500">Índice: {formatPercent(debtRatio * 100)}</span> : null}
+              {typeof calculatedDebtRatio === "number" ? <span className="text-sm text-slate-500">Índice: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
             </div>
           </div>
         </div>
@@ -518,9 +554,7 @@ export default function EmprestimosPage() {
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900">
                 <option value="all">Todos</option>
                 <option value="active">Active</option>
-                <option value="ativo">Ativo</option>
                 <option value="encerrado">Encerrado</option>
-                <option value="closed">Closed</option>
               </select>
               <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
               <button onClick={handlePreviewSettlement} disabled={!selectedId || saving} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">Simular quitação do contrato selecionado</button>
@@ -593,6 +627,7 @@ export default function EmprestimosPage() {
                     <button onClick={() => setIsEditOpen(true)} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Editar contrato</button>
                     <button onClick={handlePreviewSettlement} className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">Simular quitação</button>
                     <button onClick={() => { setSettlementMode("close"); setIsSettlementOpen(true); }} className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100">Encerrar sem quitação</button>
+                    <button onClick={handleDeleteContract} className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir contrato</button>
                   </div>
                 ) : null}
               </div>

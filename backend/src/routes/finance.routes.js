@@ -1,4 +1,4 @@
-const { updateLoanContract, previewSettlement, applySettlement } = require("../services/finance/finance-loans-admin.service");
+const { updateLoanContract, previewSettlement, applySettlement, deleteLoanContract } = require("../services/finance/finance-loans-admin.service");
 const express = require("express");
 const { processImportedBatch } = require("../services/finance/finance-process-batch.service");
 const router = express.Router();
@@ -1032,6 +1032,23 @@ router.post("/emprestimos/contratos/:id/encerrar", authMiddleware, requireAdmin,
   } catch (error) {
     return res.status(400).json({
       message: `Erro ao encerrar contrato: ${error.message}`,
+    });
+  }
+});
+
+
+
+
+
+
+
+router.delete("/emprestimos/contratos/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const deleted = await deleteLoanContract(adminSupabase, req.params.id);
+    return res.json({ deleted });
+  } catch (error) {
+    return res.status(400).json({
+      message: `Erro ao excluir contrato: ${error.message}`,
     });
   }
 });
