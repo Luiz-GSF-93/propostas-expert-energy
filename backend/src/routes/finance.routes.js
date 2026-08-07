@@ -1,3 +1,4 @@
+const { updateLoanContract, previewSettlement, applySettlement } = require("../services/finance/finance-loans-admin.service");
 const express = require("express");
 const { processImportedBatch } = require("../services/finance/finance-process-batch.service");
 const router = express.Router();
@@ -957,6 +958,83 @@ router.post("/emprestimos/calcular", authMiddleware, requireAdmin, async (req, r
   }
 });
 
+
+
+
+router.post("/emprestimos/contratos", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { createLoanContract } = require("../services/finance/finance-loans.service");
+    const payload = await createLoanContract(adminSupabase, req.body || {});
+    return res.status(201).json(payload);
+  } catch (error) {
+    console.error("[finance.emprestimos.create]", error);
+    return res.status(400).json({
+      message: error.message || "Erro ao cadastrar empréstimo."
+    });
+  }
+});
+
+
+router.patch("/emprestimos/contratos/:id/parcelas/:number", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { markInstallmentStatus } = require("../services/finance/finance-loans.service");
+    const payload = await markInstallmentStatus(
+      adminSupabase,
+      req.params.id,
+      Number(req.params.number),
+      req.body || {}
+    );
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error("[finance.emprestimos.installment.update]", error);
+    return res.status(400).json({
+      message: error.message || "Erro ao atualizar parcela."
+    });
+  }
+});
+
+
+
+
+
+
+
+router.put("/emprestimos/contratos/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const contract = await updateLoanContract(adminSupabase, req.params.id, req.body || {});
+    return res.json({ contract });
+  } catch (error) {
+    return res.status(400).json({
+      message: `Erro ao atualizar contrato: ${error.message}`,
+    });
+  }
+});
+
+router.post("/emprestimos/contratos/:id/quitacao-preview", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const quote = await previewSettlement(
+      adminSupabase,
+      req.params.id,
+      req.body?.settlement_date
+    );
+    return res.json({ quote });
+  } catch (error) {
+    return res.status(400).json({
+      message: `Erro ao simular quitação: ${error.message}`,
+    });
+  }
+});
+
+router.post("/emprestimos/contratos/:id/encerrar", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const result = await applySettlement(adminSupabase, req.params.id, req.body || {});
+    return res.json(result);
+  } catch (error) {
+    return res.status(400).json({
+      message: `Erro ao encerrar contrato: ${error.message}`,
+    });
+  }
+});
 
 module.exports = router;
 

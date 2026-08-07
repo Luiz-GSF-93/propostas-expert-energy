@@ -242,13 +242,17 @@ function buildSchedule(contract) {
 }
 
 function summarizeContract(contract, schedule) {
-  const paidItems = schedule.filter((item) => item.status === "paid");
-  const paid = paidItems.length;
-  const overdue = schedule.filter((item) => item.status === "overdue").length;
-  const open = schedule.filter((item) => item.status === "open").length;
-  const nextDue = schedule.find((item) => item.status !== "paid");
+  const activeSchedule = schedule.filter(
+    (item) => !["settled", "cancelled"].includes(String(item.status || "").toLowerCase())
+  );
 
-  const totalScheduled = schedule.reduce(
+  const paidItems = activeSchedule.filter((item) => item.status === "paid");
+  const paid = paidItems.length;
+  const overdue = activeSchedule.filter((item) => item.status === "overdue").length;
+  const open = activeSchedule.filter((item) => item.status === "open").length;
+  const nextDue = activeSchedule.find((item) => item.status !== "paid");
+
+  const totalScheduled = activeSchedule.reduce(
     (sum, item) => sum + Number(item.installment_amount || 0),
     0
   );
@@ -261,7 +265,7 @@ function summarizeContract(contract, schedule) {
   const remainingScheduled = Math.max(totalScheduled - totalPaid, 0);
 
   const monthlyCost =
-    schedule.find((item) => item.status !== "paid")?.installment_amount ??
+    activeSchedule.find((item) => item.status !== "paid")?.installment_amount ??
     contract.current_installment_amount ??
     0;
 
