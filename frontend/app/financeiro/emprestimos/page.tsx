@@ -33,6 +33,7 @@ type LoanContract = {
   installments_paid_count?: number | string;
   installments_open_count?: number | string;
   installments_overdue_count?: number | string;
+  total_overdue_amount?: number | string;
   next_due_date?: string | null;
   balance_outstanding?: number | string;
   remaining_scheduled_amount?: number | string;
@@ -85,6 +86,7 @@ type LoanForm = {
   amortization_system: string;
   status: string;
   notes: string;
+  pay_interest_during_grace: string;
 };
 
 const EMPTY_FORM: LoanForm = {
@@ -102,6 +104,7 @@ const EMPTY_FORM: LoanForm = {
   amortization_system: "PRICE",
   status: "active",
   notes: "",
+  pay_interest_during_grace: "nao",
 };
 
 function toNumber(value: unknown): number {
@@ -251,6 +254,7 @@ export default function EmprestimosPage() {
         amortization_system: contract.amortization_system || "PRICE",
         status: contract.status || "active",
         notes: contract.notes || "",
+        pay_interest_during_grace: contract.pay_interest_during_grace ? "sim" : "nao",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar contrato.");
@@ -327,6 +331,14 @@ export default function EmprestimosPage() {
   const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
   const totalPago = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_paid_amount), 0);
+  const overdueContracts = filteredContracts.reduce(
+    (acc, item) => acc + toNumber(item.installments_overdue_count),
+    0
+  );
+  const overdueAmount = filteredContracts.reduce(
+    (acc, item) => acc + toNumber(item.total_overdue_amount),
+    0
+  );
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
   const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
   const nextDueDate = [...filteredContracts.map((x) => x.next_due_date).filter(Boolean)].sort()[0] || "";
@@ -347,6 +359,7 @@ export default function EmprestimosPage() {
         iof_percent: Number(form.iof_percent),
         fees: Number(form.fees),
         grace_months: Number(form.grace_months),
+        pay_interest_during_grace: form.pay_interest_during_grace === "sim",
         first_due_date: form.first_due_date,
         amortization_system: form.amortization_system,
         status: form.status,
@@ -385,6 +398,7 @@ export default function EmprestimosPage() {
         iof_percent: Number(editForm.iof_percent),
         fees: Number(editForm.fees),
         grace_months: Number(editForm.grace_months),
+        pay_interest_during_grace: editForm.pay_interest_during_grace === "sim",
         first_due_date: editForm.first_due_date,
         amortization_system: editForm.amortization_system,
         status: editForm.status,
@@ -843,6 +857,11 @@ export default function EmprestimosPage() {
           <DashboardCard label="Contratos" value={`${filteredContracts.length}/${contracts.length}`} hint="Filtrados / totais" />
           <DashboardCard label="Próximo vencimento" value={nextDueDate ? formatDateBr(nextDueDate) : "—"} hint="Próximo contrato a vencer" />
           <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
+          <DashboardCard
+            label="Parcelas atrasadas"
+            value={`${overdueContracts} • ${formatMoney(overdueAmount)}`}
+            hint="Quantidade e valor total em atraso"
+          />
           <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm md:col-span-2">
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Nível de endividamento</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
