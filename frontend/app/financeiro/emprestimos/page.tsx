@@ -433,6 +433,63 @@ export default function EmprestimosPage() {
     }
   }
 
+  async function handleInstallmentAction(item: LoanInstallment) {
+    if (!selectedId) return;
+
+    const isPaid = String(item.status || "").toLowerCase() === "paid";
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      let payload: AnyRecord;
+
+      if (isPaid) {
+        payload = {
+          status: "open",
+          paid_amount: 0,
+        };
+      } else {
+        const suggested = String(toNumber(item.installment_amount).toFixed(2));
+        const paidAmountInput = window.prompt("Valor pago da parcela", suggested);
+        if (paidAmountInput === null) {
+          setSaving(false);
+          return;
+        }
+
+        const paidDateInput =
+          window.prompt(
+            "Data do pagamento (AAAA-MM-DD)",
+            new Date().toISOString().slice(0, 10)
+          ) || new Date().toISOString().slice(0, 10);
+
+        payload = {
+          status: "paid",
+          paid_amount: Number(
+            paidAmountInput.replace(/\./g, "").replace(",", ".")
+          ),
+          paid_date: paidDateInput,
+        };
+      }
+
+      await authJson(
+        `/api/finance/emprestimos/contratos/${selectedId}/parcelas/${item.installment_number}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }
+      );
+
+      setSuccess(isPaid ? "Parcela reaberta com sucesso." : "Parcela marcada como paga.");
+      await Promise.all([loadContractDetail(selectedId), loadBaseData(selectedId)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao atualizar parcela.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handlePreviewSettlement() {
     if (!selectedId) return;
     try {
@@ -508,7 +565,7 @@ export default function EmprestimosPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
           <DashboardCard label="Total emprestado" value={formatMoney(totalPrincipal)} hint="Valores principais" />
           <DashboardCard label="Saldo consolidado" value={formatMoney(totalSaldo)} hint="Parcelas futuras menos pagas" />
           <DashboardCard label="Custo dos empréstimos" value={formatMoney(totalLoanCost)} hint="Parcelas totais menos principal" />
@@ -562,7 +619,7 @@ export default function EmprestimosPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(320px,390px)_minmax(0,1fr)]">
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -572,7 +629,7 @@ export default function EmprestimosPage() {
               <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">{filteredContracts.length} registro(s)</span>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {loading ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">Carregando...</div>
               ) : filteredContracts.length === 0 ? (
@@ -584,7 +641,7 @@ export default function EmprestimosPage() {
                     key={contract.id}
                     type="button"
                     onClick={() => setSelectedId(contract.id)}
-                    className={`w-full rounded-2xl border p-3.5 text-left transition min-w-0 ${isActive ? "border-slate-900 bg-slate-900 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-white"}`}
+                    className={`w-full rounded-2xl border p-3 text-left transition min-w-0 ${isActive ? "border-slate-900 bg-slate-900 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-white"}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -603,7 +660,7 @@ export default function EmprestimosPage() {
                       </span>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       <InfoMini label="Principal" value={formatMoney(contract.principal_amount)} inverted={isActive} />
                       <InfoMini label="Parcela" value={formatMoney(contract.current_installment_amount ?? contract.installment_amount)} inverted={isActive} />
                       <InfoMini label="Saldo" value={formatMoney(contract.remaining_scheduled_amount ?? contract.balance_outstanding)} inverted={isActive} />
@@ -616,7 +673,7 @@ export default function EmprestimosPage() {
           </div>
 
           <div className="space-y-5">
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">Detalhe do contrato</h3>
@@ -696,12 +753,12 @@ export default function EmprestimosPage() {
               )}
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-900">Cronograma</h3>
               <div className="mt-4 overflow-x-auto">
-                <table className="min-w-[940px] text-sm">
+                <table className="min-w-[1080px] text-sm [&_td]:align-middle [&_th]:align-middle">
                   <thead>
-                    <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <tr className="border-b border-slate-200 text-left text-slate-500 bg-slate-50/70">
                       <th className="px-3 py-3 font-semibold">Parcela</th>
                       <th className="px-3 py-3 font-semibold">Vencimento</th>
                       <th className="px-3 py-3 font-semibold text-right">Valor</th>
@@ -710,11 +767,12 @@ export default function EmprestimosPage() {
                       <th className="px-3 py-3 font-semibold text-right">Custos</th>
                       <th className="px-3 py-3 font-semibold text-right">Saldo após</th>
                       <th className="px-3 py-3 font-semibold">Status</th>
+                      <th className="px-3 py-3 font-semibold">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {schedule.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                      <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition">
                         <td className="px-3 py-3">{item.installment_number}</td>
                         <td className="px-3 py-3">{formatDateBr(item.due_date)}</td>
                         <td className="px-3 py-3 text-right">{formatMoney(item.installment_amount)}</td>
@@ -726,6 +784,16 @@ export default function EmprestimosPage() {
                           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
                             {item.status || "open"}
                           </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            disabled={saving || ["settled", "cancelled"].includes(String(item.status || "").toLowerCase())}
+                            onClick={() => handleInstallmentAction(item)}
+                            className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {String(item.status || "").toLowerCase() === "paid" ? "Reabrir" : "Marcar paga"}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -886,10 +954,10 @@ function ContractModal({
 
 function DashboardCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="min-w-0 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className="mt-2 break-words text-[clamp(1.1rem,1.6vw,1.9rem)] font-semibold leading-tight text-slate-900">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-slate-500">{hint}</p>
+    <div className="min-w-0 rounded-[18px] border border-slate-200 bg-white p-3.5 shadow-sm">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-2 break-words text-[clamp(1rem,1.35vw,1.65rem)] font-semibold leading-tight text-slate-900">{value}</p>
+      <p className="mt-1.5 text-[11px] leading-4 text-slate-500">{hint}</p>
     </div>
   );
 }
@@ -914,9 +982,9 @@ function QuoteItem({ label, value }: { label: string; value: string }) {
 
 function InfoMini({ label, value, inverted = false }: { label: string; value: string; inverted?: boolean }) {
   return (
-    <div className={`min-w-0 rounded-xl px-3 py-2 ${inverted ? "bg-white/10" : "bg-white"}`}>
-      <p className={`truncate text-[10px] font-semibold uppercase tracking-[0.14em] ${inverted ? "text-slate-300" : "text-slate-400"}`}>{label}</p>
-      <p className={`mt-1 break-words text-[13px] font-semibold leading-tight ${inverted ? "text-white" : "text-slate-900"}`}>{value}</p>
+    <div className={`min-w-0 rounded-xl px-2.5 py-2 ${inverted ? "bg-white/10" : "bg-white"}`}>
+      <p className={`truncate text-[9px] font-semibold uppercase tracking-[0.12em] ${inverted ? "text-slate-300" : "text-slate-400"}`}>{label}</p>
+      <p className={`mt-1 break-words text-[12px] font-semibold leading-tight ${inverted ? "text-white" : "text-slate-900"}`}>{value}</p>
     </div>
   );
 }
