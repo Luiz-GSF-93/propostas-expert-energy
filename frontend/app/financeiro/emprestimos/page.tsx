@@ -41,6 +41,9 @@ type LoanContract = {
   next_due_date?: string | null;
   current_balance?: number | string;
   balance_outstanding?: number | string;
+  total_scheduled_amount?: number | string;
+  remaining_scheduled_amount?: number | string;
+  total_loan_cost?: number | string;
 };
 
 type LoanInstallment = {
@@ -62,14 +65,14 @@ type LoanInstallment = {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 const EMPTY_FORM = {
-  contract_code: "",
-  contract_name: "",
+  contract_number: "",
   lender: "",
+  loan_type: "Empréstimo",
   principal_amount: "100000",
   installments_total: "24",
   monthly_rate: "1.8",
   annual_rate: "23.86",
-  iof: "3800",
+  iof_percent: "3.8",
   fees: "1200",
   grace_months: "0",
   first_due_date: "2026-09-10",
@@ -81,12 +84,12 @@ const EMPTY_FORM = {
 function toNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") {
-    const normalized = value
+    const cleaned = value
       .replace(/\s/g, "")
       .replace("R$", "")
       .replace(/\./g, "")
       .replace(",", ".");
-    const parsed = Number(normalized);
+    const parsed = Number(cleaned);
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
@@ -151,7 +154,12 @@ function statusClasses(status?: string): string {
   if (normalized === "overdue" || normalized === "vencido") {
     return "bg-rose-100 text-rose-700 border border-rose-200";
   }
-  if (normalized === "active" || normalized === "ativo" || normalized === "open" || normalized === "aberto") {
+  if (
+    normalized === "active" ||
+    normalized === "ativo" ||
+    normalized === "open" ||
+    normalized === "aberto"
+  ) {
     return "bg-amber-100 text-amber-800 border border-amber-200";
   }
   if (normalized === "closed" || normalized === "encerrado") {
@@ -224,6 +232,32 @@ export default function EmprestimosPage() {
   const [success, setSuccess] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredContracts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return contracts.filter((item) => {
+      const haystack = [
+        item.contract_number,
+        item.contract_code,
+        item.loan_type,
+        item.contract_name,
+        item.lender,
+        item.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const status = (item.status || "").toLowerCase();
+      const matchSearch = !term || haystack.includes(term);
+      const matchStatus = statusFilter === "all" ? true : status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+  }, [contracts, search, statusFilter]);
 
   const rollup = useMemo(() => {
     const totalContracts = contracts.length;
@@ -236,11 +270,20 @@ export default function EmprestimosPage() {
       0
     );
 
+    const totalScheduled = contracts.reduce(
+      (acc, item) =>
+        acc + toNumber(item.total_scheduled_amount ?? (toNumber(item.current_installment_amount) * toNumber(item.installments_total))),
+      0
+    );
+
     const totalOpen = contracts.reduce(
       (acc, item) =>
         acc +
         toNumber(
-          item.current_balance ?? item.balance_outstanding ?? item.total_open ?? item.principal_amount
+          item.remaining_scheduled_amount ??
+            item.current_balance ??
+            item.balance_outstanding ??
+            item.total_open
         ),
       0
     );
@@ -252,6 +295,19 @@ export default function EmprestimosPage() {
 
     const totalMonthly = contracts.reduce(
       (acc, item) => acc + toNumber(item.installment_amount ?? item.current_installment_amount),
+      0
+    );
+
+    const totalLoanCost = contracts.reduce(
+      (acc, item) =>
+        acc +
+        toNumber(
+          item.total_loan_cost ??
+            (
+              toNumber(item.total_scheduled_amount ?? (toNumber(item.current_installment_amount) * toNumber(item.installments_total))) -
+              toNumber(item.principal_amount)
+            )
+        ),
       0
     );
 
@@ -283,18 +339,21 @@ export default function EmprestimosPage() {
       0
     );
 
-    const nextDueDate = contracts
-      .map((item) => item.next_due_date)
-      .filter(Boolean)
-      .sort()[0] || "";
+    const nextDueDate =
+      contracts
+        .map((item) => item.next_due_date)
+        .filter(Boolean)
+        .sort()[0] || "";
 
     return {
       totalContracts,
       activeContracts,
       totalPrincipal,
+      totalScheduled,
       totalOpen,
       totalPaid,
       totalMonthly,
+      totalLoanCost,
       avgMonthlyRate,
       avgAnnualRate,
       openInstallments,
@@ -305,7 +364,6 @@ export default function EmprestimosPage() {
 
   const dashboard = useMemo(() => {
     const totalContracts = pickNumber(summary, ["total_contracts", "contracts_total"], rollup.totalContracts);
-    const activeContracts = pickNumber(summary, ["active_contracts"], rollup.activeContracts);
     const totalPrincipal = pickNumber(summary, ["total_principal", "principal_total", "total_amount"], rollup.totalPrincipal);
     const totalOpen = pickNumber(summary, ["total_open", "outstanding_balance", "total_outstanding", "total_balance_outstanding"], rollup.totalOpen);
     const totalPaid = pickNumber(summary, ["total_paid", "total_paid_amount"], rollup.totalPaid);
@@ -318,16 +376,17 @@ export default function EmprestimosPage() {
     const debtRatioRaw = summary
       ? pickNumber(summary, ["debt_ratio", "debt_level_ratio", "indebtedness_ratio"], Number.NaN)
       : Number.NaN;
-
     const debtRatio = Number.isFinite(debtRatioRaw) ? debtRatioRaw : null;
 
     return {
       totalContracts,
-      activeContracts,
+      activeContracts: rollup.activeContracts,
       totalPrincipal,
+      totalScheduled: rollup.totalScheduled,
       totalOpen,
       totalPaid,
       totalMonthly,
+      totalLoanCost: rollup.totalLoanCost,
       avgMonthlyRate,
       avgAnnualRate,
       openInstallments,
@@ -415,14 +474,14 @@ export default function EmprestimosPage() {
 
     try {
       const payload = {
-        contract_code: form.contract_code,
-        contract_name: form.contract_name,
+        contract_number: form.contract_number,
         lender: form.lender,
+        loan_type: form.loan_type,
         principal_amount: Number(form.principal_amount),
         installments_total: Number(form.installments_total),
         monthly_rate: Number(form.monthly_rate),
         annual_rate: Number(form.annual_rate),
-        iof: Number(form.iof),
+        iof_percent: Number(form.iof_percent),
         fees: Number(form.fees),
         grace_months: Number(form.grace_months),
         first_due_date: form.first_due_date,
@@ -510,19 +569,25 @@ export default function EmprestimosPage() {
     }
   }
 
+  const iofPreview = useMemo(() => {
+    const principal = toNumber(form.principal_amount);
+    const percent = toNumber(form.iof_percent);
+    return principal * (percent / 100);
+  }, [form.principal_amount, form.iof_percent]);
+
   return (
     <FinanceModuleShell
       title="Empréstimos"
-      subtitle="Gestão profissional de contratos, parcelas, custos financeiros e acompanhamento do endividamento."
+      subtitle="Gestão profissional de contratos, cronograma, custos financeiros, filtros e consolidado executivo."
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Painel consolidado de empréstimos
+              Painel executivo de empréstimos
             </h2>
             <p className="text-sm text-slate-500">
-              Visão gerencial com totais, custo mensal, juros médios e controle de parcelas.
+              Consolidado com saldo total, custo financeiro, endividamento e próximos vencimentos.
             </p>
           </div>
 
@@ -558,24 +623,29 @@ export default function EmprestimosPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DashboardCard
-            label="Total contratado"
+            label="Total emprestado"
             value={formatMoney(dashboard.totalPrincipal)}
-            hint="Soma dos valores originais dos contratos"
+            hint="Soma dos valores principais cadastrados"
           />
           <DashboardCard
-            label="Saldo em aberto"
+            label="Saldo consolidado"
             value={formatMoney(dashboard.totalOpen)}
-            hint="Total ainda a pagar"
+            hint="Cronograma total menos parcelas já pagas"
           />
           <DashboardCard
-            label="Total pago"
-            value={formatMoney(dashboard.totalPaid)}
-            hint="Parcelas liquidadas"
+            label="Custo dos empréstimos"
+            value={formatMoney(dashboard.totalLoanCost)}
+            hint="Total das parcelas menos principal total"
           />
           <DashboardCard
             label="Custo mensal total"
             value={formatMoney(dashboard.totalMonthly)}
             hint="Impacto mensal consolidado"
+          />
+          <DashboardCard
+            label="Total pago"
+            value={formatMoney(dashboard.totalPaid)}
+            hint="Soma de todas as parcelas pagas"
           />
           <DashboardCard
             label="Contratos"
@@ -592,7 +662,12 @@ export default function EmprestimosPage() {
             value={dashboard.nextDueDate ? formatDateBr(dashboard.nextDueDate) : "—"}
             hint={`${dashboard.openInstallments} parcelas em aberto`}
           />
-          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <DashboardCard
+            label="Parcelas vencidas"
+            value={String(dashboard.overdueInstallments)}
+            hint="Requer atenção imediata"
+          />
+          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:col-span-2 xl:col-span-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               Nível de endividamento
             </p>
@@ -607,12 +682,54 @@ export default function EmprestimosPage() {
               ) : null}
             </div>
             <p className="mt-3 text-sm text-slate-500">
-              Baseado no consolidado financeiro disponível no resumo do backend.
+              Regra: até 10% saudável, 10% a 30% moderado e acima de 30% alto.
             </p>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_1.85fr]">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-[1.3fr_220px_220px]">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Buscar por contrato, banco ou modalidade
+              </label>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Ex.: BNDES, Capital de giro, EMP-001"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+              >
+                <option value="all">Todos</option>
+                <option value="active">Active</option>
+                <option value="ativo">Ativo</option>
+                <option value="open">Open</option>
+                <option value="aberto">Aberto</option>
+                <option value="closed">Closed</option>
+                <option value="encerrado">Encerrado</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <div className="w-full rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-900">{filteredContracts.length}</span>{" "}
+                contrato(s) filtrado(s)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_1.9fr]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -620,11 +737,11 @@ export default function EmprestimosPage() {
                   Contratos cadastrados
                 </h3>
                 <p className="text-sm text-slate-500">
-                  Clique em “Abrir” para visualizar detalhes e ajustar parcelas.
+                  Lista filtrável, com destaque de custo e saldo.
                 </p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {contracts.length} registros
+                {filteredContracts.length} registros
               </span>
             </div>
 
@@ -633,13 +750,19 @@ export default function EmprestimosPage() {
                 <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
                   Carregando contratos...
                 </div>
-              ) : contracts.length === 0 ? (
+              ) : filteredContracts.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-                  Nenhum contrato cadastrado. Use o botão <strong>Novo contrato</strong>.
+                  Nenhum contrato encontrado com os filtros atuais.
                 </div>
               ) : (
-                contracts.map((contract) => {
+                filteredContracts.map((contract) => {
                   const isActive = contract.id === selectedId;
+                  const totalCost =
+                    toNumber(
+                      contract.total_loan_cost ??
+                        (toNumber(contract.total_scheduled_amount) - toNumber(contract.principal_amount))
+                    ) || 0;
+
                   return (
                     <button
                       key={contract.id}
@@ -654,10 +777,10 @@ export default function EmprestimosPage() {
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>
-                            {(contract.contract_code || contract.contract_number || "Sem código")}
+                            {contract.contract_number || contract.contract_code || "Sem código"}
                           </p>
                           <h4 className="mt-1 text-sm font-semibold">
-                            {(contract.contract_name || contract.loan_type || "Contrato sem nome")}
+                            {contract.loan_type || contract.contract_name || "Contrato sem nome"}
                           </h4>
                           <p className={`mt-1 text-sm ${isActive ? "text-slate-300" : "text-slate-500"}`}>
                             {contract.lender || "Instituição não informada"}
@@ -670,23 +793,23 @@ export default function EmprestimosPage() {
 
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         <InfoMini
-                          label="Valor"
+                          label="Principal"
                           value={formatMoney(contract.principal_amount)}
                           inverted={isActive}
                         />
                         <InfoMini
-                          label="Parcela"
+                          label="Parcela atual"
                           value={formatMoney(contract.installment_amount ?? contract.current_installment_amount)}
                           inverted={isActive}
                         />
                         <InfoMini
                           label="Saldo"
-                          value={formatMoney(contract.current_balance ?? contract.balance_outstanding ?? contract.total_open)}
+                          value={formatMoney(contract.remaining_scheduled_amount ?? contract.balance_outstanding)}
                           inverted={isActive}
                         />
                         <InfoMini
-                          label="Próx. venc."
-                          value={formatDateBr(contract.next_due_date ?? contract.first_due_date)}
+                          label="Custo total"
+                          value={formatMoney(totalCost)}
                           inverted={isActive}
                         />
                       </div>
@@ -705,7 +828,7 @@ export default function EmprestimosPage() {
                     Detalhe do contrato
                   </h3>
                   <p className="text-sm text-slate-500">
-                    Visão completa do cadastro, taxas, custos e situação das parcelas.
+                    Cadastro completo, taxas, custo do financiamento e situação do cronograma.
                   </p>
                 </div>
                 {selectedContract ? (
@@ -726,22 +849,26 @@ export default function EmprestimosPage() {
               ) : (
                 <>
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <DetailItem label="Código" value={(selectedContract.contract_code || selectedContract.contract_number || "—")} />
+                    <DetailItem label="Código" value={selectedContract.contract_number || selectedContract.contract_code || "—"} />
                     <DetailItem label="Instituição" value={selectedContract.lender || "—"} />
-                    <DetailItem label="Valor do empréstimo" value={formatMoney(selectedContract.principal_amount)} />
-                    <DetailItem label="Saldo atual" value={formatMoney(selectedContract.current_balance ?? selectedContract.balance_outstanding ?? selectedContract.total_open)} />
-                    <DetailItem label="Parcela estimada" value={formatMoney(selectedContract.installment_amount ?? selectedContract.current_installment_amount)} />
+                    <DetailItem label="Modalidade" value={selectedContract.loan_type || selectedContract.contract_name || "—"} />
+                    <DetailItem label="Sistema" value={selectedContract.amortization_system || "—"} />
+                    <DetailItem label="Principal" value={formatMoney(selectedContract.principal_amount)} />
+                    <DetailItem label="Valor líquido" value={formatMoney(selectedContract.net_amount ?? selectedContract.principal_amount)} />
+                    <DetailItem label="Saldo consolidado" value={formatMoney(selectedContract.remaining_scheduled_amount ?? selectedContract.balance_outstanding)} />
+                    <DetailItem label="Custo do empréstimo" value={formatMoney(selectedContract.total_loan_cost)} />
+                    <DetailItem label="Parcela atual" value={formatMoney(selectedContract.installment_amount ?? selectedContract.current_installment_amount)} />
                     <DetailItem label="Parcelas totais" value={toText(selectedContract.installments_total || "—")} />
                     <DetailItem label="Juros a.m." value={formatPercent(selectedContract.monthly_rate)} />
                     <DetailItem label="Juros a.a." value={formatPercent(selectedContract.annual_rate)} />
-                    <DetailItem label="IOF" value={formatMoney(selectedContract.iof)} />
+                    <DetailItem label="IOF aplicado" value={formatMoney(selectedContract.iof)} />
                     <DetailItem label="Tarifas / custos" value={formatMoney(selectedContract.fees)} />
                     <DetailItem label="Carência" value={`${toNumber(selectedContract.grace_months)} mês(es)`} />
-                    <DetailItem label="Amortização" value={selectedContract.amortization_system || "—"} />
                     <DetailItem label="Primeiro vencimento" value={formatDateBr(selectedContract.first_due_date)} />
                     <DetailItem label="Próximo vencimento" value={formatDateBr(selectedContract.next_due_date)} />
                     <DetailItem label="Parcelas pagas" value={toText(selectedContract.paid_installments ?? selectedContract.installments_paid_count ?? "0")} />
                     <DetailItem label="Parcelas em aberto" value={toText(selectedContract.open_installments ?? selectedContract.installments_open_count ?? "0")} />
+                    <DetailItem label="Parcelas vencidas" value={toText(selectedContract.overdue_installments ?? selectedContract.installments_overdue_count ?? "0")} />
                   </div>
 
                   {selectedContract.notes ? (
@@ -761,7 +888,7 @@ export default function EmprestimosPage() {
                     Ajuste mensal de parcelas
                   </h3>
                   <p className="text-sm text-slate-500">
-                    Marque como paga ou reabra parcelas conforme vencimento.
+                    Marque como paga, reabra e acompanhe vencimentos.
                   </p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -770,7 +897,7 @@ export default function EmprestimosPage() {
               </div>
 
               <div className="mt-4 overflow-x-auto">
-                <table className="min-w-[1100px] text-sm">
+                <table className="min-w-[1120px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-slate-500">
                       <th className="px-3 py-3 font-semibold">Parcela</th>
@@ -859,7 +986,7 @@ export default function EmprestimosPage() {
                   Novo contrato de empréstimo
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Preencha os campos para gerar automaticamente o cronograma das parcelas.
+                  O IOF é calculado por percentual sobre o valor do empréstimo.
                 </p>
               </div>
 
@@ -879,21 +1006,21 @@ export default function EmprestimosPage() {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Field
                   label="Código do contrato"
-                  value={form.contract_code}
-                  onChange={(value) => setForm((prev) => ({ ...prev, contract_code: value }))}
+                  value={form.contract_number}
+                  onChange={(value) => setForm((prev) => ({ ...prev, contract_number: value }))}
                   placeholder="BNDES-001"
-                />
-                <Field
-                  label="Nome do contrato"
-                  value={form.contract_name}
-                  onChange={(value) => setForm((prev) => ({ ...prev, contract_name: value }))}
-                  placeholder="Capital de Giro"
                 />
                 <Field
                   label="Instituição"
                   value={form.lender}
                   onChange={(value) => setForm((prev) => ({ ...prev, lender: value }))}
                   placeholder="BNDES"
+                />
+                <Field
+                  label="Modalidade"
+                  value={form.loan_type}
+                  onChange={(value) => setForm((prev) => ({ ...prev, loan_type: value }))}
+                  placeholder="Capital de giro"
                 />
                 <SelectField
                   label="Status"
@@ -932,9 +1059,9 @@ export default function EmprestimosPage() {
                 />
 
                 <Field
-                  label="IOF"
-                  value={form.iof}
-                  onChange={(value) => setForm((prev) => ({ ...prev, iof: value }))}
+                  label="IOF (%)"
+                  value={form.iof_percent}
+                  onChange={(value) => setForm((prev) => ({ ...prev, iof_percent: value }))}
                   type="number"
                 />
                 <Field
@@ -965,6 +1092,11 @@ export default function EmprestimosPage() {
                     { value: "SAC", label: "SAC" },
                   ]}
                 />
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-900">IOF estimado:</span>{" "}
+                {formatMoney(iofPreview)}
               </div>
 
               <div>

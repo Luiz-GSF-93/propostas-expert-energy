@@ -125,6 +125,13 @@ function normalizeLoanInput(input) {
   const principalAmount = parseNumber(input.principal_amount, 0);
   const netAmount = parseNumber(input.net_amount, principalAmount);
 
+  const explicitIofValue = parseNullableNumber(input.iof);
+  const iofPercent = parseNullableNumber(input.iof_percent);
+  const iofAmount =
+    iofPercent !== null
+      ? principalAmount * (iofPercent / 100)
+      : parseNumber(explicitIofValue, 0);
+
   return {
     contract_number: normalizeText(input.contract_number) || `EMP-${Date.now()}`,
     lender: normalizeText(input.lender),
@@ -137,7 +144,7 @@ function normalizeLoanInput(input) {
     annual_rate: annualRate || 0,
     monthly_index_rate: monthlyIndexRate || 0,
     annual_index_rate: annualIndexRate || 0,
-    iof: parseNumber(input.iof, 0),
+    iof: iofAmount,
     fees: parseNumber(input.fees, 0),
     grace_months: parseInteger(input.grace_months, 0),
     amortization_system: normalizeText(input.amortization_system).toUpperCase() || DEFAULT_AMORTIZATION,
@@ -240,33 +247,35 @@ function summarizeContract(contract, schedule) {
   const overdue = schedule.filter((item) => item.status === "overdue").length;
   const open = schedule.filter((item) => item.status === "open").length;
   const nextDue = schedule.find((item) => item.status !== "paid");
-  const lastPaid = paidItems[paidItems.length - 1] || null;
 
-  let outstanding = Number(contract.balance_outstanding || 0);
-
-  if (schedule.length === 0) {
-    outstanding = Number(contract.principal_amount || 0);
-  } else if (paid === 0) {
-    outstanding = Number(contract.principal_amount || 0);
-  } else if (paid >= schedule.length) {
-    outstanding = 0;
-  } else {
-    outstanding = Number(lastPaid?.balance_after || contract.principal_amount || 0);
-  }
-
-  const monthlyCost =
-    schedule.find((item) => item.status !== "paid")?.installment_amount ??
-    contract.current_installment_amount ??
-    0;
+  const totalScheduled = schedule.reduce(
+    (sum, item) => sum + Number(item.installment_amount || 0),
+    0
+  );
 
   const totalPaid = paidItems.reduce(
     (sum, item) => sum + Number((item.paid_amount ?? item.installment_amount) || 0),
     0
   );
 
+  const remainingScheduled = Math.max(totalScheduled - totalPaid, 0);
+
+  const monthlyCost =
+    schedule.find((item) => item.status !== "paid")?.installment_amount ??
+    contract.current_installment_amount ??
+    0;
+
+  const totalLoanCost = Math.max(
+    totalScheduled - Number(contract.principal_amount || 0),
+    0
+  );
+
   return {
     ...contract,
-    balance_outstanding: outstanding,
+    balance_outstanding: remainingScheduled,
+    remaining_scheduled_amount: remainingScheduled,
+    total_scheduled_amount: totalScheduled,
+    total_loan_cost: totalLoanCost,
     installments_paid_count: paid,
     installments_open_count: open,
     installments_overdue_count: overdue,
