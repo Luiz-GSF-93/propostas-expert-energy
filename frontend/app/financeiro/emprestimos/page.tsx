@@ -887,7 +887,7 @@ export default function EmprestimosPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
           <DashboardCard label="Total emprestado" value={formatMoney(totalPrincipal)} hint="Valores principais" />
           <DashboardCard label="Saldo consolidado" value={formatMoney(totalSaldo)} hint="Parcelas futuras menos pagas" />
           <DashboardCard label="Custo dos empréstimos" value={formatMoney(totalLoanCost)} hint="Parcelas totais menos principal" />
@@ -898,11 +898,11 @@ export default function EmprestimosPage() {
           <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
           <DashboardCard
             label="Parcelas atrasadas"
-            value={`${overdueContracts} • ${formatMoney(overdueAmount)}`}
-            hint="Quantidade e valor total em atraso"
+            value={String(overdueInstallmentsCount)}
+            hint={`Valor total em atraso: ${formatMoney(overdueInstallmentsAmount)}`}
           />
-          <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm md:col-span-2">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Nível de endividamento</p>
+          <div className="rounded-[18px] border border-slate-200 bg-white p-3 sm:p-3.5 shadow-sm min-w-0 overflow-hidden md:col-span-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 break-words">Nível de endividamento</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-sm font-semibold ${debtBadge.tone}`}>{debtBadge.label}</span>
               {typeof calculatedDebtRatio === "number" ? <span className="text-[11px] sm:text-xs text-slate-500 leading-snug break-words min-w-0">Índice: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
