@@ -887,7 +887,7 @@ export default function EmprestimosPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
           <DashboardCard label="Total emprestado" value={formatMoney(totalPrincipal)} hint="Valores principais" />
           <DashboardCard label="Saldo consolidado" value={formatMoney(totalSaldo)} hint="Parcelas futuras menos pagas" />
           <DashboardCard label="Custo dos empréstimos" value={formatMoney(totalLoanCost)} hint="Parcelas totais menos principal" />
@@ -899,7 +899,7 @@ export default function EmprestimosPage() {
           <DashboardCard
             label="Parcelas atrasadas"
             value={String(overdueInstallmentsCount)}
-            hint={`Valor total em atraso: ${formatMoney(overdueInstallmentsAmount)}`}
+            hint={`Em atraso consolidado: ${formatMoney(overdueInstallmentsAmount)}`}
           />
           <div className="rounded-[18px] border border-slate-200 bg-white p-3 sm:p-3.5 shadow-sm min-w-0 overflow-hidden md:col-span-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 break-words">Nível de endividamento</p>
@@ -1296,12 +1296,12 @@ function ContractModal({
 
 function DashboardCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="min-w-0 rounded-[18px] border border-slate-200 bg-white p-3.5 shadow-sm">
-      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-      <p className="mt-2 overflow-hidden text-[clamp(0.92rem,1.1vw,1.45rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-slate-900 [font-variant-numeric:tabular-nums]">
+    <div className="min-w-0 overflow-hidden rounded-[18px] border border-slate-200 bg-white p-3 sm:p-3.5 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 break-words">{label}</p>
+      <p className="mt-1.5 text-[clamp(0.86rem,0.95vw,1.22rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-slate-900 [font-variant-numeric:tabular-nums] break-words">
         {value}
       </p>
-      <p className="mt-1.5 text-[11px] leading-4 text-slate-500">{hint}</p>
+      <p className="mt-1 text-[10px] leading-4 text-slate-500 break-words">{hint}</p>
     </div>
   );
 }
