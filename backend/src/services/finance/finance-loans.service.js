@@ -307,7 +307,7 @@ function summarizeContract(contract, schedule) {
 
   const historicalPaidItems = allItems.filter((item) => {
     const status = String(item.status || "").toLowerCase();
-    return status === "paid" || Number(item.paid_amount || 0) > 0;
+    return status === "paid";
   });
 
   const paid = historicalPaidItems.length;
@@ -345,7 +345,7 @@ function summarizeContract(contract, schedule) {
   );
 
   const totalPaid = historicalPaidItems.reduce(
-    (sum, item) => sum + Number((item.paid_amount ?? item.installment_amount) || 0),
+    (sum, item) => sum + Number(item.installment_amount || 0),
     0
   );
 
