@@ -133,6 +133,42 @@ function formatPercent(value: unknown): string {
   })}%`;
 }
 
+function getInstallmentVisualState(item: any) {
+  const isPaid = String(item?.status || "").toLowerCase() === "paid";
+  const isOverdue = String(item?.status || "").toLowerCase() === "overdue";
+  const isGrace = Number(item?.amortization_amount || 0) === 0 && Number(item?.interest_amount || 0) > 0;
+
+  if (isPaid) {
+    return {
+      rowClass: "bg-emerald-50/80",
+      badgeClass: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+      badgeLabel: "Paga",
+    };
+  }
+
+  if (isOverdue) {
+    return {
+      rowClass: "bg-rose-50/80",
+      badgeClass: "bg-rose-100 text-rose-700 border border-rose-200",
+      badgeLabel: "Atrasada",
+    };
+  }
+
+  if (isGrace) {
+    return {
+      rowClass: "bg-amber-50/80",
+      badgeClass: "bg-amber-100 text-amber-700 border border-amber-200",
+      badgeLabel: "Carência",
+    };
+  }
+
+  return {
+    rowClass: "bg-white",
+    badgeClass: "bg-slate-100 text-slate-700 border border-slate-200",
+    badgeLabel: "Aberta",
+  };
+}
+
 function formatDateBr(value?: string | null): string {
   if (!value) return "—";
   const date = new Date(`${value}T00:00:00`);
@@ -840,7 +876,7 @@ export default function EmprestimosPage() {
         <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Painel executivo de empréstimos</h2>
-            <p className="text-sm text-slate-500">Cards compactos, alertas e ações de edição/quitação.</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 leading-snug break-words min-w-0">Cards compactos, alertas e ações de edição/quitação.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button onClick={() => loadBaseData(selectedId)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Atualizar painel</button>
@@ -866,7 +902,7 @@ export default function EmprestimosPage() {
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Nível de endividamento</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-sm font-semibold ${debtBadge.tone}`}>{debtBadge.label}</span>
-              {typeof calculatedDebtRatio === "number" ? <span className="text-sm text-slate-500">Índice: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
+              {typeof calculatedDebtRatio === "number" ? <span className="text-[11px] sm:text-xs text-slate-500 leading-snug break-words min-w-0">Índice: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
             </div>
           </div>
         </div>

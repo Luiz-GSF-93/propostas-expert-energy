@@ -203,7 +203,7 @@ function buildSchedule(contract) {
   let balance = principal;
   let seq = 1;
 
-  if (payInterestDuringGrace && graceMonths > 0) {
+  if (graceMonths > 0 && payInterestDuringGrace) {
     for (let g = 0; g < graceMonths; g += 1) {
       const dueDate = addMonths(start, g);
       const dueDateIso = formatDateIso(dueDate);
@@ -439,7 +439,6 @@ async function createLoanContract(adminSupabase, input) {
     final_due_date: schedule[schedule.length - 1]?.due_date || contract.final_due_date || null,
   };
 
-  delete insertPayload.pay_interest_during_grace;
 
   const { data, error } = await adminSupabase
     .from("finance_loan_contracts")
@@ -469,7 +468,6 @@ async function updateLoanContract(adminSupabase, contractId, input) {
     updated_at: new Date().toISOString(),
   };
 
-  delete updatePayload.pay_interest_during_grace;
 
   const { data, error } = await adminSupabase
     .from("finance_loan_contracts")
