@@ -375,6 +375,9 @@ export default function EmprestimosPage() {
     (acc, item) => acc + toNumber(item.total_overdue_amount),
     0
   );
+
+  const overdueInstallmentsCount = overdueContracts;
+  const overdueInstallmentsAmount = overdueAmount;
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
   const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
   const nextDueDate = [...filteredContracts.map((x) => x.next_due_date).filter(Boolean)].sort()[0] || "";
@@ -967,7 +970,7 @@ export default function EmprestimosPage() {
                     onClick={() => setSelectedId(contract.id)}
                     className={`w-full rounded-2xl border p-3 text-left transition min-w-0 ${isActive ? "border-slate-900 bg-slate-900 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-white"}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
                       <div className="min-w-0">
                         <p className={`truncate text-[11px] font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>
                           {contract.contract_number || contract.contract_code || "Sem código"}
