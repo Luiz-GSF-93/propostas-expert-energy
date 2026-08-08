@@ -375,11 +375,7 @@ export default function EmprestimosPage() {
   const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
   const totalPagoResumo = Number(summary?.total_paid_amount ?? 0);
-  const totalPagoFallback = filteredContracts.reduce(
-    (acc, item) => acc + Number(item.total_paid_amount ?? item.total_paid ?? 0),
-    0
-  );
-  const totalPago = totalPagoResumo > 0 ? totalPagoResumo : totalPagoFallback;
+  const totalPago = totalPagoResumo;
   const overdueContracts = filteredContracts.reduce(
     (acc, item) => acc + toNumber(item.installments_overdue_count),
     0
@@ -894,11 +890,6 @@ export default function EmprestimosPage() {
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
 
-  console.log("[emprestimos] summary.total_paid_amount =", summary?.total_paid_amount);
-  console.log("[emprestimos] totalPagoResumo =", totalPagoResumo);
-  console.log("[emprestimos] totalPagoFallback =", totalPagoFallback);
-  console.log("[emprestimos] totalPago =", totalPago);
-
   const hasPaidInstallments = toNumber(
     selectedContract?.installments_paid_count ?? selectedContract?.installments_paid ?? 0
   ) > 0;
@@ -928,7 +919,7 @@ export default function EmprestimosPage() {
           <DashboardCard label="Saldo consolidado" value={formatMoney(totalSaldo)} hint="Parcelas futuras menos pagas" />
           <DashboardCard label="Custo dos empréstimos" value={formatMoney(totalLoanCost)} hint="Parcelas totais menos principal" />
           <DashboardCard label="Custo mensal" value={formatMoney(monthlyCost)} hint="Impacto mensal atual" />
-          <DashboardCard label="Total pago" value={formatMoney(Number(summary?.total_paid_amount ?? 0) || totalPagoFallback)} hint="Somente parcelas pagas registradas" />
+          <DashboardCard label="Total pago" value={formatMoney(totalPago)} hint="Somente parcelas pagas registradas (resumo consolidado)" />
           <DashboardCard label="Contratos" value={`${filteredContracts.length}/${contracts.length}`} hint="Filtrados / totais" />
           <DashboardCard label="Próximo vencimento" value={nextDueCardValue} hint={nextDueCardHint} />
           <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
