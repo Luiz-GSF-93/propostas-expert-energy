@@ -30,10 +30,13 @@ type LoanContract = {
   status?: string;
   notes?: string;
   total_paid_amount?: number | string;
+  total_paid?: number | string;
   installments_paid_count?: number | string;
   installments_open_count?: number | string;
   installments_overdue_count?: number | string;
   total_overdue_amount?: number | string;
+  first_overdue_date?: string | null;
+  next_future_due_date?: string | null;
   next_due_date?: string | null;
   balance_outstanding?: number | string;
   remaining_scheduled_amount?: number | string;
@@ -174,6 +177,11 @@ function formatDateBr(value?: string | null): string {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("pt-BR");
+}
+
+function describeContractShort(item: LoanContract | null | undefined): string {
+  if (!item) return "Contrato";
+  return item.contract_number || item.contract_code || item.lender || item.loan_type || "Contrato";
 }
 
 function normalizeFilterStatus(status?: string): "active" | "encerrado" {
@@ -366,7 +374,10 @@ export default function EmprestimosPage() {
   const annualRevenue = toNumber(latestBatch?.gross_revenue);
   const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
-  const totalPago = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_paid_amount), 0);
+  const totalPago = filteredContracts.reduce(
+    (acc, item) => acc + toNumber(item.total_paid_amount ?? item.total_paid),
+    0
+  );
   const overdueContracts = filteredContracts.reduce(
     (acc, item) => acc + toNumber(item.installments_overdue_count),
     0
@@ -380,7 +391,25 @@ export default function EmprestimosPage() {
   const overdueInstallmentsAmount = overdueAmount;
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
   const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
-  const nextDueDate = [...filteredContracts.map((x) => x.next_due_date).filter(Boolean)].sort()[0] || "";
+  const firstOverdueContract = [...filteredContracts]
+    .filter((item) => item.first_overdue_date && toNumber(item.installments_overdue_count) > 0)
+    .sort((a, b) => String(a.first_overdue_date || "").localeCompare(String(b.first_overdue_date || "")))[0];
+
+  const nextFutureContract = [...filteredContracts]
+    .filter((item) => item.next_future_due_date)
+    .sort((a, b) => String(a.next_future_due_date || "").localeCompare(String(b.next_future_due_date || "")))[0];
+
+  const nextDueCardValue = firstOverdueContract
+    ? "Parcela atrasada"
+    : nextFutureContract
+      ? formatDateBr(nextFutureContract.next_future_due_date)
+      : "—";
+
+  const nextDueCardHint = firstOverdueContract
+    ? `1ª vencida: ${formatDateBr(firstOverdueContract.first_overdue_date)} • ${describeContractShort(firstOverdueContract)}\nPróximo futuro: ${nextFutureContract ? `${formatDateBr(nextFutureContract.next_future_due_date)} • ${describeContractShort(nextFutureContract)}` : "não há"}`
+    : nextFutureContract
+      ? `Próximo futuro: ${formatDateBr(nextFutureContract.next_future_due_date)} • ${describeContractShort(nextFutureContract)}`
+      : "Sem vencimentos futuros";
   const debtBadge = debtLevel(calculatedDebtRatio);
 
   async function handleCreate(event: FormEvent) {
@@ -894,7 +923,7 @@ export default function EmprestimosPage() {
           <DashboardCard label="Custo mensal" value={formatMoney(monthlyCost)} hint="Impacto mensal atual" />
           <DashboardCard label="Total pago" value={formatMoney(totalPago)} hint="Parcelas baixadas" />
           <DashboardCard label="Contratos" value={`${filteredContracts.length}/${contracts.length}`} hint="Filtrados / totais" />
-          <DashboardCard label="Próximo vencimento" value={nextDueDate ? formatDateBr(nextDueDate) : "—"} hint="Próximo contrato a vencer" />
+          <DashboardCard label="Próximo vencimento" value={nextDueCardValue} hint={nextDueCardHint} />
           <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
           <DashboardCard
             label="Parcelas atrasadas"
@@ -1301,7 +1330,7 @@ function DashboardCard({ label, value, hint }: { label: string; value: string; h
       <p className="mt-1.5 text-[clamp(0.86rem,0.95vw,1.22rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-slate-900 [font-variant-numeric:tabular-nums] break-words">
         {value}
       </p>
-      <p className="mt-1 text-[10px] leading-4 text-slate-500 break-words">{hint}</p>
+      <p className="mt-1 whitespace-pre-line text-[10px] leading-4 text-slate-500 break-words">{hint}</p>
     </div>
   );
 }
