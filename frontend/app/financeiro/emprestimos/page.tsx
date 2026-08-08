@@ -374,12 +374,12 @@ export default function EmprestimosPage() {
   const annualRevenue = toNumber(latestBatch?.gross_revenue);
   const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
-  const totalPago =
-    toNumber(summary?.total_paid_amount) ||
-    filteredContracts.reduce(
-      (acc, item) => acc + toNumber(item.total_paid_amount ?? item.total_paid),
-      0
-    );
+  const totalPagoResumo = Number(summary?.total_paid_amount ?? 0);
+  const totalPagoFallback = filteredContracts.reduce(
+    (acc, item) => acc + Number(item.total_paid_amount ?? item.total_paid ?? 0),
+    0
+  );
+  const totalPago = totalPagoResumo > 0 ? totalPagoResumo : totalPagoFallback;
   const overdueContracts = filteredContracts.reduce(
     (acc, item) => acc + toNumber(item.installments_overdue_count),
     0
@@ -893,6 +893,11 @@ export default function EmprestimosPage() {
     const percent = toNumber(form.iof_percent);
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
+
+  console.log("[emprestimos] summary.total_paid_amount =", summary?.total_paid_amount);
+  console.log("[emprestimos] totalPagoResumo =", totalPagoResumo);
+  console.log("[emprestimos] totalPagoFallback =", totalPagoFallback);
+  console.log("[emprestimos] totalPago =", totalPago);
 
   const hasPaidInstallments = toNumber(
     selectedContract?.installments_paid_count ?? selectedContract?.installments_paid ?? 0
