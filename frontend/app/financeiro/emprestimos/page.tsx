@@ -374,10 +374,12 @@ export default function EmprestimosPage() {
   const annualRevenue = toNumber(latestBatch?.gross_revenue);
   const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
-  const totalPago = filteredContracts.reduce(
-    (acc, item) => acc + toNumber(item.total_paid_amount ?? item.total_paid),
-    0
-  );
+  const totalPago =
+    toNumber(summary?.total_paid_amount) ||
+    filteredContracts.reduce(
+      (acc, item) => acc + toNumber(item.total_paid_amount ?? item.total_paid),
+      0
+    );
   const overdueContracts = filteredContracts.reduce(
     (acc, item) => acc + toNumber(item.installments_overdue_count),
     0
