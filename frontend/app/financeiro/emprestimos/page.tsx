@@ -928,7 +928,7 @@ export default function EmprestimosPage() {
           <DashboardCard label="Saldo consolidado" value={formatMoney(totalSaldo)} hint="Parcelas futuras menos pagas" />
           <DashboardCard label="Custo dos empréstimos" value={formatMoney(totalLoanCost)} hint="Parcelas totais menos principal" />
           <DashboardCard label="Custo mensal" value={formatMoney(monthlyCost)} hint="Impacto mensal atual" />
-          <DashboardCard label="Total pago" value={formatMoney(totalPago)} hint="Parcelas baixadas" />
+          <DashboardCard label="Total pago" value={formatMoney(Number(summary?.total_paid_amount ?? 0) || totalPagoFallback)} hint="Somente parcelas pagas registradas" />
           <DashboardCard label="Contratos" value={`${filteredContracts.length}/${contracts.length}`} hint="Filtrados / totais" />
           <DashboardCard label="Próximo vencimento" value={nextDueCardValue} hint={nextDueCardHint} />
           <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
