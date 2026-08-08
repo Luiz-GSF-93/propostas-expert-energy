@@ -299,16 +299,40 @@ function buildSchedule(contract) {
 }
 
 function summarizeContract(contract, schedule) {
-  const activeSchedule = schedule.filter(
+  const allItems = Array.isArray(schedule) ? schedule : [];
+
+  const activeSchedule = allItems.filter(
     (item) => !["settled", "cancelled"].includes(String(item.status || "").toLowerCase())
   );
 
-  const paidItems = activeSchedule.filter((item) => item.status === "paid");
-  const paid = paidItems.length;
-  const overdueItems = activeSchedule.filter((item) => item.status === "overdue");
+  const historicalPaidItems = allItems.filter((item) => {
+    const status = String(item.status || "").toLowerCase();
+    return status === "paid" || Number(item.paid_amount || 0) > 0;
+  });
+
+  const paid = historicalPaidItems.length;
+  const overdueItems = activeSchedule
+    .filter((item) => String(item.status || "").toLowerCase() === "overdue")
+    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+
+  const openItems = activeSchedule
+    .filter((item) => String(item.status || "").toLowerCase() === "open")
+    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+
   const overdue = overdueItems.length;
-  const open = activeSchedule.filter((item) => item.status === "open").length;
-  const nextDue = activeSchedule.find((item) => item.status !== "paid");
+  const open = openItems.length;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const futureOpenItems = openItems.filter((item) => {
+    if (!item.due_date) return false;
+    const due = new Date(`${item.due_date}T00:00:00`);
+    return !Number.isNaN(due.getTime()) && due >= today;
+  });
+
+  const firstOverdue = overdueItems[0] || null;
+  const nextFuture = futureOpenItems[0] || null;
 
   const totalScheduled = activeSchedule.reduce(
     (sum, item) => sum + Number(item.installment_amount || 0),
@@ -320,7 +344,7 @@ function summarizeContract(contract, schedule) {
     0
   );
 
-  const totalPaid = paidItems.reduce(
+  const totalPaid = historicalPaidItems.reduce(
     (sum, item) => sum + Number((item.paid_amount ?? item.installment_amount) || 0),
     0
   );
@@ -328,9 +352,9 @@ function summarizeContract(contract, schedule) {
   const remainingScheduled = Math.max(totalScheduled - totalPaid, 0);
 
   const monthlyCost =
-    activeSchedule.find((item) => item.status !== "paid")?.installment_amount ??
-    contract.current_installment_amount ??
-    0;
+    Number(nextFuture?.installment_amount || 0) ||
+    Number(openItems[0]?.installment_amount || 0) ||
+    Number(contract.current_installment_amount || 0);
 
   const totalLoanCost = Math.max(
     totalScheduled - Number(contract.principal_amount || 0),
@@ -347,7 +371,9 @@ function summarizeContract(contract, schedule) {
     installments_open_count: open,
     installments_overdue_count: overdue,
     total_overdue_amount: totalOverdueAmount,
-    next_due_date: nextDue?.due_date || null,
+    first_overdue_date: firstOverdue?.due_date || null,
+    next_future_due_date: nextFuture?.due_date || null,
+    next_due_date: nextFuture?.due_date || firstOverdue?.due_date || null,
     current_installment_amount: monthlyCost,
     total_paid_amount: totalPaid,
   };
@@ -549,6 +575,7 @@ async function getLoansDashboardData(adminSupabase) {
     total_installments_open: contracts.reduce((s, c) => s + Number(c.installments_open_count || 0), 0),
     total_installments_overdue: contracts.reduce((s, c) => s + Number(c.installments_overdue_count || 0), 0),
     total_overdue_amount: contracts.reduce((s, c) => s + Number(c.total_overdue_amount || 0), 0),
+    total_paid_amount: contracts.reduce((s, c) => s + Number(c.total_paid_amount || 0), 0),
     total_monthly_cost: contracts.reduce((s, c) => s + Number(c.current_installment_amount || 0), 0),
     avg_monthly_rate: contracts.length
       ? contracts.reduce((s, c) => s + Number(c.monthly_rate || 0), 0) / contracts.length
