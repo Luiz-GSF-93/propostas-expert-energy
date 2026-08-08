@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE = process.env.INTERNAL_API_BASE || "http://127.0.0.1:4000";
+const RAW_BACKEND_BASE =
+  process.env.INTERNAL_API_BASE ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:4000";
+
+const BACKEND_BASE = RAW_BACKEND_BASE.replace(/\/+$/, "");
 
 async function handler(request: NextRequest) {
   try {
@@ -37,6 +42,7 @@ async function handler(request: NextRequest) {
       method,
       rawPath,
       targetUrl,
+      backendBase: BACKEND_BASE,
       hasAuth: Boolean(authorization),
     });
 
@@ -71,7 +77,10 @@ async function handler(request: NextRequest) {
     return NextResponse.json(
       {
         status: "error",
-        message: error instanceof Error ? error.message : "Falha interna no relay /api/backend",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Falha interna no relay /api/backend",
       },
       { status: 500 }
     );
