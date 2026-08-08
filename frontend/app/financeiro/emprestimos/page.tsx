@@ -1246,6 +1246,19 @@ function ContractModal({
             <Field label="IOF (%)" disabled={mode === "edit" && structuralLocked} value={form.iof_percent} onChange={(value) => setForm((prev) => ({ ...prev, iof_percent: value }))} type="number" />
             <Field label="Tarifas / custos" disabled={mode === "edit" && structuralLocked} value={form.fees} onChange={(value) => setForm((prev) => ({ ...prev, fees: value }))} type="number" />
             <Field label="Carência (meses)" disabled={mode === "edit" && structuralLocked} value={form.grace_months} onChange={(value) => setForm((prev) => ({ ...prev, grace_months: value }))} type="number" />
+
+                <SelectField
+                  label="Juros na carência"
+                  value={form.pay_interest_during_grace}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, pay_interest_during_grace: value }))
+                  }
+                  options={[
+                    { label: "Não", value: "nao" },
+                    { label: "Sim", value: "sim" },
+                  ]}
+                  disabled={mode === "edit" && structuralLocked}
+                />
             <Field label="Primeiro vencimento" disabled={mode === "edit" && structuralLocked} value={form.first_due_date} onChange={(value) => setForm((prev) => ({ ...prev, first_due_date: value }))} type="date" />
             <SelectField label="Sistema de amortização" disabled={mode === "edit" && structuralLocked} value={form.amortization_system} onChange={(value) => setForm((prev) => ({ ...prev, amortization_system: value }))} options={[{ value: "PRICE", label: "PRICE" }, { value: "SAC", label: "SAC" }]} />
           </div>
