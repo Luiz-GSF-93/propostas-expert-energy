@@ -72,7 +72,7 @@ type SettlementQuote = {
   months_avoided: number;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_BASE = "/api/backend";
 
 type LoanForm = {
   contract_number: string;
@@ -210,13 +210,14 @@ async function authJson(path: string, init?: RequestInit) {
   const token = data.session?.access_token;
   if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`/api/backend?path=${encodeURIComponent(path)}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
       ...(init?.headers || {}),
     },
+    cache: "no-store",
   });
 
   const json = await response.json().catch(() => ({}));
@@ -235,7 +236,7 @@ export default function EmprestimosPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -250,21 +251,41 @@ export default function EmprestimosPage() {
   async function loadBaseData(preferredId?: string | null) {
     setLoading(true);
     try {
+      setError(null);
+
       const [summaryResponse, contractsResponse] = await Promise.all([
         authJson("/api/finance/emprestimos/resumo"),
         authJson("/api/finance/emprestimos/contratos"),
       ]);
 
-      const nextSummary = summaryResponse?.summary ?? summaryResponse ?? {};
-      const nextContracts = contractsResponse?.contracts ?? [];
+      const nextSummary = summaryResponse?.summary ?? null;
+      const nextLatestBatch = summaryResponse?.latest_batch ?? null;
+      const nextContracts = Array.isArray(contractsResponse?.contracts)
+        ? contractsResponse.contracts
+        : Array.isArray(contractsResponse?.data)
+          ? contractsResponse.data
+          : Array.isArray(contractsResponse)
+            ? contractsResponse
+            : [];
+
       setSummary(nextSummary);
-      setLatestBatch(summaryResponse?.latest_batch ?? null);
+      setLatestBatch(nextLatestBatch);
       setContracts(nextContracts);
 
       const id = preferredId || selectedId || nextContracts?.[0]?.id || null;
       setSelectedId(id);
+
+      if (!id) {
+        setSelectedContract(null);
+        setSchedule([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar dados.");
+      setSummary(null);
+      setLatestBatch(null);
+      setContracts([]);
+      setSelectedContract(null);
+      setSchedule([]);
     } finally {
       setLoading(false);
     }
