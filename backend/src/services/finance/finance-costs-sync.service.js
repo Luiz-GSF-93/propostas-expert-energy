@@ -118,16 +118,26 @@ function isLoanContractActive(contract) {
 }
 
 function getLoanInstitutionName(contract) {
-  return (
-    contract?.institution ||
-    contract?.instituicao ||
-    contract?.instituição ||
-    contract?.financial_institution ||
-    contract?.bank_name ||
-    contract?.lender_name ||
-    contract?.lender ||
-    "Empréstimo"
-  );
+  const candidates = [
+    contract?.lender,
+    contract?.lender_name,
+    contract?.institution,
+    contract?.institution_name,
+    contract?.instituicao,
+    contract?.["instituição"],
+    contract?.financial_institution,
+    contract?.bank,
+    contract?.bank_name,
+    contract?.banco,
+    contract?.creditor,
+    contract?.credor
+  ];
+
+  const found = candidates.find((value) => {
+    return typeof value === "string" && value.trim().length > 0;
+  });
+
+  return found ? found.trim() : "Empréstimo";
 }
 
 function buildAutoLoanCostPayload(contract) {
@@ -140,7 +150,7 @@ function buildAutoLoanCostPayload(contract) {
 
   return {
     category: "fixo",
-    description: "parcelas de empréstimos",
+    description: `parcelas de empréstimos - ${getLoanInstitutionName(contract)}`,
     cost_type: "empréstimo",
     supplier,
     due_day: dueDay,
@@ -159,7 +169,7 @@ function buildAutoLoanCostPayload(contract) {
 async function fetchLoanContracts() {
   const { data, error } = await supabase
     .from(LOAN_CONTRACTS_TABLE)
-    .select("*")
+    .select("*, lender")
     .order("created_at", { ascending: false });
 
   if (error) {
