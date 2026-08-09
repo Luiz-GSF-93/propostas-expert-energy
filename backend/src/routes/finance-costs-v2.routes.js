@@ -72,26 +72,43 @@ async function getEntries() {
   return Array.isArray(data) ? data : [];
 }
 
-function normalizeEntry(row, estimatedRevenue) {
-  const category = row.category === "variavel" ? "variavel" : "fixo";
-  const monthlyAmount = toNumber(row.monthly_amount);
-  const percentageRate = toNumber(row.percentage_rate);
+function normalizeEntry(row) {
+  const descriptionRaw =
+    typeof row?.description === "string" ? row.description.trim() : "";
 
-  const monthlyImpact =
-    category === "fixo"
-      ? monthlyAmount
-      : estimatedRevenue * (percentageRate / 100);
+  const supplierRaw =
+    typeof row?.supplier === "string" ? row.supplier.trim() : "";
+
+  const isAutoLoan =
+    Boolean(row?.auto_generated) &&
+    String(row?.origin_module || "").toLowerCase() === "emprestimos";
+
+  const autoLoanMatch = isAutoLoan
+    ? descriptionRaw.match(/^parcelas de empréstimos\s*-\s*(.+)$/i)
+    : null;
+
+  const normalizedDescription = autoLoanMatch
+    ? "parcelas de empréstimos"
+    : descriptionRaw;
+
+  const normalizedSupplier =
+    autoLoanMatch &&
+    (!supplierRaw ||
+      supplierRaw.toLowerCase() === "empréstimo" ||
+      supplierRaw.toLowerCase() === "emprestimo")
+      ? autoLoanMatch[1].trim()
+      : supplierRaw;
 
   return {
     id: row.id,
-    category,
-    description: row.description || "",
+    category: row.category || "",
+    description: normalizedDescription || "",
     cost_type: row.cost_type || "",
-    supplier: row.supplier || "",
-    due_day: row.due_day ?? null,
-    monthly_amount: monthlyAmount,
-    percentage_rate: percentageRate,
-    monthly_impact: monthlyImpact,
+    supplier: normalizedSupplier || "",
+    due_day: row.due_day == null ? null : Number(row.due_day),
+    monthly_amount: Number(row.monthly_amount || 0),
+    percentage_rate: Number(row.percentage_rate || 0),
+    monthly_impact: Number(row.monthly_impact || 0),
     status: row.status || "ativo",
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
@@ -100,6 +117,7 @@ function normalizeEntry(row, estimatedRevenue) {
     auto_generated: Boolean(row.auto_generated),
     allow_manual_edit: row.allow_manual_edit !== false,
     allow_manual_delete: row.allow_manual_delete !== false,
+    fractional_percent: Number(row.fractional_percent || 0),
   };
 }
 
