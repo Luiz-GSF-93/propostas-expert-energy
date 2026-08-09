@@ -20,6 +20,11 @@ type DashboardEntry = {
   status: string;
   created_at: string | null;
   updated_at: string | null;
+  origin_module?: string | null;
+  origin_contract_id?: string | null;
+  auto_generated?: boolean;
+  allow_manual_edit?: boolean;
+  allow_manual_delete?: boolean;
 };
 
 type DashboardData = {
@@ -883,7 +888,14 @@ export default function FinanceCostsDashboard() {
                         {entry.category === "fixo" ? "fixo" : "variável"}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-slate-800">{entry.description}</td>
+                    <td className="px-3 py-3 text-slate-800">
+                      <div className="break-words">{entry.description}</div>
+                      {entry.auto_generated ? (
+                        <div className="mt-1 text-[11px] font-medium text-amber-700">
+                          origem automática: empréstimos
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-3 text-slate-600">{entry.cost_type}</td>
                     <td className="px-3 py-3 text-slate-600">{entry.supplier || "-"}</td>
                     <td className="px-3 py-3 text-slate-600">{entry.due_day ?? "-"}</td>
@@ -903,20 +915,28 @@ export default function FinanceCostsDashboard() {
                     </td>
                     <td className="no-print px-3 py-3">
                       <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(entry)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(entry)}
-                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
-                        >
-                          Excluir
-                        </button>
+                        {entry.auto_generated ? (
+                          <span className="inline-flex rounded-lg bg-amber-100 px-3 py-2 text-[11px] font-semibold text-amber-800">
+                            automático
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(entry)}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(entry)}
+                              className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
+                            >
+                              Excluir
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

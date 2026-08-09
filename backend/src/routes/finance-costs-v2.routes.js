@@ -1,5 +1,6 @@
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
+const { syncLoanCostsFromLoans } = require("../services/finance/finance-costs-sync.service");
 
 const router = express.Router();
 
@@ -94,6 +95,11 @@ function normalizeEntry(row, estimatedRevenue) {
     status: row.status || "ativo",
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
+    origin_module: row.origin_module || null,
+    origin_contract_id: row.origin_contract_id || null,
+    auto_generated: Boolean(row.auto_generated),
+    allow_manual_edit: row.allow_manual_edit !== false,
+    allow_manual_delete: row.allow_manual_delete !== false,
   };
 }
 
@@ -193,6 +199,7 @@ function parseEntryPayload(body) {
 
 router.get("/dashboard", requireAuth, async (req, res) => {
   try {
+    await syncLoanCostsFromLoans();
     const [settings, entries] = await Promise.all([getSettings(), getEntries()]);
     return res.json(buildDashboardPayload(settings, entries));
   } catch (error) {
@@ -205,6 +212,7 @@ router.get("/dashboard", requireAuth, async (req, res) => {
 
 router.get("/entries", requireAuth, async (req, res) => {
   try {
+    await syncLoanCostsFromLoans();
     const entries = await getEntries();
     return res.json({ entries });
   } catch (error) {
@@ -293,6 +301,20 @@ router.put("/entries/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "ID do lançamento não informado." });
     }
 
+    const { data: currentRow, error: currentRowError } = await supabase
+      .from("finance_cost_entries")
+      .select("id,auto_generated,allow_manual_edit")
+      .eq("id", id)
+      .single();
+
+    if (currentRowError) throw currentRowError;
+
+    if (currentRow?.auto_generated && currentRow?.allow_manual_edit === false) {
+      return res.status(403).json({
+        message: "Linha automática de empréstimo não pode ser editada manualmente.",
+      });
+    }
+
     const payload = parseEntryPayload(req.body);
 
     const { data, error } = await supabase
@@ -324,6 +346,20 @@ router.delete("/entries/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "ID do lançamento não informado." });
     }
 
+    const { data: currentRow, error: currentRowError } = await supabase
+      .from("finance_cost_entries")
+      .select("id,auto_generated,allow_manual_delete")
+      .eq("id", id)
+      .single();
+
+    if (currentRowError) throw currentRowError;
+
+    if (currentRow?.auto_generated && currentRow?.allow_manual_delete === false) {
+      return res.status(403).json({
+        message: "Linha automática de empréstimo não pode ser excluída manualmente.",
+      });
+    }
+
     const { data, error } = await supabase
       .from("finance_cost_entries")
       .update({
@@ -343,6 +379,22 @@ router.delete("/entries/:id", requireAuth, async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Erro ao excluir lançamento.",
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+
+router.post("/sync-loans", requireAuth, async (req, res) => {
+  try {
+    const result = await syncLoanCostsFromLoans();
+    return res.json({
+      message: "Sincronização de empréstimos para custos executada com sucesso.",
+      result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Erro ao sincronizar empréstimos com custos.",
       detail: error instanceof Error ? error.message : String(error),
     });
   }
