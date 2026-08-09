@@ -117,6 +117,19 @@ function isLoanContractActive(contract) {
   return true;
 }
 
+function getLoanInstitutionName(contract) {
+  return (
+    contract?.institution ||
+    contract?.instituicao ||
+    contract?.instituição ||
+    contract?.financial_institution ||
+    contract?.bank_name ||
+    contract?.lender_name ||
+    contract?.lender ||
+    "Empréstimo"
+  );
+}
+
 function buildAutoLoanCostPayload(contract) {
   const originContractId = String(contract.id || "").trim();
   if (!originContractId) return null;
