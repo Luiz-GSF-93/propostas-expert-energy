@@ -167,7 +167,7 @@ function buildAutoLoanCostPayload(contract) {
 
   return {
     category: "fixo",
-    description: `parcelas de empréstimos - ${institutionName}`,
+    description: "parcelas de empréstimos",
     cost_type: "empréstimo",
     supplier: institutionName,
     due_day: dueDay,
