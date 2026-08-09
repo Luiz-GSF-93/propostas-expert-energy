@@ -18,8 +18,8 @@ type DashboardEntry = {
   status: string;
   created_at: string | null;
   updated_at: string | null;
-  effective_amount: number;
-  share_pct: number;
+  monthly_impact: number;
+  fractional_percent: number;
 };
 
 type DashboardData = {
@@ -27,13 +27,13 @@ type DashboardData = {
     estimated_revenue?: number;
   };
   summary?: {
-    total_fixed?: number;
-    total_variable?: number;
+    total_fixed_amount?: number;
+    total_variable_amount?: number;
     total_costs?: number;
-    variable_share_pct?: number;
+    total_variable_percent?: number;
     fixed_share_pct?: number;
-    fixed_count?: number;
-    variable_count?: number;
+    fixed_entries?: number;
+    variable_entries?: number;
     total_entries?: number;
   };
   top_five_costs?: DashboardEntry[] | null;
@@ -173,12 +173,12 @@ export default function FinanceCostsDashboard() {
     }
 
     return [...entries]
-      .sort((a, b) => Number(b.effective_amount || 0) - Number(a.effective_amount || 0))
+      .sort((a, b) => Number(b.monthly_impact || 0) - Number(a.monthly_impact || 0))
       .slice(0, 5);
   }, [dashboard, entries]);
 
   const totalSharePct = useMemo(() => {
-    return entries.reduce((sum, item) => sum + Number(item.share_pct || 0), 0);
+    return entries.reduce((sum, item) => sum + Number(item.fractional_percent || 0), 0);
   }, [entries]);
 
   async function saveEstimatedRevenue() {
@@ -489,7 +489,7 @@ export default function FinanceCostsDashboard() {
             % total custo variáveis
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">
-            {formatPercentBR(summary?.variable_share_pct || 0)}%
+            {formatPercentBR(summary?.total_variable_percent || 0)}%
           </p>
           <p className="mt-2 text-xs text-slate-500">
             percentual total de custos variáveis no total consolidado
@@ -510,7 +510,7 @@ export default function FinanceCostsDashboard() {
                     {index + 1}. {item.description}
                   </span>
                   <span className="font-semibold text-slate-900">
-                    {formatCurrencyBRL(item.effective_amount)}
+                    {formatCurrencyBRL(item.monthly_impact)}
                   </span>
                 </div>
               ))
@@ -523,7 +523,7 @@ export default function FinanceCostsDashboard() {
             Indicador
           </p>
           <p className="mt-3 text-lg font-bold text-slate-900">
-            {(summary?.total_entries || 0)} lançamentos · {(summary?.fixed_count || 0)} fixos · {(summary?.variable_count || 0)} variáveis
+            {(summary?.total_entries || 0)} lançamentos · {(summary?.fixed_entries || 0)} fixos · {(summary?.variable_entries || 0)} variáveis
           </p>
           <p className="mt-2 text-xs text-slate-500">
             quantidade de lançamentos entre custos fixos e variáveis
@@ -537,7 +537,7 @@ export default function FinanceCostsDashboard() {
             Total pago de custos fixos
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">
-            {formatCurrencyBRL(summary?.total_fixed || 0)}
+            {formatCurrencyBRL(summary?.total_fixed_amount || 0)}
           </p>
         </div>
 
@@ -546,7 +546,7 @@ export default function FinanceCostsDashboard() {
             Total de custo variável
           </p>
           <p className="mt-3 text-2xl font-bold text-slate-900">
-            {formatCurrencyBRL(summary?.total_variable || 0)}
+            {formatCurrencyBRL(summary?.total_variable_amount || 0)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
             calculado sobre o faturamento mensal estimado
@@ -618,10 +618,10 @@ export default function FinanceCostsDashboard() {
                         : "-"}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                      {formatCurrencyBRL(entry.effective_amount)}
+                      {formatCurrencyBRL(entry.monthly_impact)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                      {formatPercentBR(entry.share_pct)}%
+                      {formatPercentBR(entry.fractional_percent)}%
                     </td>
                   </tr>
                 ))}
