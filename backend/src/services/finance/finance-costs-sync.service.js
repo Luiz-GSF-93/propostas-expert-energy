@@ -169,7 +169,7 @@ function buildAutoLoanCostPayload(contract) {
     category: "fixo",
     description: "parcelas de empréstimos",
     cost_type: "empréstimo",
-    supplier: institutionName,
+    supplier: getLoanInstitutionName(contract),
     due_day: dueDay,
     monthly_amount: Number.isFinite(monthlyAmount) ? monthlyAmount : 0,
     percentage_rate: 0,
