@@ -425,7 +425,7 @@ export default function FinanceCostsDashboard() {
   const summary = dashboard?.summary;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 lg:space-y-5">
       <style jsx global>{`
         @page {
           size: A4 portrait;
@@ -515,13 +515,13 @@ export default function FinanceCostsDashboard() {
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm print-section">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="rounded-[22px] border border-slate-200 bg-white p-4 lg:p-5 shadow-sm print-section">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Dashboard de custos
             </p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900 md:text-2xl">
+            <h2 className="mt-1 text-lg font-bold leading-tight text-slate-900 sm:text-xl md:text-2xl break-words">
               Custos fixos e variáveis
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-600">
@@ -547,8 +547,8 @@ export default function FinanceCostsDashboard() {
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-end">
+        <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-1 flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
             <label className="block min-w-[220px]">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Faturamento estimado
@@ -587,7 +587,7 @@ export default function FinanceCostsDashboard() {
             </button>
           </div>
 
-          <div className="w-full xl:w-[320px]">
+          <div className="w-full lg:w-[320px]">
             <label className="block">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Filtro de pesquisa
@@ -627,7 +627,7 @@ export default function FinanceCostsDashboard() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">Categoria</span>
               <select
@@ -748,12 +748,12 @@ export default function FinanceCostsDashboard() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Custos
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
+          <p className="mt-2 break-words text-lg font-bold leading-tight text-slate-900 sm:text-xl xl:text-2xl">
             {formatCurrencyBRL(summary?.total_costs || 0)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -761,11 +761,11 @@ export default function FinanceCostsDashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             % total custo variáveis
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
+          <p className="mt-2 break-words text-lg font-bold leading-tight text-slate-900 sm:text-xl xl:text-2xl">
             {formatPercentBR(summary?.total_variable_percent || 0)}%
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -773,7 +773,7 @@ export default function FinanceCostsDashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Maiores custos
           </p>
@@ -783,7 +783,7 @@ export default function FinanceCostsDashboard() {
             ) : (
               topFive.map((item, index) => (
                 <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
-                  <span className="truncate text-slate-700">
+                  <span className="line-clamp-2 break-words text-slate-700">
                     {index + 1}. {item.description}
                   </span>
                   <span className="shrink-0 font-semibold text-slate-900">
@@ -795,11 +795,11 @@ export default function FinanceCostsDashboard() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Indicador
           </p>
-          <p className="mt-2 text-base font-bold text-slate-900 xl:text-lg">
+          <p className="mt-2 break-words text-sm font-bold leading-snug text-slate-900 sm:text-base xl:text-lg">
             {(summary?.total_entries || 0)} lançamentos · {(summary?.fixed_entries || 0)} fixos · {(summary?.variable_entries || 0)} variáveis
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -808,21 +808,21 @@ export default function FinanceCostsDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Total pago de custos fixos
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
+          <p className="mt-2 break-words text-lg font-bold leading-tight text-slate-900 sm:text-xl xl:text-2xl">
             {formatCurrencyBRL(summary?.total_fixed_amount || 0)}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Total de custo variável
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
+          <p className="mt-2 break-words text-lg font-bold leading-tight text-slate-900 sm:text-xl xl:text-2xl">
             {formatCurrencyBRL(summary?.total_variable_amount || 0)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -830,17 +830,17 @@ export default function FinanceCostsDashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 lg:p-4 shadow-sm print-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Base de faturamento
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
+          <p className="mt-2 break-words text-lg font-bold leading-tight text-slate-900 sm:text-xl xl:text-2xl">
             {formatCurrencyBRL(dashboard?.settings?.estimated_revenue || 0)}
           </p>
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm print-table">
+      <div className="rounded-[22px] border border-slate-200 bg-white shadow-sm print-table overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900">Lançamentos cadastrados</h3>
           <p className="mt-1 text-sm text-slate-600">
@@ -853,8 +853,8 @@ export default function FinanceCostsDashboard() {
             Nenhum lançamento encontrado para o filtro informado.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full text-sm">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-[980px] w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-3 py-3 text-left font-semibold text-slate-700">Categoria</th>
