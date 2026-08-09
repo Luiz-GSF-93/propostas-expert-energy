@@ -235,18 +235,13 @@ export default function FinanceCostsDashboard() {
   const topFiveCosts = useMemo(
     () =>
       [...entries]
-        .map((entry) => ({
-          ...entry,
-          computed_monthly_impact: getMonthlyImpact(entry, dashboardEstimatedRevenue),
-          computed_fractional_percent: getFractionalPercent(
-            entry,
-            dashboardEstimatedRevenue,
-            dashboardTotalCosts
-          ),
-        }))
-        .sort((a, b) => b.computed_monthly_impact - a.computed_monthly_impact)
+        .sort(
+          (a, b) =>
+            getMonthlyImpact(b, dashboardEstimatedRevenue) -
+            getMonthlyImpact(a, dashboardEstimatedRevenue)
+        )
         .slice(0, 5),
-    [entries, dashboardEstimatedRevenue, dashboardTotalCosts]
+    [entries, dashboardEstimatedRevenue]
   );
 
 
@@ -847,16 +842,16 @@ export default function FinanceCostsDashboard() {
             Maiores custos
           </p>
           <div className="mt-2 space-y-1">
-            {topFive.length === 0 ? (
+            {topFiveCosts.length === 0 ? (
               <p className="text-sm text-slate-500">Nenhum custo cadastrado.</p>
             ) : (
-              topFive.map((item, index) => (
+              topFiveCosts.map((item, index) => (
                 <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
                   <span className="line-clamp-2 break-words text-slate-700">
                     {index + 1}. {item.description}
                   </span>
                   <span className="shrink-0 font-semibold text-slate-900">
-                    {formatCurrencyBRL(item.computed_monthly_impact ?? getMonthlyImpact(item, dashboardEstimatedRevenue))}
+                    {formatCurrencyBRL(getMonthlyImpact(item, dashboardEstimatedRevenue))}
                   </span>
                 </div>
               ))
@@ -1013,7 +1008,7 @@ export default function FinanceCostsDashboard() {
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-slate-900">
                     {formatCurrencyBRL(
-                      filteredEntries.reduce((sum, entry) => sum + Number(entry.monthly_impact || 0), 0)
+                      filteredEntries.reduce((sum, entry) => sum + getMonthlyImpact(entry, dashboardEstimatedRevenue), 0)
                     )}
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-slate-900">
