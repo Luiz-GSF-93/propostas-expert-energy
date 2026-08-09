@@ -263,6 +263,31 @@ export default function FinanceCostsDashboard() {
     });
   }, [entries, search]);
 
+  const totalFilteredImpact = useMemo(
+    () =>
+      filteredEntries.reduce(
+        (sum, entry) =>
+          sum + getMonthlyImpact(entry, dashboardEstimatedRevenue),
+        0
+      ),
+    [filteredEntries, dashboardEstimatedRevenue]
+  );
+
+  const totalFilteredFractional = useMemo(
+    () =>
+      filteredEntries.reduce(
+        (sum, entry) =>
+          sum +
+          getFractionalPercent(
+            entry,
+            dashboardEstimatedRevenue,
+            dashboardTotalCosts
+          ),
+        0
+      ),
+    [filteredEntries, dashboardEstimatedRevenue, dashboardTotalCosts]
+  );
+
   const topFive = useMemo(() => {
     const source =
       filteredEntries.length > 0 || search.trim()
@@ -272,16 +297,16 @@ export default function FinanceCostsDashboard() {
         : entries;
 
     return [...source]
-      .sort((a, b) => Number(b.monthly_impact || 0) - Number(a.monthly_impact || 0))
+      .sort(
+        (a, b) =>
+          getMonthlyImpact(b, dashboardEstimatedRevenue) -
+          getMonthlyImpact(a, dashboardEstimatedRevenue)
+      )
       .slice(0, 5);
-  }, [dashboard, entries, filteredEntries, search]);
+  }, [dashboard, entries, filteredEntries, search, dashboardEstimatedRevenue]);
 
-  const totalSharePct = useMemo(() => {
-    return filteredEntries.reduce(
-      (sum, item) => sum + Number(item.fractional_percent || 0),
-      0
-    );
-  }, [filteredEntries]);
+  const totalSharePct = useMemo(() => totalFilteredFractional, [totalFilteredFractional]);
+
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -1007,9 +1032,7 @@ export default function FinanceCostsDashboard() {
                     Soma dos percentuais fracionados
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-slate-900">
-                    {formatCurrencyBRL(
-                      filteredEntries.reduce((sum, entry) => sum + getMonthlyImpact(entry, dashboardEstimatedRevenue), 0)
-                    )}
+                    {formatCurrencyBRL(totalFilteredImpact)}
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-slate-900">
                     {formatPercentBR(totalSharePct)}%
