@@ -15,11 +15,11 @@ type DashboardEntry = {
   due_day: number | null;
   monthly_amount: number;
   percentage_rate: number;
+  monthly_impact: number;
+  fractional_percent: number;
   status: string;
   created_at: string | null;
   updated_at: string | null;
-  monthly_impact: number;
-  fractional_percent: number;
 };
 
 type DashboardData = {
@@ -28,13 +28,12 @@ type DashboardData = {
   };
   summary?: {
     total_fixed_amount?: number;
+    total_variable_percent?: number;
     total_variable_amount?: number;
     total_costs?: number;
-    total_variable_percent?: number;
-    fixed_share_pct?: number;
+    total_entries?: number;
     fixed_entries?: number;
     variable_entries?: number;
-    total_entries?: number;
   };
   top_five_costs?: DashboardEntry[] | null;
   entries?: DashboardEntry[];
@@ -111,6 +110,20 @@ function formatPercentBR(value: number) {
   }).format(Number(value || 0));
 }
 
+function formatDateBR(value?: string | null) {
+  if (!value) return "-";
+  try {
+    return new Date(value).toLocaleString("pt-BR");
+  } catch {
+    return value;
+  }
+}
+
+function escapeCsv(value: unknown) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 export default function FinanceCostsDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -119,6 +132,8 @@ export default function FinanceCostsDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [estimatedRevenue, setEstimatedRevenue] = useState("0");
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CostForm>(EMPTY_FORM);
 
   async function getToken() {
@@ -166,20 +181,98 @@ export default function FinanceCostsDashboard() {
 
   const entries = useMemo(() => dashboard?.entries || [], [dashboard]);
 
-  const topFive = useMemo(() => {
-    const fromApi = dashboard?.top_five_costs;
-    if (Array.isArray(fromApi) && fromApi.length > 0) {
-      return fromApi;
-    }
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return entries;
 
-    return [...entries]
+    return entries.filter((entry) => {
+      return [
+        entry.category,
+        entry.description,
+        entry.cost_type,
+        entry.supplier || "",
+        String(entry.due_day || ""),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [entries, search]);
+
+  const topFive = useMemo(() => {
+    const source =
+      filteredEntries.length > 0 || search.trim()
+        ? filteredEntries
+        : Array.isArray(dashboard?.top_five_costs)
+        ? dashboard?.top_five_costs || []
+        : entries;
+
+    return [...source]
       .sort((a, b) => Number(b.monthly_impact || 0) - Number(a.monthly_impact || 0))
       .slice(0, 5);
-  }, [dashboard, entries]);
+  }, [dashboard, entries, filteredEntries, search]);
 
   const totalSharePct = useMemo(() => {
-    return entries.reduce((sum, item) => sum + Number(item.fractional_percent || 0), 0);
-  }, [entries]);
+    return filteredEntries.reduce(
+      (sum, item) => sum + Number(item.fractional_percent || 0),
+      0
+    );
+  }, [filteredEntries]);
+
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setShowForm(false);
+  }
+
+  function handleEdit(entry: DashboardEntry) {
+    setEditingId(entry.id);
+    setForm({
+      category: entry.category,
+      description: entry.description || "",
+      costType: entry.cost_type || (entry.category === "variavel" ? "comissões" : "aluguel"),
+      supplier: entry.supplier || "",
+      dueDay: entry.category === "fixo" && entry.due_day ? String(entry.due_day) : "",
+      monthlyAmount: entry.category === "fixo" ? String(entry.monthly_amount || 0) : "",
+      percentageRate: entry.category === "variavel" ? String(entry.percentage_rate || 0) : "",
+    });
+    setShowForm(true);
+    setSuccess("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleDelete(entry: DashboardEntry) {
+    const confirmed = window.confirm(
+      `Deseja excluir o lançamento "${entry.description}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const token = await getToken();
+      const response = await apiFetch(`/api/finance/custos-v2/entries/${entry.id}`, token, {
+        method: "DELETE",
+      });
+
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json?.message || "Erro ao excluir lançamento.");
+      }
+
+      setSuccess("Lançamento excluído com sucesso.");
+      await loadDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function saveEstimatedRevenue() {
     try {
@@ -224,8 +317,14 @@ export default function FinanceCostsDashboard() {
       setSuccess("");
 
       const token = await getToken();
-      const response = await apiFetch("/api/finance/custos-v2/entries", token, {
-        method: "POST",
+      const endpoint = editingId
+        ? `/api/finance/custos-v2/entries/${editingId}`
+        : "/api/finance/custos-v2/entries";
+
+      const method = editingId ? "PUT" : "POST";
+
+      const response = await apiFetch(endpoint, token, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -246,8 +345,9 @@ export default function FinanceCostsDashboard() {
         throw new Error(json?.message || "Erro ao salvar custo.");
       }
 
-      setSuccess("Custo cadastrado com sucesso.");
+      setSuccess(editingId ? "Lançamento atualizado com sucesso." : "Custo cadastrado com sucesso.");
       setForm(EMPTY_FORM);
+      setEditingId(null);
       setShowForm(false);
       await loadDashboard();
     } catch (err) {
@@ -255,6 +355,55 @@ export default function FinanceCostsDashboard() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleDownloadCsv() {
+    const rows = [
+      [
+        "Categoria",
+        "Descrição",
+        "Tipo",
+        "Fornecedor",
+        "Dia vencimento",
+        "Valor mensal",
+        "Percentual",
+        "Impacto mensal",
+        "Percentual fracionado",
+        "Criado em",
+        "Atualizado em",
+      ],
+      ...filteredEntries.map((entry) => [
+        entry.category === "fixo" ? "fixo" : "variável",
+        entry.description,
+        entry.cost_type,
+        entry.supplier || "",
+        entry.due_day ?? "",
+        entry.monthly_amount,
+        entry.percentage_rate,
+        entry.monthly_impact,
+        entry.fractional_percent,
+        formatDateBR(entry.created_at),
+        formatDateBR(entry.updated_at),
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) => row.map((item) => escapeCsv(item)).join(";"))
+      .join("\n");
+
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "custos-expert-energy.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function handlePrintPdf() {
+    window.print();
   }
 
   if (loading) {
@@ -276,14 +425,103 @@ export default function FinanceCostsDashboard() {
   const summary = dashboard?.summary;
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5">
+      <style jsx global>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
+
+        .print-only {
+          display: none;
+        }
+
+        @media print {
+          body {
+            background: white !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+
+          .print-only {
+            display: block !important;
+          }
+
+          .print-card,
+          .print-table,
+          .print-section {
+            box-shadow: none !important;
+            border: 1px solid #d1d5db !important;
+            break-inside: avoid;
+          }
+
+          .print-page {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          table {
+            width: 100% !important;
+            font-size: 11px !important;
+          }
+
+          th,
+          td {
+            padding: 6px 8px !important;
+          }
+        }
+      `}</style>
+
+      <div className="print-only print-page">
+        <div className="mb-4 border-b border-slate-300 pb-4">
+          <div className="flex items-start gap-4">
+            <img
+              src="https://www.expertenergy.com.br/images/logo-expert-energy.png"
+              alt="Expert Energy"
+              className="h-14 w-auto object-contain"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                Expert Energy Perfomance em Energia
+              </h1>
+              <p className="text-sm text-slate-700">CNPJ 16.640.933/0001-83</p>
+              <p className="text-sm text-slate-700">Relatório de custos fixos e variáveis</p>
+              <p className="text-sm text-slate-700">
+                Emitido em {new Date().toLocaleString("pt-BR")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="print-card rounded-lg border p-3">
+            <div className="text-xs uppercase text-slate-500">Custos totais</div>
+            <div className="mt-1 text-lg font-bold">{formatCurrencyBRL(summary?.total_costs || 0)}</div>
+          </div>
+          <div className="print-card rounded-lg border p-3">
+            <div className="text-xs uppercase text-slate-500">% custo variáveis</div>
+            <div className="mt-1 text-lg font-bold">{formatPercentBR(summary?.total_variable_percent || 0)}%</div>
+          </div>
+          <div className="print-card rounded-lg border p-3">
+            <div className="text-xs uppercase text-slate-500">Custos fixos</div>
+            <div className="mt-1 text-lg font-bold">{formatCurrencyBRL(summary?.total_fixed_amount || 0)}</div>
+          </div>
+          <div className="print-card rounded-lg border p-3">
+            <div className="text-xs uppercase text-slate-500">Custos variáveis</div>
+            <div className="mt-1 text-lg font-bold">{formatCurrencyBRL(summary?.total_variable_amount || 0)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm print-section">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Dashboard de custos
             </p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+            <h2 className="mt-1 text-xl font-bold text-slate-900 md:text-2xl">
               Custos fixos e variáveis
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-600">
@@ -291,8 +529,27 @@ export default function FinanceCostsDashboard() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="block">
+          <div className="no-print flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Download CSV
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintPdf}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Imprimir PDF
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-end">
+            <label className="block min-w-[220px]">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Faturamento estimado
               </span>
@@ -310,18 +567,39 @@ export default function FinanceCostsDashboard() {
               type="button"
               onClick={saveEstimatedRevenue}
               disabled={saving}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              className="no-print rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
               Salvar faturamento
             </button>
 
             <button
               type="button"
-              onClick={() => setShowForm((current) => !current)}
-              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              onClick={() => {
+                if (showForm && !editingId) {
+                  setShowForm(false);
+                } else {
+                  setShowForm(true);
+                }
+              }}
+              className="no-print rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
             >
-              {showForm ? "Fechar cadastro" : "Cadastrar custo"}
+              {showForm ? (editingId ? "Fechar edição" : "Fechar cadastro") : "Cadastrar custo"}
             </button>
+          </div>
+
+          <div className="w-full xl:w-[320px]">
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Filtro de pesquisa
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Pesquisar descrição, tipo, fornecedor..."
+                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500"
+              />
+            </label>
           </div>
         </div>
 
@@ -339,9 +617,11 @@ export default function FinanceCostsDashboard() {
       </div>
 
       {showForm ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="no-print rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5">
-            <h3 className="text-lg font-bold text-slate-900">Novo custo</h3>
+            <h3 className="text-lg font-bold text-slate-900">
+              {editingId ? "Editar lançamento" : "Novo custo"}
+            </h3>
             <p className="mt-1 text-sm text-slate-600">
               Para custos fixos, informe apenas o valor mensal. Para custos variáveis, informe apenas o percentual.
             </p>
@@ -455,14 +735,11 @@ export default function FinanceCostsDashboard() {
               disabled={saving}
               className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              Salvar custo
+              {editingId ? "Salvar alterações" : "Salvar custo"}
             </button>
             <button
               type="button"
-              onClick={() => {
-                setForm(EMPTY_FORM);
-                setShowForm(false);
-              }}
+              onClick={resetForm}
               className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Cancelar
@@ -471,12 +748,12 @@ export default function FinanceCostsDashboard() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Custos
           </p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
             {formatCurrencyBRL(summary?.total_costs || 0)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -484,32 +761,32 @@ export default function FinanceCostsDashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             % total custo variáveis
           </p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
             {formatPercentBR(summary?.total_variable_percent || 0)}%
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            percentual total de custos variáveis no total consolidado
+            percentual total de custos variáveis
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Maiores custos
           </p>
-          <div className="mt-3 space-y-1">
+          <div className="mt-2 space-y-1">
             {topFive.length === 0 ? (
               <p className="text-sm text-slate-500">Nenhum custo cadastrado.</p>
             ) : (
               topFive.map((item, index) => (
                 <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
-                  <span className="text-slate-700">
+                  <span className="truncate text-slate-700">
                     {index + 1}. {item.description}
                   </span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="shrink-0 font-semibold text-slate-900">
                     {formatCurrencyBRL(item.monthly_impact)}
                   </span>
                 </div>
@@ -518,11 +795,11 @@ export default function FinanceCostsDashboard() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Indicador
           </p>
-          <p className="mt-3 text-lg font-bold text-slate-900">
+          <p className="mt-2 text-base font-bold text-slate-900 xl:text-lg">
             {(summary?.total_entries || 0)} lançamentos · {(summary?.fixed_entries || 0)} fixos · {(summary?.variable_entries || 0)} variáveis
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -531,21 +808,21 @@ export default function FinanceCostsDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Total pago de custos fixos
           </p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
             {formatCurrencyBRL(summary?.total_fixed_amount || 0)}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Total de custo variável
           </p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
             {formatCurrencyBRL(summary?.total_variable_amount || 0)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -553,48 +830,49 @@ export default function FinanceCostsDashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Base de faturamento
           </p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-xl font-bold text-slate-900 xl:text-[1.65rem]">
             {formatCurrencyBRL(dashboard?.settings?.estimated_revenue || 0)}
           </p>
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4">
+      <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm print-table">
+        <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900">Lançamentos cadastrados</h3>
           <p className="mt-1 text-sm text-slate-600">
             Os percentuais fracionados abaixo representam a participação de cada custo no total consolidado.
           </p>
         </div>
 
-        {entries.length === 0 ? (
-          <div className="px-6 py-8 text-sm text-slate-500">
-            Nenhum custo cadastrado até o momento.
+        {filteredEntries.length === 0 ? (
+          <div className="px-5 py-8 text-sm text-slate-500">
+            Nenhum lançamento encontrado para o filtro informado.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-[1100px] w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Categoria</th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Descrição</th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Tipo</th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Fornecedor</th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Venc.</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">Valor mensal</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">% custo</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">Impacto mensal</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">% fracionado</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700">Categoria</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700">Descrição</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700">Tipo</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700">Fornecedor</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700">Venc.</th>
+                  <th className="px-3 py-3 text-right font-semibold text-slate-700">Valor mensal</th>
+                  <th className="px-3 py-3 text-right font-semibold text-slate-700">% custo</th>
+                  <th className="px-3 py-3 text-right font-semibold text-slate-700">Impacto mensal</th>
+                  <th className="px-3 py-3 text-right font-semibold text-slate-700">% fracionado</th>
+                  <th className="no-print px-3 py-3 text-right font-semibold text-slate-700">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <tr key={entry.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <span
                         className={
                           entry.category === "fixo"
@@ -605,38 +883,59 @@ export default function FinanceCostsDashboard() {
                         {entry.category === "fixo" ? "fixo" : "variável"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-800">{entry.description}</td>
-                    <td className="px-4 py-3 text-slate-600">{entry.cost_type}</td>
-                    <td className="px-4 py-3 text-slate-600">{entry.supplier || "-"}</td>
-                    <td className="px-4 py-3 text-slate-600">{entry.due_day ?? "-"}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-800">
+                    <td className="px-3 py-3 text-slate-800">{entry.description}</td>
+                    <td className="px-3 py-3 text-slate-600">{entry.cost_type}</td>
+                    <td className="px-3 py-3 text-slate-600">{entry.supplier || "-"}</td>
+                    <td className="px-3 py-3 text-slate-600">{entry.due_day ?? "-"}</td>
+                    <td className="px-3 py-3 text-right font-medium text-slate-800">
                       {entry.category === "fixo" ? formatCurrencyBRL(entry.monthly_amount) : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-800">
+                    <td className="px-3 py-3 text-right font-medium text-slate-800">
                       {entry.category === "variavel"
                         ? `${formatPercentBR(entry.percentage_rate)}%`
                         : "-"}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                    <td className="px-3 py-3 text-right font-semibold text-slate-900">
                       {formatCurrencyBRL(entry.monthly_impact)}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                    <td className="px-3 py-3 text-right font-semibold text-slate-900">
                       {formatPercentBR(entry.fractional_percent)}%
+                    </td>
+                    <td className="no-print px-3 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(entry)}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(entry)}
+                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-slate-50">
                 <tr className="border-t border-slate-200">
-                  <td colSpan={7} className="px-4 py-3 text-right font-semibold text-slate-700">
+                  <td colSpan={7} className="px-3 py-3 text-right font-semibold text-slate-700">
                     Soma dos percentuais fracionados
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-900">
-                    {formatCurrencyBRL(summary?.total_costs || 0)}
+                  <td className="px-3 py-3 text-right font-bold text-slate-900">
+                    {formatCurrencyBRL(
+                      filteredEntries.reduce((sum, entry) => sum + Number(entry.monthly_impact || 0), 0)
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-900">
+                  <td className="px-3 py-3 text-right font-bold text-slate-900">
                     {formatPercentBR(totalSharePct)}%
                   </td>
+                  <td className="no-print"></td>
                 </tr>
               </tfoot>
             </table>
