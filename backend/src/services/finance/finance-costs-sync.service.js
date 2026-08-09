@@ -130,7 +130,7 @@ function getLoanInstitutionName(contract) {
     contract?.bank_name,
     contract?.banco,
     contract?.creditor,
-    contract?.credor,
+    contract?.credor
   ];
 
   const found = candidates.find((value) => {
@@ -141,44 +141,28 @@ function getLoanInstitutionName(contract) {
 }
 
 function buildAutoLoanCostPayload(contract) {
-  const institutionName = getLoanInstitutionName(contract);
+  const originContractId = String(contract.id || "").trim();
+  if (!originContractId) return null;
 
-  const monthlyAmount = Number(
-    contract?.installment_amount ??
-      contract?.monthly_amount ??
-      contract?.installment_value ??
-      contract?.parcel_amount ??
-      contract?.payment_amount ??
-      0
-  );
-
-  const dueDayRaw =
-    contract?.due_day ??
-    contract?.installment_due_day ??
-    contract?.payment_day ??
-    contract?.maturity_day ??
-    null;
-
-  const dueDayNumber = Number(dueDayRaw);
-  const dueDay =
-    Number.isFinite(dueDayNumber) && dueDayNumber >= 1 && dueDayNumber <= 31
-      ? dueDayNumber
-      : null;
+  const monthlyAmount = getMonthlyAmount(contract);
+  const dueDay = getDueDay(contract);
+  const supplier = getSupplier(contract);
 
   return {
     category: "fixo",
-    description: "parcelas de empréstimos",
+    description: `parcelas de empréstimos - ${getLoanInstitutionName(contract)}`,
     cost_type: "empréstimo",
-    supplier: getLoanInstitutionName(contract),
+    supplier,
     due_day: dueDay,
-    monthly_amount: Number.isFinite(monthlyAmount) ? monthlyAmount : 0,
+    monthly_amount: monthlyAmount,
     percentage_rate: 0,
-    status: "ativo",
+    status: isLoanContractActive(contract) && monthlyAmount > 0 ? "ativo" : "inativo",
     origin_module: "emprestimos",
-    origin_contract_id: contract?.id ? String(contract.id) : null,
+    origin_contract_id: originContractId,
     auto_generated: true,
     allow_manual_edit: false,
     allow_manual_delete: false,
+    updated_at: new Date().toISOString(),
   };
 }
 
