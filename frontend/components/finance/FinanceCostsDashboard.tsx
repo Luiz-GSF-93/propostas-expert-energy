@@ -450,7 +450,7 @@ export default function FinanceCostsDashboard() {
         entry.monthly_amount,
         entry.percentage_rate,
         entry.monthly_impact,
-        entry.fractional_percent,
+        getFractionalPercent(entry, dashboardEstimatedRevenue, dashboardTotalCosts),
         formatDateBR(entry.created_at),
         formatDateBR(entry.updated_at),
       ]),
@@ -975,7 +975,7 @@ export default function FinanceCostsDashboard() {
                       {formatCurrencyBRL(getMonthlyImpact(entry, dashboardEstimatedRevenue))}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold text-slate-900">
-                      {formatPercentBR(entry.fractional_percent)}%
+                      {formatPercentBR(getFractionalPercent(entry, dashboardEstimatedRevenue, dashboardTotalCosts))}%
                     </td>
                     <td className="no-print px-3 py-3">
                       <div className="flex justify-end gap-2">
