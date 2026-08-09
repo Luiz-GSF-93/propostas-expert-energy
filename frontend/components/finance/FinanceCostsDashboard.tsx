@@ -17,7 +17,9 @@ type DashboardEntry = {
   percentage_rate: number;
   monthly_impact: number;
   fractional_percent: number;
-  status: string;
+    computed_monthly_impact?: number;
+  computed_fractional_percent?: number;
+status: string;
   created_at: string | null;
   updated_at: string | null;
   origin_module?: string | null;
@@ -129,6 +131,49 @@ function escapeCsv(value: unknown) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+
+function getMonthlyImpact(
+  entry: {
+    category?: string;
+    monthly_amount?: number | null;
+    percentage_rate?: number | null;
+  },
+  estimatedRevenue: number
+) {
+  const monthlyAmount = Number(entry?.monthly_amount || 0);
+  const percentageRate = Number(entry?.percentage_rate || 0);
+
+  if (String(entry?.category || "").toLowerCase() === "variavel") {
+    return (estimatedRevenue * percentageRate) / 100;
+  }
+
+  return monthlyAmount;
+}
+
+function getCostPercent(entry: {
+  category?: string;
+  percentage_rate?: number | null;
+}) {
+  if (String(entry?.category || "").toLowerCase() !== "variavel") {
+    return null;
+  }
+
+  return Number(entry?.percentage_rate || 0);
+}
+
+function getFractionalPercent(
+  entry: {
+    category?: string;
+    monthly_amount?: number | null;
+    percentage_rate?: number | null;
+  },
+  estimatedRevenue: number,
+  totalCosts: number
+) {
+  const impact = getMonthlyImpact(entry, estimatedRevenue);
+  return totalCosts > 0 ? (impact / totalCosts) * 100 : 0;
+}
+
 export default function FinanceCostsDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -185,6 +230,25 @@ export default function FinanceCostsDashboard() {
   }, []);
 
   const entries = useMemo(() => dashboard?.entries || [], [dashboard]);
+  const dashboardEstimatedRevenue = Number(dashboard?.settings?.estimated_revenue || 0);
+  const dashboardTotalCosts = Number(dashboard?.summary?.total_costs || 0);
+  const topFiveCosts = useMemo(
+    () =>
+      [...entries]
+        .map((entry) => ({
+          ...entry,
+          computed_monthly_impact: getMonthlyImpact(entry, dashboardEstimatedRevenue),
+          computed_fractional_percent: getFractionalPercent(
+            entry,
+            dashboardEstimatedRevenue,
+            dashboardTotalCosts
+          ),
+        }))
+        .sort((a, b) => b.computed_monthly_impact - a.computed_monthly_impact)
+        .slice(0, 5),
+    [entries, dashboardEstimatedRevenue, dashboardTotalCosts]
+  );
+
 
   const filteredEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -792,7 +856,7 @@ export default function FinanceCostsDashboard() {
                     {index + 1}. {item.description}
                   </span>
                   <span className="shrink-0 font-semibold text-slate-900">
-                    {formatCurrencyBRL(item.monthly_impact)}
+                    {formatCurrencyBRL(item.computed_monthly_impact ?? getMonthlyImpact(item, dashboardEstimatedRevenue))}
                   </span>
                 </div>
               ))
@@ -908,7 +972,7 @@ export default function FinanceCostsDashboard() {
                         : "-"}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold text-slate-900">
-                      {formatCurrencyBRL(entry.monthly_impact)}
+                      {formatCurrencyBRL(getMonthlyImpact(entry, dashboardEstimatedRevenue))}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold text-slate-900">
                       {formatPercentBR(entry.fractional_percent)}%
