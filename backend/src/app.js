@@ -6,6 +6,7 @@ const healthRoutes = require("./routes/health.routes");
 const authRoutes = require("./routes/auth.routes");
 const proposalsRoutes = require("./routes/proposals.routes");
 const financeRoutes = require("./routes/finance.routes");
+const financeCostsV2Routes = require("./routes/finance-costs-v2.routes");
 const monthlyGoalsRoutes = require("./routes/monthly-goals.routes");
 const contactsRoutes = require("./routes/contacts.routes");
 
@@ -33,6 +34,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/proposals", proposalsRoutes);
 app.use("/api/finance", financeRoutes);
+app.use("/api/finance/custos-v2", financeCostsV2Routes);
 app.use("/api/monthly-goals", monthlyGoalsRoutes);
 app.use("/api/contacts", contactsRoutes);
 
