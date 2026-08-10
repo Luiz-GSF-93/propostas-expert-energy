@@ -647,6 +647,8 @@ async function getLoansDashboardData(adminSupabase) {
     latestSnapshot?.gross_revenue || 0
   );
 
+  await syncLoanCostsSafe(adminSupabase, "mark-status");
+
   return {
     latest_batch: latestSnapshot
       ? {
@@ -704,7 +706,6 @@ function calculateLoanSimulation(input) {
   const schedule = buildSchedule(normalized);
   const contract = summarizeContract(normalized, schedule);
 
-  await syncLoanCostsSafe(adminSupabase, "mark-status");
 
   return {
     contract,
