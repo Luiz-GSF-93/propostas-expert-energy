@@ -110,6 +110,88 @@ const EMPTY_FORM: LoanForm = {
   pay_interest_during_grace: "nao",
 };
 
+type RateSyncFormState = {
+  monthly_rate: string;
+  annual_rate: string;
+};
+
+function normalizeRateInput(value: string) {
+  return String(value ?? "").replace(",", ".").trim();
+}
+
+function formatRateInput(value: number, decimals = 6) {
+  if (!Number.isFinite(value)) return "";
+  return value
+    .toFixed(decimals)
+    .replace(/\.0+$|(?<=\.[0-9]*?)0+$/g, "")
+    .replace(/\.$/, "");
+}
+
+function monthlyToAnnualEquivalent(monthlyPercent: number) {
+  const monthly = Number(monthlyPercent || 0) / 100;
+  if (!Number.isFinite(monthly)) return 0;
+  return (Math.pow(1 + monthly, 12) - 1) * 100;
+}
+
+function annualToMonthlyEquivalent(annualPercent: number) {
+  const annual = Number(annualPercent || 0) / 100;
+  if (!Number.isFinite(annual) || annual <= -1) return 0;
+  return (Math.pow(1 + annual, 1 / 12) - 1) * 100;
+}
+
+function syncRatesFromMonthly<T extends RateSyncFormState>(prev: T, rawValue: string): T {
+  const monthlyRaw = normalizeRateInput(rawValue);
+
+  if (!monthlyRaw) {
+    return {
+      ...prev,
+      monthly_rate: "",
+      annual_rate: "",
+    };
+  }
+
+  const monthly = Number(monthlyRaw);
+  if (!Number.isFinite(monthly)) {
+    return {
+      ...prev,
+      monthly_rate: monthlyRaw,
+    };
+  }
+
+  return {
+    ...prev,
+    monthly_rate: monthlyRaw,
+    annual_rate: formatRateInput(monthlyToAnnualEquivalent(monthly), 3),
+  };
+}
+
+function syncRatesFromAnnual<T extends RateSyncFormState>(prev: T, rawValue: string): T {
+  const annualRaw = normalizeRateInput(rawValue);
+
+  if (!annualRaw) {
+    return {
+      ...prev,
+      monthly_rate: "",
+      annual_rate: "",
+    };
+  }
+
+  const annual = Number(annualRaw);
+  if (!Number.isFinite(annual)) {
+    return {
+      ...prev,
+      annual_rate: annualRaw,
+    };
+  }
+
+  return {
+    ...prev,
+    annual_rate: annualRaw,
+    monthly_rate: formatRateInput(annualToMonthlyEquivalent(annual), 6),
+  };
+}
+
+
 function toNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") {
@@ -1442,8 +1524,8 @@ function ContractModal({
             <SelectField label="Status" value={form.status} onChange={(value) => setForm((prev) => ({ ...prev, status: value }))} options={[{ value: "active", label: "Ativo" }, { value: "open", label: "Aberto" }, { value: "encerrado", label: "Encerrado" }]} />
             <Field label="Valor do empréstimo" disabled={mode === "edit" && structuralLocked} value={form.principal_amount} onChange={(value) => setForm((prev) => ({ ...prev, principal_amount: value }))} type="number" />
             <Field label="Parcelas totais" disabled={mode === "edit" && structuralLocked} value={form.installments_total} onChange={(value) => setForm((prev) => ({ ...prev, installments_total: value }))} type="number" />
-            <Field label="Juros a.m." disabled={mode === "edit" && structuralLocked} value={form.monthly_rate} onChange={(value) => setForm((prev) => ({ ...prev, monthly_rate: value }))} type="number" />
-            <Field label="Juros a.a." disabled={mode === "edit" && structuralLocked} value={form.annual_rate} onChange={(value) => setForm((prev) => ({ ...prev, annual_rate: value }))} type="number" />
+            <Field label="Juros a.m." disabled={mode === "edit" && structuralLocked} value={form.monthly_rate} onChange={(value) => setForm((prev) => syncRatesFromMonthly(prev, value))} type="number" />
+            <Field label="Juros a.a." disabled={mode === "edit" && structuralLocked} value={form.annual_rate} onChange={(value) => setForm((prev) => syncRatesFromAnnual(prev, value))} type="number" />
             <Field label="IOF (%)" disabled={mode === "edit" && structuralLocked} value={form.iof_percent} onChange={(value) => setForm((prev) => ({ ...prev, iof_percent: value }))} type="number" />
             <Field label="Tarifas / custos" disabled={mode === "edit" && structuralLocked} value={form.fees} onChange={(value) => setForm((prev) => ({ ...prev, fees: value }))} type="number" />
             <Field label="Carência (meses)" disabled={mode === "edit" && structuralLocked} value={form.grace_months} onChange={(value) => setForm((prev) => ({ ...prev, grace_months: value }))} type="number" />
