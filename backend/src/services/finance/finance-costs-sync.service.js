@@ -211,7 +211,7 @@ function buildAutoLoanCostPayload(contract) {
 async function fetchLoanContracts() {
   const { data, error } = await supabase
     .from(LOAN_CONTRACTS_TABLE)
-    .select("*, lender")
+    .select("*, lender, installments:finance_loan_installments(*)")
     .order("created_at", { ascending: false });
 
   if (error) {
