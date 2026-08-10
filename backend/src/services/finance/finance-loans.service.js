@@ -202,11 +202,13 @@ function buildSchedule(contract) {
   const installmentsPaid = Number(contract.installments_paid || 0);
   const iof = Number(contract.iof || 0);
   const fees = Number(contract.fees || 0);
-  const graceMonths = Number(contract.grace_months || 0);
+  const graceMonths = Math.max(0, Number(contract.grace_months || 0));
   const payInterestDuringGrace = Boolean(contract.pay_interest_during_grace);
   const extraPerInstallment = installments > 0 ? (iof + fees) / installments : 0;
 
   if (!principal || !installments) return [];
+
+  const round2 = (value) => Number(Number(value || 0).toFixed(2));
 
   const contractBaseDate =
     parseDate(contract.start_date) ||
@@ -221,15 +223,29 @@ function buildSchedule(contract) {
     ? addMonths(contractBaseDate, 1)
     : addMonths(firstAmortizingDueDate, -graceMonths);
 
+  // Se NÃO paga juros na carência, capitaliza mês a mês no saldo.
+  let principalForAmortization = round2(principal);
+
+  if (graceMonths > 0 && !payInterestDuringGrace && monthlyRate > 0) {
+    for (let g = 0; g < graceMonths; g += 1) {
+      principalForAmortization = round2(
+        principalForAmortization * (1 + monthlyRate)
+      );
+    }
+  }
+
   const schedule = [];
-  let balance = principal;
+  let balance = principalForAmortization;
   let seq = 1;
 
+  // Se paga juros na carência, gera parcelas só de juros antes da 1ª parcela amortizada.
   if (graceMonths > 0 && payInterestDuringGrace) {
+    const graceBalance = round2(principal);
+
     for (let g = 0; g < graceMonths; g += 1) {
       const dueDate = addMonths(graceStartDate, g);
       const dueDateIso = formatDateIso(dueDate);
-      const interest = balance * monthlyRate;
+      const interest = round2(graceBalance * monthlyRate);
       const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
 
@@ -240,8 +256,8 @@ function buildSchedule(contract) {
         amortization_amount: 0,
         interest_amount: interest,
         extra_cost_amount: 0,
-        balance_before: balance,
-        balance_after: balance,
+        balance_before: graceBalance,
+        balance_after: graceBalance,
         paid_amount: paid ? interest : null,
         paid_at: paid ? dueDateIso : null,
         status: paid ? "paid" : overdue ? "overdue" : "open",
@@ -249,33 +265,40 @@ function buildSchedule(contract) {
 
       seq += 1;
     }
+
+    balance = graceBalance;
   }
 
-  const amortStartShift = 0;
-
   if ((contract.amortization_system || DEFAULT_AMORTIZATION).toUpperCase() === "SAC") {
-    const amortization = principal / installments;
+    const baseAmortization = installments > 0
+      ? round2(principalForAmortization / installments)
+      : 0;
 
     for (let i = 1; i <= installments; i += 1) {
-      const balanceBefore = balance;
-      const interest = balanceBefore * monthlyRate;
-      const installment = amortization + interest + extraPerInstallment;
-      const balanceAfter = Math.max(balanceBefore - amortization, 0);
-      const dueDate = addMonths(firstAmortizingDueDate, amortStartShift + i - 1);
+      const balanceBefore = round2(balance);
+      const interest = round2(balanceBefore * monthlyRate);
+      const amortization =
+        i === installments
+          ? round2(balanceBefore)
+          : Math.min(baseAmortization, round2(balanceBefore));
+      const installment = round2(amortization + interest + extraPerInstallment);
+      const balanceAfter = round2(Math.max(balanceBefore - amortization, 0));
+      const dueDate = addMonths(firstAmortizingDueDate, i - 1);
+      const dueDateIso = formatDateIso(dueDate);
       const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
 
       schedule.push({
         installment_number: seq,
-        due_date: formatDateIso(dueDate),
+        due_date: dueDateIso,
         installment_amount: installment,
         amortization_amount: amortization,
         interest_amount: interest,
-        extra_cost_amount: extraPerInstallment,
+        extra_cost_amount: round2(extraPerInstallment),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
-        paid_amount: paid ? Number(installment.toFixed(2)) : null,
-        paid_at: paid ? formatDateIso(dueDate) : null,
+        paid_amount: paid ? installment : null,
+        paid_at: paid ? dueDateIso : null,
         status: paid ? "paid" : overdue ? "overdue" : "open",
       });
 
@@ -286,32 +309,42 @@ function buildSchedule(contract) {
     return schedule;
   }
 
+  // PRICE
   const paymentBase =
     monthlyRate === 0
-      ? principal / installments
-      : principal *
+      ? principalForAmortization / installments
+      : principalForAmortization *
         ((monthlyRate * Math.pow(1 + monthlyRate, installments)) /
           (Math.pow(1 + monthlyRate, installments) - 1));
 
   for (let i = 1; i <= installments; i += 1) {
-    const balanceBefore = balance;
-    const interest = balanceBefore * monthlyRate;
-    const amortization = monthlyRate === 0 ? principal / installments : paymentBase - interest;
-    const installment = paymentBase + extraPerInstallment;
-    const balanceAfter = Math.max(balanceBefore - amortization, 0);
-    const dueDate = addMonths(firstAmortizingDueDate, amortStartShift + i - 1);
+    const balanceBefore = round2(balance);
+    const interest = round2(balanceBefore * monthlyRate);
+    const amortization =
+      i === installments
+        ? round2(balanceBefore)
+        : round2(paymentBase - interest);
+    const installment =
+      i === installments
+        ? round2(amortization + interest + extraPerInstallment)
+        : round2(paymentBase + extraPerInstallment);
+    const balanceAfter = round2(Math.max(balanceBefore - amortization, 0));
+    const dueDate = addMonths(firstAmortizingDueDate, i - 1);
+    const dueDateIso = formatDateIso(dueDate);
     const paid = seq <= installmentsPaid;
     const overdue = !paid && dueDate < new Date();
 
     schedule.push({
       installment_number: seq,
-      due_date: formatDateIso(dueDate),
+      due_date: dueDateIso,
       installment_amount: installment,
       amortization_amount: amortization,
       interest_amount: interest,
-      extra_cost_amount: extraPerInstallment,
+      extra_cost_amount: round2(extraPerInstallment),
       balance_before: balanceBefore,
       balance_after: balanceAfter,
+      paid_amount: paid ? installment : null,
+      paid_at: paid ? dueDateIso : null,
       status: paid ? "paid" : overdue ? "overdue" : "open",
     });
 
