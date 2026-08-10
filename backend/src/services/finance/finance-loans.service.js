@@ -252,6 +252,8 @@ function buildSchedule(contract) {
         extra_cost_amount: extraPerInstallment,
         balance_before: balanceBefore,
         balance_after: balanceAfter,
+        paid_amount: paid ? Number(installment.toFixed(2)) : null,
+        paid_at: paid ? formatDateIso(dueDate) : null,
         status: paid ? "paid" : overdue ? "overdue" : "open",
       });
 
@@ -335,7 +337,7 @@ function summarizeContract(contract, schedule) {
   const nextFuture = futureOpenItems[0] || null;
 
   const totalScheduled = activeSchedule.reduce(
-    (sum, item) => sum + Number(item.installment_amount || 0),
+    (sum, item) => sum + Number(item.paid_amount ?? item.installment_amount ?? 0),
     0
   );
 
@@ -433,14 +435,20 @@ async function replaceInstallments(adminSupabase, contractId, schedule) {
     contract_id: contractId,
     installment_number: item.installment_number,
     due_date: item.due_date,
-    installment_amount: Number(item.installment_amount || 0),
-    amortization_amount: Number(item.amortization_amount || 0),
-    interest_amount: Number(item.interest_amount || 0),
-    extra_cost_amount: Number(item.extra_cost_amount || 0),
-    balance_before: Number(item.balance_before || 0),
-    balance_after: Number(item.balance_after || 0),
-    paid_amount: item.paid_amount ?? null,
-    paid_at: item.paid_at ?? null,
+    installment_amount: item.installment_amount,
+    amortization_amount: item.amortization_amount,
+    interest_amount: item.interest_amount,
+    extra_cost_amount: item.extra_cost_amount,
+    balance_before: item.balance_before,
+    balance_after: item.balance_after,
+    paid_amount:
+      String(item.status || "").toLowerCase() === "paid"
+        ? Number(item.paid_amount ?? item.installment_amount ?? 0)
+        : null,
+    paid_at:
+      String(item.status || "").toLowerCase() === "paid"
+        ? item.paid_at || item.due_date || null
+        : null,
     status: item.status,
   }));
 
@@ -511,48 +519,77 @@ async function updateLoanContract(adminSupabase, contractId, input) {
   return getLoanContractDetail(adminSupabase, data.id);
 }
 
-async function markInstallmentStatus(adminSupabase, contractId, installmentNumber, payload) {
-  const status = normalizeText(payload.status).toLowerCase() || "paid";
-  const paidAmount = parseNullableNumber(payload.paid_amount);
-  const paidAt = formatDateIso(parseDate(payload.paid_at)) || formatDateIso(new Date());
-
-  const { data, error } = await adminSupabase
-    .from("finance_loan_installments")
-    .update({
-      status,
-      paid_amount: status === "paid" ? Number(paidAmount || 0) : null,
-      paid_at: status === "paid" ? paidAt : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("contract_id", contractId)
-    .eq("installment_number", installmentNumber)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(`Erro ao atualizar parcela: ${error.message}`);
+async function markInstallmentStatus(adminSupabase, contractId, installmentNumber, input = {}) {
+  const installmentNo = Number(installmentNumber);
+  if (!Number.isFinite(installmentNo) || installmentNo <= 0) {
+    throw new Error("Número da parcela inválido.");
   }
 
-  const allInstallments = await fetchLoanInstallments(adminSupabase, contractId);
-  const installmentsPaid = allInstallments.filter((item) => item.status === "paid").length;
-  const nextOpen = allInstallments.find((item) => item.status !== "paid");
-  const lastRow = allInstallments[allInstallments.length - 1];
+  const { data: current, error: currentError } = await adminSupabase
+    .from("finance_loan_installments")
+    .select("*")
+    .eq("contract_id", contractId)
+    .eq("installment_number", installmentNo)
+    .single();
 
-  const { error: updateContractError } = await adminSupabase
+  if (currentError) {
+    throw new Error(`Erro ao localizar parcela: ${currentError.message}`);
+  }
+
+  const requestedPaid = String(input?.status || "").toLowerCase() === "paid";
+  const dueDate = parseDate(current?.due_date);
+  const today = new Date();
+
+  const reopenStatus =
+    dueDate && dueDate < today ? "overdue" : "open";
+
+  const paidAt =
+    requestedPaid
+      ? formatDateIso(parseDate(input?.paid_at) || new Date())
+      : null;
+
+  const paidAmount =
+    requestedPaid
+      ? Number(
+          parseNumber(
+            input?.paid_amount,
+            Number(current?.installment_amount || 0)
+          ).toFixed(2)
+        )
+      : null;
+
+  const { error: updateError } = await adminSupabase
+    .from("finance_loan_installments")
+    .update({
+      status: requestedPaid ? "paid" : reopenStatus,
+      paid_at: paidAt,
+      paid_amount: paidAmount,
+    })
+    .eq("contract_id", contractId)
+    .eq("installment_number", installmentNo);
+
+  if (updateError) {
+    throw new Error(`Erro ao atualizar parcela: ${updateError.message}`);
+  }
+
+  const refreshedSchedule = await fetchLoanInstallments(adminSupabase, contractId);
+  const paidCount = refreshedSchedule.filter(
+    (item) => String(item.status || "").toLowerCase() === "paid"
+  ).length;
+
+  const { error: contractError } = await adminSupabase
     .from("finance_loan_contracts")
     .update({
-      installments_paid: installmentsPaid,
-      current_installment_amount: Number(nextOpen?.installment_amount || 0),
-      balance_outstanding: Number(lastRow?.balance_after || 0),
+      installments_paid: paidCount,
       updated_at: new Date().toISOString(),
     })
     .eq("id", contractId);
 
-  if (updateContractError) {
-    throw new Error(`Erro ao atualizar resumo do contrato: ${updateContractError.message}`);
+  if (contractError) {
+    throw new Error(`Erro ao atualizar contrato: ${contractError.message}`);
   }
 
-  return data;
+  return getLoanContractDetail(adminSupabase, contractId);
 }
 
 async function getLoansDashboardData(adminSupabase) {

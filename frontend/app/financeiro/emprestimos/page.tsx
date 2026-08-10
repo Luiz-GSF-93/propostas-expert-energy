@@ -540,7 +540,7 @@ export default function EmprestimosPage() {
       ["Status", selectedContract.status || ""],
       ["" , ""],
       ["Cronograma", ""],
-      ["Parcela", "Vencimento;Valor;Amortização;Juros;Custos;Saldo após;Status;Pago em"],
+      ["Parcela", "Vencimento;Valor;Amortização;Juros;Custos;Saldo após;Status;Valor pago;Data pagamento"],
     ];
 
     const scheduleRows = schedule.map((item) => [
@@ -1144,6 +1144,8 @@ export default function EmprestimosPage() {
                       <th className="px-3 py-3 font-semibold text-right">Custos</th>
                       <th className="px-3 py-3 font-semibold text-right">Saldo após</th>
                       <th className="px-3 py-3 font-semibold">Status</th>
+                      <th className="px-3 py-3 font-semibold">Valor pago</th>
+                      <th className="px-3 py-3 font-semibold">Data pagamento</th>
                       <th className="px-3 py-3 font-semibold">Ação</th>
                     </tr>
                   </thead>
