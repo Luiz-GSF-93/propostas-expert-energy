@@ -736,6 +736,8 @@ export default function EmprestimosPage() {
               <th>Juros</th>
               <th>Custos</th>
               <th>Saldo após</th>
+              <th>Valor pago</th>
+              <th>Data pagamento</th>
               <th>Status</th>
             </tr>
           </thead>
