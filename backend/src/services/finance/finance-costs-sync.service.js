@@ -50,7 +50,10 @@ function getSupplier(contract) {
 }
 
 function getDueDay(contract) {
+  const preferredItem = getPreferredLoanInstallment(contract);
+
   return (
+    parseDayFromDate(preferredItem?.due_date) ||
     safeDay(contract.due_day) ||
     safeDay(contract.payment_day) ||
     safeDay(contract.installment_due_day) ||
@@ -60,33 +63,72 @@ function getDueDay(contract) {
   );
 }
 
+function getPreferredLoanInstallment(contract) {
+  const scheduleItems = Array.isArray(contract?.installments)
+    ? contract.installments
+    : Array.isArray(contract?.schedule)
+    ? contract.schedule
+    : [];
+
+  if (!scheduleItems.length) return null;
+
+  const normalizeStatus = (value) => String(value || "").toLowerCase().trim();
+  const toTime = (value) => {
+    if (!value) return null;
+    const d = new Date(String(value));
+    return Number.isNaN(d.getTime()) ? null : d.getTime();
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTime = today.getTime();
+
+  const futureOpen = scheduleItems
+    .filter((item) => ["open", "pending"].includes(normalizeStatus(item?.status)))
+    .filter((item) => {
+      const time = toTime(item?.due_date);
+      return time !== null && time >= todayTime;
+    })
+    .sort((a, b) => (toTime(a?.due_date) || 0) - (toTime(b?.due_date) || 0));
+
+  if (futureOpen.length > 0) return futureOpen[0];
+
+  const openItems = scheduleItems
+    .filter((item) => ["open", "pending"].includes(normalizeStatus(item?.status)))
+    .sort((a, b) => (toTime(a?.due_date) || 0) - (toTime(b?.due_date) || 0));
+
+  if (openItems.length > 0) return openItems[0];
+
+  const overdueItems = scheduleItems
+    .filter((item) => normalizeStatus(item?.status) === "overdue")
+    .sort((a, b) => (toTime(a?.due_date) || 0) - (toTime(b?.due_date) || 0));
+
+  if (overdueItems.length > 0) return overdueItems[0];
+
+  return scheduleItems[0] || null;
+}
+
 function getMonthlyAmount(contract) {
+  const preferredItem = getPreferredLoanInstallment(contract);
+
+  const fromSchedule =
+    toNumber(preferredItem?.installment_amount) ||
+    toNumber(preferredItem?.amount) ||
+    toNumber(preferredItem?.payment_amount) ||
+    0;
+
+  if (fromSchedule > 0) return fromSchedule;
+
   const direct =
+    toNumber(contract.current_installment_amount) ||
+    toNumber(contract.monthly_installment_amount) ||
     toNumber(contract.monthly_payment) ||
     toNumber(contract.installment_amount) ||
     toNumber(contract.installment_value) ||
     toNumber(contract.payment_amount) ||
-    toNumber(contract.monthly_installment_amount) ||
-    toNumber(contract.current_installment_amount) ||
     0;
 
-  if (direct > 0) return direct;
-
-  if (Array.isArray(contract.schedule) && contract.schedule.length > 0) {
-    const nextItem =
-      contract.schedule.find((item) =>
-        ["open", "overdue", "pending"].includes(String(item.status || "").toLowerCase())
-      ) || contract.schedule[0];
-
-    return (
-      toNumber(nextItem.installment_amount) ||
-      toNumber(nextItem.amount) ||
-      toNumber(nextItem.payment_amount) ||
-      0
-    );
-  }
-
-  return 0;
+  return direct;
 }
 
 function isLoanContractActive(contract) {
