@@ -957,8 +957,8 @@ export default function EmprestimosPage() {
   }
 
   const iofPreview = useMemo(() => {
-    const principal = toNumber(form.principal_amount);
-    const percent = toNumber(form.iof_percent);
+    const principal = parseMoneyInput(form.principal_amount);
+    const percent = parseMoneyInput(form.iof_percent);
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
 

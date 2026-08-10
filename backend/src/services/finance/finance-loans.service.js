@@ -1,5 +1,18 @@
 const DEFAULT_AMORTIZATION = "PRICE";
 
+
+async function syncLoanCostsSafe(adminSupabase, scope = "unknown") {
+  try {
+    const { syncLoanCostsFromLoans } = require("./finance-costs-sync.service");
+    if (typeof syncLoanCostsFromLoans === "function") {
+      await syncLoanCostsFromLoans(adminSupabase);
+    }
+  } catch (error) {
+    console.error(`[finance.loans.${scope}.sync-costs]`, error);
+  }
+}
+
+
 function normalizeText(value) {
   if (value === null || value === undefined) return "";
   return String(value).replace(/\s+/g, " ").trim();
@@ -485,6 +498,7 @@ async function createLoanContract(adminSupabase, input) {
   }
 
   await replaceInstallments(adminSupabase, data.id, schedule);
+  await syncLoanCostsSafe(adminSupabase, "create");
 
   return getLoanContractDetail(adminSupabase, data.id);
 }
@@ -515,6 +529,7 @@ async function updateLoanContract(adminSupabase, contractId, input) {
   }
 
   await replaceInstallments(adminSupabase, contractId, schedule);
+  await syncLoanCostsSafe(adminSupabase, "update");
 
   return getLoanContractDetail(adminSupabase, data.id);
 }
@@ -688,6 +703,8 @@ function calculateLoanSimulation(input) {
   const normalized = normalizeLoanInput(input);
   const schedule = buildSchedule(normalized);
   const contract = summarizeContract(normalized, schedule);
+
+  await syncLoanCostsSafe(adminSupabase, "mark-status");
 
   return {
     contract,

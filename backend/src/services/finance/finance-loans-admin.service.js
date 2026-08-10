@@ -1,5 +1,18 @@
 const DEFAULT_AMORTIZATION = "PRICE";
 
+
+async function syncLoanCostsSafe(adminSupabase, scope = "unknown") {
+  try {
+    const { syncLoanCostsFromLoans } = require("./finance-costs-sync.service");
+    if (typeof syncLoanCostsFromLoans === "function") {
+      await syncLoanCostsFromLoans(adminSupabase);
+    }
+  } catch (error) {
+    console.error(`[finance.loans.admin.${scope}.sync-costs]`, error);
+  }
+}
+
+
 function normalizeText(value) {
   if (value === null || value === undefined) return "";
   return String(value).replace(/\s+/g, " ").trim();
@@ -343,6 +356,7 @@ async function updateLoanContract(adminSupabase, contractId, input) {
   if (paidCount === 0 && touchedStructural) {
     const regenerated = buildSchedule(updated);
     await replaceOpenInstallments(adminSupabase, contractId, regenerated);
+    await syncLoanCostsSafe(adminSupabase, "update-structural");
   }
 
   return updated;
