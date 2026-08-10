@@ -552,8 +552,13 @@ export default function EmprestimosPage() {
         toNumber(item.interest_amount).toFixed(2),
         toNumber(item.extra_cost_amount).toFixed(2),
         toNumber(item.balance_after).toFixed(2),
+        String(item.status || "").toLowerCase() === "paid"
+          ? toNumber(item.paid_amount ?? item.installment_amount).toFixed(2)
+          : "",
+        String(item.status || "").toLowerCase() === "paid"
+          ? item.paid_at || ""
+          : "",
         item.status || "",
-        item.paid_at || "",
       ].join(";"),
     ]);
 
@@ -603,6 +608,8 @@ export default function EmprestimosPage() {
         <td>${escapeHtml(formatMoney(item.interest_amount))}</td>
         <td>${escapeHtml(formatMoney(item.extra_cost_amount))}</td>
         <td>${escapeHtml(formatMoney(item.balance_after))}</td>
+        <td>${escapeHtml(String(item.status || "").toLowerCase() === "paid" ? formatMoney(item.paid_amount ?? item.installment_amount) : "—")}</td>
+        <td>${escapeHtml(String(item.status || "").toLowerCase() === "paid" ? formatDateBr(item.paid_at) : "—")}</td>
         <td>${escapeHtml(item.status || "")}</td>
       </tr>
     `).join("");
@@ -1145,10 +1152,10 @@ export default function EmprestimosPage() {
                       <th className="px-3 py-3 font-semibold text-right">Juros</th>
                       <th className="px-3 py-3 font-semibold text-right">Custos</th>
                       <th className="px-3 py-3 font-semibold text-right">Saldo após</th>
-                      <th className="px-3 py-3 font-semibold">Valor pago</th>
-                      <th className="px-3 py-3 font-semibold">Data pagamento</th>
-                      <th className="px-3 py-3 font-semibold">Status</th>
-                      <th className="px-3 py-3 font-semibold">Ação</th>
+                      <th className="px-3 py-3 font-semibold text-right">Valor pago</th>
+                      <th className="px-3 py-3 font-semibold text-center">Data pagamento</th>
+                      <th className="px-3 py-3 font-semibold text-center">Status</th>
+                      <th className="px-3 py-3 font-semibold text-right">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1161,12 +1168,32 @@ export default function EmprestimosPage() {
                         <td className="px-3 py-3 text-right">{formatMoney(item.interest_amount)}</td>
                         <td className="px-3 py-3 text-right">{formatMoney(item.extra_cost_amount)}</td>
                         <td className="px-3 py-3 text-right">{formatMoney(item.balance_after)}</td>
-                        <td className="px-3 py-3">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
+                        <td className="px-3 py-3 text-right text-slate-600">
+                          {String(item.status || "").toLowerCase() === "paid"
+                            ? formatMoney(item.paid_amount ?? item.installment_amount)
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-600">
+                          {String(item.status || "").toLowerCase() === "paid"
+                            ? formatDateBr(item.paid_at)
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right text-slate-600">
+                          {String(item.status || "").toLowerCase() === "paid"
+                            ? formatMoney(item.paid_amount ?? item.installment_amount)
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-600">
+                          {String(item.status || "").toLowerCase() === "paid"
+                            ? formatDateBr(item.paid_at)
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
                             {item.status || "open"}
                           </span>
                         </td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 text-right">
                           <button
                             type="button"
                             disabled={saving || ["settled", "cancelled"].includes(String(item.status || "").toLowerCase())}
