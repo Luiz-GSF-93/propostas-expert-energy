@@ -545,7 +545,7 @@ async function markInstallmentStatus(adminSupabase, contractId, installmentNumbe
 
   const paidAt =
     requestedPaid
-      ? formatDateIso(parseDate(input?.paid_at) || new Date())
+      ? formatDateIso(parseDate(input?.paid_at || input?.paid_date) || new Date())
       : null;
 
   const paidAmount =

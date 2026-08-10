@@ -812,10 +812,56 @@ export default function EmprestimosPage() {
     }
   }
 
-  async function handleInstallmentAction(item: LoanInstallment) {
-    if (!selectedId) return;
+  function parseMoneyInput(value: string) {
+    const raw = String(value || "")
+      .replace(/R\$\s?/gi, "")
+      .replace(/\s/g, "")
+      .trim();
 
+    if (!raw) return 0;
+
+    if (/^-?\d+(\.\d+)?$/.test(raw)) {
+      return Number(raw);
+    }
+
+    if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(raw) || /^-?\d+(,\d+)?$/.test(raw)) {
+      return Number(raw.replace(/\./g, "").replace(",", "."));
+    }
+
+    return Number(raw.replace(",", "."));
+  }
+
+  function closePaymentModal() {
+    if (saving) return;
+    setPaymentModal({
+      open: false,
+      item: null,
+      action: "paid",
+      paidAmount: "",
+      paidAt: new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  function handleInstallmentAction(item: LoanInstallment) {
     const isPaid = String(item.status || "").toLowerCase() === "paid";
+
+    setError("");
+    setSuccess("");
+    setPaymentModal({
+      open: true,
+      item,
+      action: isPaid ? "reopen" : "paid",
+      paidAmount: String(
+        Number(item.paid_amount ?? item.installment_amount ?? 0).toFixed(2)
+      ),
+      paidAt: item.paid_at || new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  async function handleSubmitInstallmentAction() {
+    if (!selectedId || !paymentModal.item) return;
+
+    const isReopen = paymentModal.action === "reopen";
 
     try {
       setSaving(true);
@@ -824,43 +870,38 @@ export default function EmprestimosPage() {
 
       let payload: AnyRecord;
 
-      if (isPaid) {
+      if (isReopen) {
         payload = {
           status: "open",
-          paid_amount: 0,
+          paid_amount: null,
+          paid_at: null,
         };
       } else {
-        const suggested = String(toNumber(item.installment_amount).toFixed(2));
-        const paidAmountInput = window.prompt("Valor pago da parcela", suggested);
-        if (paidAmountInput === null) {
+        const parsedPaidAmount = parseMoneyInput(paymentModal.paidAmount);
+
+        if (!parsedPaidAmount || parsedPaidAmount <= 0) {
+          setError("Informe um valor pago válido.");
           setSaving(false);
           return;
         }
 
-        const paidDateInput =
-          window.prompt(
-            "Data do pagamento (AAAA-MM-DD)",
-            new Date().toISOString().slice(0, 10)
-          ) || new Date().toISOString().slice(0, 10);
-
         payload = {
           status: "paid",
-          paid_amount: Number(
-            paidAmountInput.replace(/\./g, "").replace(",", ".")
-          ),
-          paid_date: paidDateInput,
+          paid_amount: parsedPaidAmount,
+          paid_at: paymentModal.paidAt || new Date().toISOString().slice(0, 10),
         };
       }
 
       await authJson(
-        `/api/finance/emprestimos/contratos/${selectedId}/parcelas/${item.installment_number}`,
+        `/api/finance/emprestimos/contratos/${selectedId}/parcelas/${paymentModal.item.installment_number}`,
         {
           method: "PATCH",
           body: JSON.stringify(payload),
         }
       );
 
-      setSuccess(isPaid ? "Parcela reaberta com sucesso." : "Parcela marcada como paga.");
+      closePaymentModal();
+      setSuccess(isReopen ? "Parcela reaberta com sucesso." : "Parcela marcada como paga.");
       await Promise.all([loadContractDetail(selectedId), loadBaseData(selectedId)]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar parcela.");
@@ -919,6 +960,20 @@ export default function EmprestimosPage() {
     const percent = toNumber(form.iof_percent);
     return principal * (percent / 100);
   }, [form.principal_amount, form.iof_percent]);
+
+  const [paymentModal, setPaymentModal] = useState<{
+    open: boolean;
+    item: LoanInstallment | null;
+    action: "paid" | "reopen";
+    paidAmount: string;
+    paidAt: string;
+  }>({
+    open: false,
+    item: null,
+    action: "paid",
+    paidAmount: "",
+    paidAt: new Date().toISOString().slice(0, 10),
+  });
 
   const hasPaidInstallments = toNumber(
     selectedContract?.installments_paid_count ?? selectedContract?.installments_paid ?? 0
@@ -1202,6 +1257,79 @@ export default function EmprestimosPage() {
           </div>
         </div>
       </div>
+
+      {paymentModal.open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {paymentModal.action === "reopen" ? "Reabrir parcela" : "Marcar parcela como paga"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Parcela {paymentModal.item?.installment_number} • vencimento {formatDateBr(paymentModal.item?.due_date)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closePaymentModal}
+                className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              <label className="grid gap-1 text-sm">
+                <span className="font-medium text-slate-700">Valor pago</span>
+                <input
+                  type="text"
+                  value={paymentModal.paidAmount}
+                  onChange={(e) =>
+                    setPaymentModal((prev) => ({ ...prev, paidAmount: e.target.value }))
+                  }
+                  disabled={paymentModal.action === "reopen"}
+                  className="rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500 disabled:bg-slate-100"
+                  placeholder="0,00"
+                />
+              </label>
+
+              <label className="grid gap-1 text-sm">
+                <span className="font-medium text-slate-700">Data do pagamento</span>
+                <input
+                  type="date"
+                  value={paymentModal.paidAt}
+                  onChange={(e) =>
+                    setPaymentModal((prev) => ({ ...prev, paidAt: e.target.value }))
+                  }
+                  disabled={paymentModal.action === "reopen"}
+                  className="rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500 disabled:bg-slate-100"
+                />
+              </label>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closePaymentModal}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSubmitInstallmentAction}
+                disabled={saving}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {paymentModal.action === "reopen" ? "Confirmar reabertura" : "Salvar pagamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isNewOpen ? (
         <ContractModal
