@@ -162,9 +162,18 @@ function buildSchedule(contract) {
 
   if (!principal || !installments) return [];
 
-  const start =
+  const contractBaseDate =
+    parseDate(contract.start_date) ||
+    parseDate(contract.release_date) ||
+    null;
+
+  const firstAmortizingDueDate =
     parseDate(contract.first_due_date) ||
-    addMonths(parseDate(contract.start_date) || new Date(), 1);
+    addMonths(contractBaseDate || new Date(), graceMonths + 1);
+
+  const graceStartDate = contractBaseDate
+    ? addMonths(contractBaseDate, 1)
+    : addMonths(firstAmortizingDueDate, -graceMonths);
 
   const schedule = [];
   let balance = principal;
@@ -172,7 +181,7 @@ function buildSchedule(contract) {
 
   if (payInterestDuringGrace && graceMonths > 0) {
     for (let g = 0; g < graceMonths; g += 1) {
-      const dueDate = addMonths(start, g);
+      const dueDate = addMonths(graceStartDate, g);
       const interest = balance * monthlyRate;
       const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
@@ -193,7 +202,7 @@ function buildSchedule(contract) {
     }
   }
 
-  const amortStartShift = payInterestDuringGrace ? graceMonths : graceMonths;
+  const amortStartShift = 0;
 
   if ((contract.amortization_system || DEFAULT_AMORTIZATION).toUpperCase() === "SAC") {
     const amortization = principal / installments;
@@ -203,7 +212,7 @@ function buildSchedule(contract) {
       const interest = balanceBefore * monthlyRate;
       const installment = amortization + interest + extraPerInstallment;
       const balanceAfter = Math.max(balanceBefore - amortization, 0);
-      const dueDate = addMonths(start, amortStartShift + i - 1);
+      const dueDate = addMonths(firstAmortizingDueDate, amortStartShift + i - 1);
       const paid = seq <= installmentsPaid;
       const overdue = !paid && dueDate < new Date();
 
@@ -239,7 +248,7 @@ function buildSchedule(contract) {
     const amortization = monthlyRate === 0 ? principal / installments : paymentBase - interest;
     const installment = paymentBase + extraPerInstallment;
     const balanceAfter = Math.max(balanceBefore - amortization, 0);
-    const dueDate = addMonths(start, amortStartShift + i - 1);
+    const dueDate = addMonths(firstAmortizingDueDate, amortStartShift + i - 1);
     const paid = seq <= installmentsPaid;
     const overdue = !paid && dueDate < new Date();
 
