@@ -820,15 +820,15 @@ export default function EmprestimosPage() {
 
     if (!raw) return 0;
 
-    if (/^-?\d+(\.\d+)?$/.test(raw)) {
-      return Number(raw);
-    }
-
     if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(raw) || /^-?\d+(,\d+)?$/.test(raw)) {
       return Number(raw.replace(/\./g, "").replace(",", "."));
     }
 
-    return Number(raw.replace(",", "."));
+    if (/^-?\d+(\.\d+)?$/.test(raw)) {
+      return Number(raw);
+    }
+
+    return Number(raw.replace(/\./g, "").replace(",", "."));
   }
 
   function closePaymentModal() {
@@ -851,9 +851,10 @@ export default function EmprestimosPage() {
       open: true,
       item,
       action: isPaid ? "reopen" : "paid",
-      paidAmount: String(
-        Number(item.paid_amount ?? item.installment_amount ?? 0).toFixed(2)
-      ),
+      paidAmount: Number(item.paid_amount ?? item.installment_amount ?? 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
       paidAt: item.paid_at || new Date().toISOString().slice(0, 10),
     });
   }
