@@ -1,56 +1,6 @@
 const DEFAULT_AMORTIZATION = "PRICE";
 
 
-async function refreshCurrentInstallmentAmount(adminSupabase, contractId) {
-  const { data: installments, error } = await adminSupabase
-    .from("finance_loan_installments")
-    .select("installment_number, due_date, installment_amount, status")
-    .eq("contract_id", contractId)
-    .order("due_date", { ascending: true })
-    .order("installment_number", { ascending: true });
-
-  if (error) throw error;
-
-  const rows = installments || [];
-  const normalizeStatus = (value) => String(value || "").toLowerCase().trim();
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTime = today.getTime();
-
-  const toTime = (value) => {
-    if (!value) return null;
-    const d = new Date(String(value));
-    return Number.isNaN(d.getTime()) ? null : d.getTime();
-  };
-
-  const nextOpenOrPending =
-    rows.find((item) => {
-      const status = normalizeStatus(item.status);
-      const dueTime = toTime(item.due_date);
-      return ["open", "pending"].includes(status) && dueTime !== null && dueTime >= todayTime;
-    }) ||
-    rows.find((item) => ["open", "pending"].includes(normalizeStatus(item.status))) ||
-    rows.find((item) => normalizeStatus(item.status) === "overdue") ||
-    null;
-
-  const currentInstallmentAmount = Number(nextOpenOrPending?.installment_amount || 0);
-
-  const { error: updateError } = await adminSupabase
-    .from("finance_loan_contracts")
-    .update({
-      current_installment_amount: currentInstallmentAmount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", contractId);
-
-  if (updateError) throw updateError;
-
-  return currentInstallmentAmount;
-}
-
-
-
 async function syncLoanCostsSafe(adminSupabase, scope = "unknown") {
   try {
     const { syncLoanCostsFromLoans } = require("./finance-costs-sync.service");
@@ -548,7 +498,6 @@ async function createLoanContract(adminSupabase, input) {
   }
 
   await replaceInstallments(adminSupabase, data.id, schedule);
-  await refreshCurrentInstallmentAmount(adminSupabase, data.id);
   await syncLoanCostsSafe(adminSupabase, "create");
 
   return getLoanContractDetail(adminSupabase, data.id);
@@ -580,7 +529,6 @@ async function updateLoanContract(adminSupabase, contractId, input) {
   }
 
   await replaceInstallments(adminSupabase, contractId, schedule);
-  await refreshCurrentInstallmentAmount(adminSupabase, contractId);
   await syncLoanCostsSafe(adminSupabase, "update");
 
   return getLoanContractDetail(adminSupabase, data.id);
@@ -699,7 +647,6 @@ async function getLoansDashboardData(adminSupabase) {
     latestSnapshot?.gross_revenue || 0
   );
 
-  await refreshCurrentInstallmentAmount(adminSupabase, contractId);
   await syncLoanCostsSafe(adminSupabase, "mark-status");
 
   return {
