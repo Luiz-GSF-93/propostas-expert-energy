@@ -1178,16 +1178,6 @@ export default function EmprestimosPage() {
                             ? formatDateBr(item.paid_at)
                             : "—"}
                         </td>
-                        <td className="px-3 py-3 text-right text-slate-600">
-                          {String(item.status || "").toLowerCase() === "paid"
-                            ? formatMoney(item.paid_amount ?? item.installment_amount)
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-center text-slate-600">
-                          {String(item.status || "").toLowerCase() === "paid"
-                            ? formatDateBr(item.paid_at)
-                            : "—"}
-                        </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
                             {item.status || "open"}
