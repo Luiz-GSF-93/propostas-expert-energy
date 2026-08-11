@@ -743,7 +743,7 @@ router.get("/bootstrap", authMiddleware, requireAdmin, async (req, res) => {
 });
 
 
-router.get("/fluxo-caixa", authMiddleware, requireAdmin, async (req, res) => {
+router.get("/fluxo-caixa-importado", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const latestBatch = await getLatestFinanceBatch();
 
@@ -1052,6 +1052,57 @@ router.delete("/emprestimos/contratos/:id", authMiddleware, requireAdmin, async 
     });
   }
 });
+
+
+router.get("/fluxo-caixa", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { getCashFlowYear } = require("../services/finance/finance-cash-flow.service");
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getCashFlowYear(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    return res.status(500).json({
+      message: error?.message || "Erro ao carregar fluxo de caixa.",
+    });
+  }
+});
+
+router.post("/fluxo-caixa", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { createCashFlowEntry } = require("../services/finance/finance-cash-flow.service");
+    const entry = await createCashFlowEntry(adminSupabase, req.body || {});
+    return res.status(201).json({ entry });
+  } catch (error) {
+    return res.status(400).json({
+      message: error?.message || "Erro ao criar lançamento de fluxo de caixa.",
+    });
+  }
+});
+
+router.put("/fluxo-caixa/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { updateCashFlowEntry } = require("../services/finance/finance-cash-flow.service");
+    const entry = await updateCashFlowEntry(adminSupabase, req.params.id, req.body || {});
+    return res.json({ entry });
+  } catch (error) {
+    return res.status(400).json({
+      message: error?.message || "Erro ao atualizar lançamento de fluxo de caixa.",
+    });
+  }
+});
+
+router.delete("/fluxo-caixa/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { deleteCashFlowEntry } = require("../services/finance/finance-cash-flow.service");
+    const result = await deleteCashFlowEntry(adminSupabase, req.params.id);
+    return res.json({ deleted: result });
+  } catch (error) {
+    return res.status(400).json({
+      message: error?.message || "Erro ao excluir lançamento de fluxo de caixa.",
+    });
+  }
+});
+
 
 module.exports = router;
 
