@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
 type EntryType = "receita" | "despesa";
 
@@ -116,21 +117,17 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
+    minimumFractionDigits: 2,
   }).format(Number(value || 0));
 }
 
 function toNumber(value: unknown) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   const raw = String(value ?? "").trim();
   if (!raw) return 0;
-
   const normalized = raw.includes(",")
     ? raw.replace(/\./g, "").replace(",", ".")
     : raw;
-
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -141,8 +138,8 @@ function formatInputAmount(value: number) {
 
 function monthTone(saldo: number) {
   return saldo >= 0
-    ? "bg-emerald-50 text-emerald-700"
-    : "bg-rose-50 text-rose-700";
+    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+    : "bg-rose-50 text-rose-700 border border-rose-200";
 }
 
 function safeText(value: unknown) {
@@ -168,19 +165,21 @@ function entryMatchesSearch(entry: CashFlowEntry, q: string) {
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? "");
-  if (/[;"\n,]/.test(raw)) {
-    return `"${raw.replace(/"/g, '""')}"`;
-  }
+  if (/[;"\n,]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
   return raw;
+}
+
+function metricTone(value: number) {
+  if (value > 0) return "text-emerald-700";
+  if (value < 0) return "text-rose-700";
+  return "text-slate-700";
 }
 
 async function authJson(path: string, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
 
-  if (!token) {
-    throw new Error("Sessão expirada. Faça login novamente.");
-  }
+  if (!token) throw new Error("Sessão expirada. Faça login novamente.");
 
   const response = await fetch(`/api/backend?path=${encodeURIComponent(path)}`, {
     ...init,
@@ -201,7 +200,74 @@ async function authJson(path: string, init?: RequestInit) {
   return json;
 }
 
+function ExecutiveCard({
+  title,
+  value,
+  subtitle,
+  accent = "slate",
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  accent?: "emerald" | "rose" | "sky" | "amber" | "violet" | "slate";
+}) {
+  const styles: Record<string, string> = {
+    emerald: "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white",
+    rose: "border-rose-200 bg-gradient-to-br from-rose-50 to-white",
+    sky: "border-sky-200 bg-gradient-to-br from-sky-50 to-white",
+    amber: "border-amber-200 bg-gradient-to-br from-amber-50 to-white",
+    violet: "border-violet-200 bg-gradient-to-br from-violet-50 to-white",
+    slate: "border-slate-200 bg-gradient-to-br from-slate-50 to-white",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-5 shadow-sm ${styles[accent]}`}>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {title}
+      </div>
+      <div className="mt-3 text-2xl font-semibold text-slate-900">{value}</div>
+      {subtitle ? <div className="mt-2 text-sm text-slate-500">{subtitle}</div> : null}
+    </div>
+  );
+}
+
+function MiniBarChart({
+  data,
+  colorClass,
+  formatAsMoney = true,
+}: {
+  data: { label: string; value: number }[];
+  colorClass: string;
+  formatAsMoney?: boolean;
+}) {
+  const maxValue = Math.max(...data.map((item) => Math.abs(item.value)), 1);
+
+  return (
+    <div className="space-y-3">
+      {data.map((item) => {
+        const width = Math.max(2, (Math.abs(item.value) / maxValue) * 100);
+        return (
+          <div key={item.label} className="grid grid-cols-[56px_1fr_120px] items-center gap-3">
+            <div className="text-xs font-medium text-slate-500">{item.label}</div>
+            <div className="h-3 rounded-full bg-slate-100">
+              <div
+                className={`h-3 rounded-full ${colorClass}`}
+                style={{ width: `${width}%` }}
+              />
+            </div>
+            <div className={`text-right text-sm font-medium ${metricTone(item.value)}`}>
+              {formatAsMoney ? formatMoney(item.value) : item.value}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function FluxoCaixaPage() {
+  const router = useRouter();
+
   const [year, setYear] = useState(getDefaultYear());
   const [payload, setPayload] = useState<CashFlowPayload>({
     year: Number(getDefaultYear()),
@@ -252,10 +318,7 @@ export default function FluxoCaixaPage() {
   }, [year]);
 
   useEffect(() => {
-    setForm((prev) => {
-      if (prev.id) return prev;
-      return { ...prev, year };
-    });
+    setForm((prev) => (prev.id ? prev : { ...prev, year }));
   }, [year]);
 
   const manualEntries = useMemo(() => payload.entries || [], [payload]);
@@ -302,6 +365,7 @@ export default function FluxoCaixaPage() {
       return {
         month: month.value,
         monthLabel: month.label,
+        monthShort: month.short,
         entradas,
         saidas,
         saldo,
@@ -312,6 +376,17 @@ export default function FluxoCaixaPage() {
       };
     });
   }, [allEntries]);
+
+  const monthlyAccumulated = useMemo(() => {
+    let running = 0;
+    return monthlySummary.map((item) => {
+      running += item.saldo;
+      return {
+        ...item,
+        acumulado: running,
+      };
+    });
+  }, [monthlySummary]);
 
   const totalEntradas = useMemo(
     () => monthlySummary.reduce((sum, item) => sum + item.entradas, 0),
@@ -407,6 +482,21 @@ export default function FluxoCaixaPage() {
     return { months, total };
   }, [pivotRows]);
 
+  const entradasChart = useMemo(
+    () => monthlySummary.map((item) => ({ label: item.monthShort, value: item.entradas })),
+    [monthlySummary]
+  );
+
+  const saidasChart = useMemo(
+    () => monthlySummary.map((item) => ({ label: item.monthShort, value: item.saidas })),
+    [monthlySummary]
+  );
+
+  const acumuladoChart = useMemo(
+    () => monthlyAccumulated.map((item) => ({ label: item.monthShort, value: item.acumulado })),
+    [monthlyAccumulated]
+  );
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -425,13 +515,8 @@ export default function FluxoCaixaPage() {
         amount: Number(toNumber(form.amount).toFixed(2)),
       };
 
-      if (!payloadBody.description) {
-        throw new Error("Descrição obrigatória.");
-      }
-
-      if (payloadBody.amount <= 0) {
-        throw new Error("Valor deve ser maior que zero.");
-      }
+      if (!payloadBody.description) throw new Error("Descrição obrigatória.");
+      if (payloadBody.amount <= 0) throw new Error("Valor deve ser maior que zero.");
 
       if (form.id) {
         await authJson(`/api/finance/fluxo-caixa/${form.id}`, {
@@ -485,10 +570,7 @@ export default function FluxoCaixaPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Excluir o lançamento "${entry.description}"?`
-    );
-
+    const confirmed = window.confirm(`Excluir o lançamento "${entry.description}"?`);
     if (!confirmed) return;
 
     try {
@@ -508,6 +590,25 @@ export default function FluxoCaixaPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function downloadCsv(filename: string, header: string[], rows: Array<Array<string | number>>) {
+    const csv = [header, ...rows]
+      .map((line) => line.map(csvEscape).join(";"))
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   function handleExportCsv() {
@@ -536,25 +637,32 @@ export default function FluxoCaixaPage() {
         toNumber(item.amount).toFixed(2).replace(".", ","),
       ]);
 
-      const csv = [header, ...rows]
-        .map((line) => line.map(csvEscape).join(";"))
-        .join("\n");
-
-      const blob = new Blob(["\uFEFF" + csv], {
-        type: "text/csv;charset=utf-8;",
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `fluxo-caixa-${year}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      downloadCsv(`fluxo-caixa-detalhado-${year}.csv`, header, rows);
     } finally {
       setExporting(false);
     }
+  }
+
+  function handleExportPivotCsv() {
+    const header = [
+      "Tipo",
+      "Categoria",
+      "Descrição",
+      "Origem",
+      ...MONTHS.map((m) => m.short),
+      "Total ano",
+    ];
+
+    const rows = pivotRows.map((row) => [
+      row.type,
+      row.category,
+      row.description,
+      row.source,
+      ...row.months.map((value) => value.toFixed(2).replace(".", ",")),
+      row.total.toFixed(2).replace(".", ","),
+    ]);
+
+    downloadCsv(`fluxo-caixa-pivot-${year}.csv`, header, rows);
   }
 
   function handlePrint() {
@@ -572,55 +680,71 @@ export default function FluxoCaixaPage() {
         @media print {
           html,
           body {
-            background: white !important;
+            background: #fff !important;
           }
 
           .no-print {
             display: none !important;
           }
 
-          .print-page {
+          .print-only {
+            display: block !important;
+          }
+
+          .print-wrapper {
             padding: 0 !important;
             margin: 0 !important;
           }
 
-          .print-card,
-          .print-table {
+          .print-table,
+          .print-summary {
+            box-shadow: none !important;
             break-inside: avoid;
             page-break-inside: avoid;
-            box-shadow: none !important;
           }
 
-          .print-header {
-            display: block !important;
+          .screen-only-cards {
+            display: none !important;
+          }
+
+          .print-dense-table th,
+          .print-dense-table td {
+            padding: 6px 8px !important;
+            font-size: 10px !important;
           }
         }
 
-        .print-header {
+        .print-only {
           display: none;
         }
       `}</style>
 
-      <div className="print-page space-y-6 p-6">
-        <div className="print-header border-b border-slate-300 pb-3">
+      <div className="print-wrapper space-y-6 p-4 md:p-6">
+        <div className="print-only border-b border-slate-300 pb-3">
           <h1 className="text-xl font-bold text-slate-900">{COMPANY_NAME}</h1>
-          <p className="text-sm text-slate-600">
-            Relatório de Fluxo de Caixa — Ano {payload.year}
+          <p className="text-sm text-slate-600">Relatório de Fluxo de Caixa — Ano {payload.year}</p>
+          <p className="text-xs text-slate-500">
+            Resumo executivo, evolução mensal e tabela anual consolidada.
           </p>
         </div>
 
-        <div className="no-print rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Fluxo de Caixa
-              </h1>
+              <h1 className="text-2xl font-semibold text-slate-900">Fluxo de Caixa</h1>
               <p className="text-sm text-slate-500">
                 Gestão anual de receitas, despesas e lançamentos automáticos do caixa.
               </p>
             </div>
 
             <div className="flex flex-wrap items-end gap-3">
+              <button
+                onClick={() => router.push("/financeiro")}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Voltar ao dashboard
+              </button>
+
               <div>
                 <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
                   Ano
@@ -640,7 +764,7 @@ export default function FluxoCaixaPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Categoria, descrição, origem..."
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-64 max-w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
 
@@ -656,7 +780,14 @@ export default function FluxoCaixaPage() {
                 disabled={exporting}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                {exporting ? "Exportando..." : "Download CSV"}
+                {exporting ? "Exportando..." : "CSV detalhado"}
+              </button>
+
+              <button
+                onClick={handleExportPivotCsv}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                CSV pivotado
               </button>
 
               <button
@@ -681,58 +812,87 @@ export default function FluxoCaixaPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <div className="print-card rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-            <div className="text-sm text-emerald-700">Entradas anuais</div>
-            <div className="mt-2 text-2xl font-semibold text-emerald-900">
-              {formatMoney(totalEntradas)}
-            </div>
+        <div className="screen-only-cards grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          <ExecutiveCard
+            title="Entradas anuais"
+            value={formatMoney(totalEntradas)}
+            subtitle="Soma anual das receitas"
+            accent="emerald"
+          />
+          <ExecutiveCard
+            title="Saídas anuais"
+            value={formatMoney(totalSaidas)}
+            subtitle="Soma anual das despesas"
+            accent="rose"
+          />
+          <ExecutiveCard
+            title="Saldo final"
+            value={formatMoney(saldoFinal)}
+            subtitle={saldoFinal >= 0 ? "Caixa positivo" : "Atenção ao caixa"}
+            accent="sky"
+          />
+          <ExecutiveCard
+            title="Melhor mês"
+            value={melhorMes ? melhorMes.monthLabel : "—"}
+            subtitle={melhorMes ? formatMoney(melhorMes.saldo) : "Sem dados"}
+            accent="amber"
+          />
+          <ExecutiveCard
+            title="Pior mês"
+            value={piorMes ? piorMes.monthLabel : "—"}
+            subtitle={piorMes ? formatMoney(piorMes.saldo) : "Sem dados"}
+            accent="violet"
+          />
+          <ExecutiveCard
+            title="Reserva mínima"
+            value={formatMoney(reservaMinima)}
+            subtitle={indicadorReserva}
+            accent="slate"
+          />
+        </div>
+
+        <div className="print-summary rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Resumo executivo</h2>
+            <p className="text-sm text-slate-500">
+              Visão anual consolidada para análise financeira e impressão.
+            </p>
           </div>
 
-          <div className="print-card rounded-2xl border border-rose-200 bg-rose-50 p-5">
-            <div className="text-sm text-rose-700">Saídas anuais</div>
-            <div className="mt-2 text-2xl font-semibold text-rose-900">
-              {formatMoney(totalSaidas)}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Entradas anuais</div>
+              <div className="mt-2 text-lg font-semibold text-emerald-700">{formatMoney(totalEntradas)}</div>
             </div>
-          </div>
-
-          <div className="print-card rounded-2xl border border-sky-200 bg-sky-50 p-5">
-            <div className="text-sm text-sky-700">Saldo final</div>
-            <div className="mt-2 text-2xl font-semibold text-sky-900">
-              {formatMoney(saldoFinal)}
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Saídas anuais</div>
+              <div className="mt-2 text-lg font-semibold text-rose-700">{formatMoney(totalSaidas)}</div>
             </div>
-          </div>
-
-          <div className="print-card rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <div className="text-sm text-amber-700">Melhor mês</div>
-            <div className="mt-2 text-lg font-semibold text-amber-900">
-              {melhorMes ? melhorMes.monthLabel : "—"}
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Saldo final</div>
+              <div className={`mt-2 text-lg font-semibold ${metricTone(saldoFinal)}`}>{formatMoney(saldoFinal)}</div>
             </div>
-            <div className="mt-1 text-sm text-amber-800">
-              {melhorMes ? formatMoney(melhorMes.saldo) : "Sem dados"}
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Melhor mês</div>
+              <div className="mt-2 text-base font-semibold text-slate-900">
+                {melhorMes ? `${melhorMes.monthLabel} · ${formatMoney(melhorMes.saldo)}` : "Sem dados"}
+              </div>
             </div>
-          </div>
-
-          <div className="print-card rounded-2xl border border-violet-200 bg-violet-50 p-5">
-            <div className="text-sm text-violet-700">Pior mês</div>
-            <div className="mt-2 text-lg font-semibold text-violet-900">
-              {piorMes ? piorMes.monthLabel : "—"}
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Pior mês</div>
+              <div className="mt-2 text-base font-semibold text-slate-900">
+                {piorMes ? `${piorMes.monthLabel} · ${formatMoney(piorMes.saldo)}` : "Sem dados"}
+              </div>
             </div>
-            <div className="mt-1 text-sm text-violet-800">
-              {piorMes ? formatMoney(piorMes.saldo) : "Sem dados"}
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Reserva mínima</div>
+              <div className="mt-2 text-base font-semibold text-slate-900">{formatMoney(reservaMinima)}</div>
+              <div className="mt-1 text-xs text-slate-500">{indicadorReserva}</div>
             </div>
-          </div>
-
-          <div className="print-card rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <div className="text-sm text-slate-700">Reserva mínima</div>
-            <div className="mt-2 text-lg font-semibold text-slate-900">
-              {formatMoney(reservaMinima)}
-            </div>
-            <div className="mt-1 text-xs text-slate-600">{indicadorReserva}</div>
           </div>
         </div>
 
-        <div className="no-print rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-slate-900">
               {form.id ? "Editar lançamento manual" : "Novo lançamento manual"}
@@ -744,9 +904,7 @@ export default function FluxoCaixaPage() {
 
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Ano
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Ano</label>
               <input
                 value={form.year}
                 onChange={(e) => setForm((prev) => ({ ...prev, year: e.target.value }))}
@@ -755,9 +913,7 @@ export default function FluxoCaixaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Mês
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Mês</label>
               <select
                 value={form.month}
                 onChange={(e) => setForm((prev) => ({ ...prev, month: e.target.value }))}
@@ -772,9 +928,7 @@ export default function FluxoCaixaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Tipo
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Tipo</label>
               <select
                 value={form.type}
                 onChange={(e) => {
@@ -796,9 +950,7 @@ export default function FluxoCaixaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Categoria
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Categoria</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
@@ -813,9 +965,7 @@ export default function FluxoCaixaPage() {
             </div>
 
             <div className="xl:col-span-2">
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Descrição
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Descrição</label>
               <input
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -825,9 +975,7 @@ export default function FluxoCaixaPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
-                Valor R$
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Valor R$</label>
               <input
                 value={form.amount}
                 onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
@@ -856,15 +1004,39 @@ export default function FluxoCaixaPage() {
           </form>
         </div>
 
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Evolução do saldo acumulado</h2>
+              <p className="text-sm text-slate-500">Saldo acumulado mês a mês.</p>
+            </div>
+            <MiniBarChart data={acumuladoChart} colorClass="bg-sky-500" />
+          </div>
+
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Entradas mensais</h2>
+              <p className="text-sm text-slate-500">Evolução das receitas no ano.</p>
+            </div>
+            <MiniBarChart data={entradasChart} colorClass="bg-emerald-500" />
+          </div>
+
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Saídas mensais</h2>
+              <p className="text-sm text-slate-500">Evolução das despesas no ano.</p>
+            </div>
+            <MiniBarChart data={saidasChart} colorClass="bg-rose-500" />
+          </div>
+        </div>
+
         <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Resumo mensal de {payload.year}
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">Resumo mensal de {payload.year}</h2>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm print-dense-table">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
                   <th className="px-4 py-3">Mês</th>
@@ -874,30 +1046,22 @@ export default function FluxoCaixaPage() {
                   <th className="px-4 py-3 text-right">Custos variáveis</th>
                   <th className="px-4 py-3 text-right">Empréstimos</th>
                   <th className="px-4 py-3 text-right">Saldo</th>
+                  <th className="px-4 py-3 text-right">Acumulado</th>
                   <th className="px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {monthlySummary.map((item) => (
+                {monthlyAccumulated.map((item) => (
                   <tr key={item.month} className="border-t border-slate-100">
                     <td className="px-4 py-3">{item.monthLabel}</td>
-                    <td className="px-4 py-3 text-right text-emerald-700">
-                      {formatMoney(item.entradas)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-rose-700">
-                      {formatMoney(item.saidas)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {formatMoney(item.custosFixos)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {formatMoney(item.custosVariaveis)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {formatMoney(item.emprestimos)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {formatMoney(item.saldo)}
+                    <td className="px-4 py-3 text-right text-emerald-700">{formatMoney(item.entradas)}</td>
+                    <td className="px-4 py-3 text-right text-rose-700">{formatMoney(item.saidas)}</td>
+                    <td className="px-4 py-3 text-right">{formatMoney(item.custosFixos)}</td>
+                    <td className="px-4 py-3 text-right">{formatMoney(item.custosVariaveis)}</td>
+                    <td className="px-4 py-3 text-right">{formatMoney(item.emprestimos)}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatMoney(item.saldo)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${metricTone(item.acumulado)}`}>
+                      {formatMoney(item.acumulado)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${monthTone(item.saldo)}`}>
@@ -910,12 +1074,8 @@ export default function FluxoCaixaPage() {
               <tfoot className="bg-slate-50 font-semibold text-slate-800">
                 <tr>
                   <td className="px-4 py-3">Total anual</td>
-                  <td className="px-4 py-3 text-right text-emerald-700">
-                    {formatMoney(totalEntradas)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-rose-700">
-                    {formatMoney(totalSaidas)}
-                  </td>
+                  <td className="px-4 py-3 text-right text-emerald-700">{formatMoney(totalEntradas)}</td>
+                  <td className="px-4 py-3 text-right text-rose-700">{formatMoney(totalSaidas)}</td>
                   <td className="px-4 py-3 text-right">
                     {formatMoney(monthlySummary.reduce((sum, item) => sum + item.custosFixos, 0))}
                   </td>
@@ -925,9 +1085,8 @@ export default function FluxoCaixaPage() {
                   <td className="px-4 py-3 text-right">
                     {formatMoney(monthlySummary.reduce((sum, item) => sum + item.emprestimos, 0))}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    {formatMoney(saldoFinal)}
-                  </td>
+                  <td className="px-4 py-3 text-right">{formatMoney(saldoFinal)}</td>
+                  <td className={`px-4 py-3 text-right ${metricTone(saldoFinal)}`}>{formatMoney(saldoFinal)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${monthTone(saldoFinal)}`}>
                       {saldoFinal >= 0 ? "✅ positivo" : "⚠️ prejuízo"}
@@ -941,18 +1100,14 @@ export default function FluxoCaixaPage() {
 
         <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Tabela anual em colunas jan–dez
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">Tabela anual em colunas jan–dez</h2>
             <p className="text-sm text-slate-500">
-              {search
-                ? `Filtro aplicado: "${search}"`
-                : "Consolidação anual por tipo, categoria e descrição."}
+              {search ? `Filtro aplicado: "${search}"` : "Consolidação anual por tipo, categoria e descrição."}
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1500px] text-sm">
+            <table className="min-w-[1500px] text-sm print-dense-table">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
                   <th className="px-4 py-3">Tipo</th>
@@ -1004,17 +1159,13 @@ export default function FluxoCaixaPage() {
               </tbody>
               <tfoot className="bg-slate-50 font-semibold text-slate-800">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3">
-                    Total geral filtrado
-                  </td>
+                  <td colSpan={4} className="px-4 py-3">Total geral filtrado</td>
                   {pivotTotals.months.map((value, index) => (
                     <td key={`total-${index}`} className="px-4 py-3 text-right">
                       {value ? formatMoney(value) : "—"}
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-right">
-                    {formatMoney(pivotTotals.total)}
-                  </td>
+                  <td className="px-4 py-3 text-right">{formatMoney(pivotTotals.total)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -1023,9 +1174,7 @@ export default function FluxoCaixaPage() {
 
         <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Lançamentos detalhados
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">Lançamentos detalhados</h2>
           </div>
 
           {loading ? (
@@ -1036,7 +1185,7 @@ export default function FluxoCaixaPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm print-dense-table">
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Mês</th>
