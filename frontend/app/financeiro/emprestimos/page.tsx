@@ -525,7 +525,13 @@ export default function EmprestimosPage() {
 
   const totalPrincipal = filteredContracts.reduce((acc, item) => acc + toNumber(item.principal_amount), 0);
   const annualRevenue = toNumber(latestBatch?.gross_revenue);
-  const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
+  const activeContractsForDebt = filteredContracts.filter(
+    (item) => normalizeFilterStatus(item.status) === "active"
+  );
+  const monthlyCost = activeContractsForDebt.reduce(
+    (acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount),
+    0
+  );
   const annualDebtCommitment = monthlyCost * 12;
   const calculatedDebtRatio = annualRevenue > 0 ? annualDebtCommitment / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);

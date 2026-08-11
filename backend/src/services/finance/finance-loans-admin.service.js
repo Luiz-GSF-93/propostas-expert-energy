@@ -558,6 +558,8 @@ async function applySettlement(adminSupabase, contractId, payload) {
 
     if (error) throw error;
 
+    await syncLoanCostsSafe(adminSupabase, "close");
+
     return {
       mode: "close",
       contract: data,
@@ -624,6 +626,8 @@ async function applySettlement(adminSupabase, contractId, payload) {
 
   if (error) throw error;
 
+  await syncLoanCostsSafe(adminSupabase, "settlement");
+
   return {
     mode: "settlement",
     contract: data,
@@ -648,6 +652,8 @@ async function deleteLoanContract(adminSupabase, contractId) {
     .single();
 
   if (error) throw error;
+
+  await syncLoanCostsSafe(adminSupabase, "delete");
   return data;
 }
 
