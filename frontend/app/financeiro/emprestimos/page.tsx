@@ -218,6 +218,39 @@ function formatPercent(value: unknown): string {
   })}%`;
 }
 
+function getContractConsolidatedAmount(contract: any, schedule?: any[]): number {
+  if (Array.isArray(schedule) && schedule.length > 0) {
+    const totalFromSchedule = schedule.reduce(
+      (sum, item) => sum + toNumber(item?.installment_amount),
+      0
+    );
+    if (totalFromSchedule > 0) return totalFromSchedule;
+  }
+
+  const totalScheduled = toNumber(contract?.total_scheduled_amount);
+  if (totalScheduled > 0) return totalScheduled;
+
+  const principal = toNumber(contract?.principal_amount);
+  const explicitCost = toNumber(contract?.total_loan_cost);
+  if (principal > 0 || explicitCost > 0) {
+    return principal + explicitCost;
+  }
+
+  return toNumber(contract?.remaining_scheduled_amount ?? contract?.balance_outstanding);
+}
+
+function getContractLoanCostAmount(contract: any, schedule?: any[]): number {
+  const consolidated = getContractConsolidatedAmount(contract, schedule);
+  const principal = toNumber(contract?.principal_amount);
+  const explicitCost = toNumber(contract?.total_loan_cost);
+
+  if (explicitCost > 0 && Math.abs(explicitCost - Math.max(consolidated - principal, 0)) <= 1) {
+    return explicitCost;
+  }
+
+  return Math.max(consolidated - principal, 0);
+}
+
 function getInstallmentVisualState(item: any) {
   const isPaid = String(item?.status || "").toLowerCase() === "paid";
   const isOverdue = String(item?.status || "").toLowerCase() === "overdue";
@@ -670,7 +703,7 @@ export default function EmprestimosPage() {
     const type = selectedContract.loan_type || selectedContract.contract_name || "—";
     const principal = formatMoney(selectedContract.principal_amount);
     const saldo = formatMoney(selectedContract.remaining_scheduled_amount ?? selectedContract.balance_outstanding);
-    const custo = formatMoney(selectedContract.total_loan_cost);
+    const custo = formatMoney(getContractLoanCostAmount(selectedContract, schedule));
     const parcela = formatMoney(selectedContract.current_installment_amount ?? selectedContract.installment_amount);
     const jurosAm = formatPercent(selectedContract.monthly_rate);
     const jurosAa = formatPercent(selectedContract.annual_rate);
@@ -1185,8 +1218,8 @@ export default function EmprestimosPage() {
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <InfoMini label="Principal" value={formatMoney(contract.principal_amount)} inverted={isActive} />
                       <InfoMini label="Parcela" value={formatMoney(contract.current_installment_amount ?? contract.installment_amount)} inverted={isActive} />
-                      <InfoMini label="Saldo" value={formatMoney(contract.remaining_scheduled_amount ?? contract.balance_outstanding)} inverted={isActive} />
-                      <InfoMini label="Custo" value={formatMoney(contract.total_loan_cost)} inverted={isActive} />
+                      <InfoMini label="Saldo" value={formatMoney(getContractConsolidatedAmount(contract))} inverted={isActive} />
+                      <InfoMini label="Custo" value={formatMoney(getContractLoanCostAmount(contract))} inverted={isActive} />
                     </div>
                   </button>
                 );
@@ -1227,7 +1260,7 @@ export default function EmprestimosPage() {
                     <DetailItem label="Principal" value={formatMoney(selectedContract.principal_amount)} />
                     <DetailItem label="Valor líquido" value={formatMoney(selectedContract.net_amount ?? selectedContract.principal_amount)} />
                     <DetailItem label="Saldo consolidado" value={formatMoney(selectedContract.remaining_scheduled_amount ?? selectedContract.balance_outstanding)} />
-                    <DetailItem label="Custo do empréstimo" value={formatMoney(selectedContract.total_loan_cost)} />
+                    <DetailItem label="Custo do empréstimo" value={formatMoney(getContractLoanCostAmount(selectedContract, schedule))} />
                     <DetailItem label="Parcela atual" value={formatMoney(selectedContract.current_installment_amount ?? selectedContract.installment_amount)} />
                     <DetailItem label="Parcelas totais" value={String(selectedContract.installments_total ?? "—")} />
                     <DetailItem label="Juros a.m." value={formatPercent(selectedContract.monthly_rate)} />
