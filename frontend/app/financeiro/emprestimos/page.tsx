@@ -525,7 +525,9 @@ export default function EmprestimosPage() {
 
   const totalPrincipal = filteredContracts.reduce((acc, item) => acc + toNumber(item.principal_amount), 0);
   const annualRevenue = toNumber(latestBatch?.gross_revenue);
-  const calculatedDebtRatio = annualRevenue > 0 ? totalPrincipal / annualRevenue : null;
+  const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
+  const annualDebtCommitment = monthlyCost * 12;
+  const calculatedDebtRatio = annualRevenue > 0 ? annualDebtCommitment / annualRevenue : null;
   const totalSaldo = filteredContracts.reduce((acc, item) => acc + toNumber(item.remaining_scheduled_amount ?? item.balance_outstanding), 0);
   const totalPagoResumo = Number(summary?.total_paid_amount ?? 0);
   const totalPago = totalPagoResumo;
@@ -541,7 +543,6 @@ export default function EmprestimosPage() {
   const overdueInstallmentsCount = overdueContracts;
   const overdueInstallmentsAmount = overdueAmount;
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
-  const monthlyCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.current_installment_amount ?? item.installment_amount), 0);
   const firstOverdueContract = [...filteredContracts]
     .filter((item) => item.first_overdue_date && toNumber(item.installments_overdue_count) > 0)
     .sort((a, b) => String(a.first_overdue_date || "").localeCompare(String(b.first_overdue_date || "")))[0];
@@ -1152,7 +1153,7 @@ export default function EmprestimosPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 break-words">Nível de endividamento</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-sm font-semibold ${debtBadge.tone}`}>{debtBadge.label}</span>
-              {typeof calculatedDebtRatio === "number" ? <span className="text-[11px] sm:text-xs text-slate-500 leading-snug break-words min-w-0">Índice: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
+              {typeof calculatedDebtRatio === "number" ? <span className="text-[11px] sm:text-xs text-slate-500 leading-snug break-words min-w-0">Índice anualizado: {formatPercent(calculatedDebtRatio * 100)}</span> : null}
             </div>
           </div>
         </div>
