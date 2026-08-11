@@ -218,6 +218,23 @@ function formatPercent(value: unknown): string {
   })}%`;
 }
 
+function calculateIofAmount(principalRaw: unknown, iofPercentRaw: unknown): number {
+  const principal = toNumber(principalRaw);
+  const iofPercent = toNumber(iofPercentRaw);
+  if (principal <= 0 || iofPercent <= 0) return 0;
+  return Number((principal * (iofPercent / 100)).toFixed(2));
+}
+
+function getIofPercentFromContract(contract: any): string {
+  const principal = toNumber(contract?.principal_amount);
+  const iof = toNumber(contract?.iof);
+
+  if (principal <= 0 || iof <= 0) return "0";
+
+  const percent = (iof / principal) * 100;
+  return String(Number(percent.toFixed(6))).replace(".", ",");
+}
+
 function getContractConsolidatedAmount(contract: any, schedule?: any[]): number {
   if (Array.isArray(schedule) && schedule.length > 0) {
     const totalFromSchedule = schedule.reduce(
@@ -427,7 +444,7 @@ export default function EmprestimosPage() {
         installments_total: String(contract.installments_total ?? ""),
         monthly_rate: String(contract.monthly_rate ?? ""),
         annual_rate: String(contract.annual_rate ?? ""),
-        iof_percent: "0",
+        iof_percent: getIofPercentFromContract(contract),
         fees: String(contract.fees ?? 0),
         grace_months: String(contract.grace_months ?? 0),
         first_due_date: contract.first_due_date || "",
@@ -559,6 +576,7 @@ export default function EmprestimosPage() {
         monthly_rate: Number(form.monthly_rate),
         annual_rate: Number(form.annual_rate),
         iof_percent: Number(form.iof_percent),
+        iof: calculateIofAmount(form.principal_amount, form.iof_percent),
         fees: Number(form.fees),
         grace_months: Number(form.grace_months),
         pay_interest_during_grace: form.pay_interest_during_grace === "sim",
@@ -598,6 +616,7 @@ export default function EmprestimosPage() {
         monthly_rate: Number(editForm.monthly_rate),
         annual_rate: Number(editForm.annual_rate),
         iof_percent: Number(editForm.iof_percent),
+        iof: calculateIofAmount(editForm.principal_amount, editForm.iof_percent),
         fees: Number(editForm.fees),
         grace_months: Number(editForm.grace_months),
         pay_interest_during_grace: editForm.pay_interest_during_grace === "sim",
