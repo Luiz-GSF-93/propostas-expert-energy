@@ -557,9 +557,9 @@ export default function FluxoCaixaPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState("");
   const [sectionsOpen, setSectionsOpen] = useState({
-    monthly: true,
-    pivot: true,
-    detailed: true,
+    monthly: false,
+    pivot: false,
+    detailed: false,
   });
 
   const categories =
