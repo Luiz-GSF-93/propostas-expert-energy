@@ -56,6 +56,7 @@ type CostsSnapshot = {
   fixedAnnual: number;
   variableMonthly: number;
   variableAnnual: number;
+  closingCostBase: number;
 };
 
 const supabase = createClient(
@@ -188,40 +189,6 @@ function isVariableCostEntry(entry: Record<string, unknown>) {
   const description = safeText(entry.description).toLowerCase();
   const percent = toNumber(entry.percentage_rate);
 
-
-
-  const saldoFechamentoCorreto = useMemo(() => {
-    const entries = Array.isArray(payload?.entries) ? payload.entries : [];
-    const cards =
-      (costsSnapshot as any)?.cards ||
-      (costsSnapshot as any)?.summaryCards ||
-      [];
-
-    const totalEntradasAnuais = entries
-      .filter((item: any) => String(item?.type || "").toLowerCase() === "receita")
-      .reduce((sum: number, item: any) => sum + toNumber(item?.amount), 0);
-
-    const totalCustosCard = findCardValue(cards, ["Custos", "Custo"]);
-
-    const totalPagoCustosFixos = findCardValue(cards, [
-      "Total Pago de Custos Fixos",
-      "Total pago de custos fixos",
-    ]);
-
-    const totalCustoVariavel = findCardValue(cards, [
-      "Total de Custo Variável",
-      "Total de custo variável",
-      "Total Custo Variável",
-    ]);
-
-    const totalCustosApi =
-      totalCustosCard > 0
-        ? totalCustosCard
-        : totalPagoCustosFixos + totalCustoVariavel;
-
-    return totalEntradasAnuais - totalCustosApi;
-  }, [payload, costsSnapshot]);
-
   return (
     category.includes("vari") ||
     costType.includes("vari") ||
@@ -235,6 +202,41 @@ function isFixedCostEntry(entry: Record<string, unknown>) {
   const category = safeText(entry.category).toLowerCase();
   const costType = safeText(entry.cost_type).toLowerCase();
   return category.includes("fix") || costType.includes("fix");
+}
+
+function findCardMetricValue(source: unknown, names: string[]) {
+  const wanted = names.map((name) => String(name).trim().toLowerCase());
+
+  const items = Array.isArray(source)
+    ? source
+    : source && typeof source === "object"
+      ? Object.values(source as Record<string, unknown>)
+      : [];
+
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+
+    const record = item as Record<string, unknown>;
+    const title = String(
+      record.title ?? record.label ?? record.name ?? record.key ?? ""
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!wanted.includes(title)) continue;
+
+    const value =
+      record.value ??
+      record.amount ??
+      record.total ??
+      record.metric ??
+      record.number;
+
+    const parsed = toNumber(value);
+    if (parsed > 0) return parsed;
+  }
+
+  return 0;
 }
 
 function pickNumberFromSources(
@@ -343,11 +345,27 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
       "totalVariableCosts",
     ]) || derived.variableAnnual || variableMonthly * 12;
 
+  const closingCostBase =
+    findCardMetricValue(payload?.cards, [
+      "Custos",
+      "Custo",
+      "Total de Custo variável + Total pago de custos fixos",
+      "Total de custo variável + total pago de custos fixos",
+    ]) ||
+    findCardMetricValue(payload?.summaryCards, [
+      "Custos",
+      "Custo",
+      "Total de Custo variável + Total pago de custos fixos",
+      "Total de custo variável + total pago de custos fixos",
+    ]) ||
+    (fixedMonthly + variableMonthly);
+
   return {
     fixedMonthly,
     fixedAnnual,
     variableMonthly,
     variableAnnual,
+    closingCostBase,
   };
 }
 
@@ -439,33 +457,6 @@ function MiniBarChart({
   );
 }
 
-function toNumber(value: unknown): number {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  if (typeof value !== "string") return 0;
-
-  const normalized = value
-    .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".")
-    .replace(/[^\d.-]/g, "");
-
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function findCardValue(cards: any[], names: string[]): number {
-  if (!Array.isArray(cards)) return 0;
-
-  const found = cards.find((card) => {
-    const title = String(card?.title || card?.label || card?.name || "")
-      .trim()
-      .toLowerCase();
-
-    return names.some((name) => title === name.toLowerCase());
-  });
-
-  return toNumber(found?.value ?? found?.amount ?? found?.total ?? 0);
-}
 
 export default function FluxoCaixaPage() {
   const router = useRouter();
@@ -481,6 +472,7 @@ export default function FluxoCaixaPage() {
     fixedAnnual: 0,
     variableMonthly: 0,
     variableAnnual: 0,
+    closingCostBase: 0,
   });
   const [form, setForm] = useState<FormState>(getEmptyForm(getDefaultYear()));
   const [search, setSearch] = useState("");
@@ -622,7 +614,7 @@ export default function FluxoCaixaPage() {
 
   const saldoFinal = totalEntradas - totalSaidas;
 
-  const saldoFechamento = saldoFechamentoCorreto;
+  const saldoFechamento = totalEntradas - (costsSnapshot.closingCostBase || 0);
   const reservaMinima = costsSnapshot.fixedMonthly * 3;
 
   const monthsWithMovement = useMemo(
@@ -1068,7 +1060,7 @@ export default function FluxoCaixaPage() {
           <ExecutiveCard
             title="Saldo de fechamento"
             value={formatMoney(saldoFechamento)}
-            subtitle="Entradas anuais - custos da API Custos"
+            subtitle="Entradas anuais - card Custo da API Custos"
             accent="slate"
           />
           <ExecutiveCard
