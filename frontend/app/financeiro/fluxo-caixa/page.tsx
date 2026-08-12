@@ -1008,12 +1008,50 @@ export default function FluxoCaixaPage() {
           .print-pivot {
             break-before: page;
             page-break-before: always;
+            overflow: hidden !important;
           }
 
           .print-pivot table {
-            width: 114% !important;
-            transform: scale(0.875) !important;
-            transform-origin: top left !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+            transform: none !important;
+            margin: 0 !important;
+          }
+
+          .print-pivot th,
+          .print-pivot td {
+            font-size: 6.5px !important;
+            line-height: 1.05 !important;
+            padding: 3px 2px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+          }
+
+          .print-pivot th:nth-child(1),
+          .print-pivot td:nth-child(1) {
+            width: 7% !important;
+          }
+
+          .print-pivot th:nth-child(2),
+          .print-pivot td:nth-child(2) {
+            width: 10% !important;
+          }
+
+          .print-pivot th:nth-child(3),
+          .print-pivot td:nth-child(3) {
+            width: 14% !important;
+          }
+
+          .print-pivot th:nth-child(4),
+          .print-pivot td:nth-child(4) {
+            width: 8% !important;
+          }
+
+          .print-pivot th:nth-child(n+5),
+          .print-pivot td:nth-child(n+5) {
+            width: 4.7% !important;
+            text-align: center !important;
           }
 
           .print-detail {
