@@ -923,6 +923,154 @@ export default function FluxoCaixaPage() {
     window.print();
   }
 
+  function handlePrintPivotOnly() {
+    const section = document.getElementById("cashflow-pivot-print");
+
+    if (!section) {
+      window.alert("Tabela anual não encontrada para impressão.");
+      return;
+    }
+
+    const popup = window.open("", "_blank", "width=1600,height=1000");
+
+    if (!popup) {
+      window.alert("Não foi possível abrir a janela de impressão.");
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Tabela anual em colunas jan-dez</title>
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 8mm;
+            }
+
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+            }
+
+            .print-shell {
+              width: 100%;
+              padding: 0;
+              margin: 0;
+            }
+
+            .print-header {
+              margin-bottom: 10px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 8px;
+            }
+
+            .print-header h1 {
+              margin: 0 0 4px 0;
+              font-size: 16px;
+            }
+
+            .print-header p {
+              margin: 0;
+              font-size: 10px;
+              color: #475569;
+            }
+
+            section {
+              border: 1px solid #cbd5e1;
+              border-radius: 8px;
+              padding: 10px;
+              overflow: hidden;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+            }
+
+            thead th {
+              font-size: 7px;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              color: #334155;
+              border-bottom: 1px solid #cbd5e1;
+              padding: 4px 3px;
+              text-align: left;
+            }
+
+            tbody td {
+              font-size: 7px;
+              line-height: 1.1;
+              padding: 4px 3px;
+              border-bottom: 1px solid #e2e8f0;
+              vertical-align: top;
+              word-break: break-word;
+              overflow-wrap: anywhere;
+            }
+
+            th:nth-child(1), td:nth-child(1) { width: 6%; }
+            th:nth-child(2), td:nth-child(2) { width: 10%; }
+            th:nth-child(3), td:nth-child(3) { width: 15%; }
+            th:nth-child(4), td:nth-child(4) { width: 8%; }
+
+            th:nth-child(n+5), td:nth-child(n+5) {
+              width: 4.8%;
+              text-align: center;
+            }
+
+            .text-emerald-700 { color: #047857 !important; }
+            .text-rose-700 { color: #be123c !important; }
+            .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-slate-500 {
+              color: #0f172a !important;
+            }
+
+            .shadow-sm,
+            .rounded-2xl,
+            .rounded-xl {
+              box-shadow: none !important;
+              border-radius: 0 !important;
+            }
+
+            @media print {
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-shell">
+            <div class="print-header">
+              <h1>Tabela anual em colunas jan–dez</h1>
+              <p>Fluxo de Caixa · Impressão isolada em A4 horizontal</p>
+            </div>
+            ${section.outerHTML}
+          </div>
+        </body>
+      </html>
+    `;
+
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+    popup.focus();
+
+    setTimeout(() => {
+      popup.print();
+    }, 400);
+  }
+
   return (
     <>
       <style jsx global>{`
@@ -1168,6 +1316,13 @@ export default function FluxoCaixaPage() {
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Imprimir A4
+              </button>
+
+              <button
+                onClick={handlePrintPivotOnly}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Imprimir tabela anual A4 horizontal
               </button>
             </div>
           </div>
