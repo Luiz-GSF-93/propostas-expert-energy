@@ -920,11 +920,16 @@ export default function FluxoCaixaPage() {
   }
 
   function handlePrint() {
+    document.body.classList.add("cashflow-full-print");
     window.print();
   }
 
   function handlePrintPivotOnly() {
-    const section = document.getElementById("cashflow-pivot-print");
+    const headings = Array.from(document.querySelectorAll("h2"));
+    const pivotHeading = headings.find((node) =>
+      (node.textContent || "").includes("Tabela anual em colunas jan–dez")
+    );
+    const section = pivotHeading?.closest("section");
 
     if (!section) {
       window.alert("Tabela anual não encontrada para impressão.");
@@ -1030,16 +1035,6 @@ export default function FluxoCaixaPage() {
 
             .text-emerald-700 { color: #047857 !important; }
             .text-rose-700 { color: #be123c !important; }
-            .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-slate-500 {
-              color: #0f172a !important;
-            }
-
-            .shadow-sm,
-            .rounded-2xl,
-            .rounded-xl {
-              box-shadow: none !important;
-              border-radius: 0 !important;
-            }
 
             @media print {
               body {
@@ -1205,6 +1200,10 @@ export default function FluxoCaixaPage() {
           .print-detail {
             break-before: page;
             page-break-before: always;
+          }
+
+          body.cashflow-full-print .print-pivot {
+            display: none !important;
           }
 
           .print-detail table {
