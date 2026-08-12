@@ -928,13 +928,15 @@ export default function FluxoCaixaPage() {
       <style jsx global>{`
         @page {
           size: A4 portrait;
-          margin: 12mm;
+          margin: 7mm;
         }
 
         @media print {
           html,
           body {
             background: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
 
           .no-print {
@@ -952,19 +954,83 @@ export default function FluxoCaixaPage() {
           .print-wrapper {
             padding: 0 !important;
             margin: 0 !important;
+            max-width: 100% !important;
           }
 
           .print-summary,
           .print-table {
             box-shadow: none !important;
-            break-inside: avoid;
+            border-color: #cbd5e1 !important;
+            break-inside: avoid-page;
             page-break-inside: avoid;
+            overflow: visible !important;
+            margin-bottom: 8px !important;
+          }
+
+          .print-summary {
+            break-after: page;
+            page-break-after: always;
+          }
+
+          .print-table table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+          }
+
+          .print-table th,
+          .print-table td {
+            padding: 4px 5px !important;
+            font-size: 8px !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+            vertical-align: top !important;
+          }
+
+          .print-table th {
+            font-size: 7px !important;
+            letter-spacing: 0.04em !important;
+            text-transform: uppercase !important;
+          }
+
+          .print-monthly {
+            break-before: auto;
+            page-break-before: auto;
+          }
+
+          .print-monthly table {
+            width: 100% !important;
+            transform: none !important;
+          }
+
+          .print-pivot {
+            break-before: page;
+            page-break-before: always;
+          }
+
+          .print-pivot table {
+            width: 114% !important;
+            transform: scale(0.875) !important;
+            transform-origin: top left !important;
+          }
+
+          .print-detail {
+            break-before: page;
+            page-break-before: always;
+          }
+
+          .print-detail table {
+            width: 114% !important;
+            transform: scale(0.875) !important;
+            transform-origin: top left !important;
           }
 
           .print-dense-table th,
           .print-dense-table td {
-            padding: 6px 8px !important;
-            font-size: 10px !important;
+            padding: 4px 5px !important;
+            font-size: 8px !important;
           }
         }
 
