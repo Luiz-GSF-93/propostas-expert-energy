@@ -976,6 +976,8 @@ export default function FluxoCaixaPage() {
       return;
     }
 
+    const issuedAt = new Date().toLocaleString("pt-BR");
+
     const html = `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -1007,20 +1009,91 @@ export default function FluxoCaixaPage() {
             }
 
             .print-header {
-              margin-bottom: 10px;
-              border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 8px;
+              margin-bottom: 12px;
+              border: 1px solid #cbd5e1;
+              border-radius: 10px;
+              padding: 12px 14px;
+              background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
             }
 
-            .print-header h1 {
+            .print-header-top {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              gap: 12px;
+              margin-bottom: 8px;
+            }
+
+            .print-brand {
+              min-width: 0;
+            }
+
+            .print-kicker {
               margin: 0 0 4px 0;
-              font-size: 16px;
+              font-size: 10px;
+              font-weight: 700;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+              color: #475569;
             }
 
-            .print-header p {
+            .print-company {
               margin: 0;
+              font-size: 20px;
+              font-weight: 700;
+              color: #0f172a;
+            }
+
+            .print-title {
+              margin: 4px 0 0 0;
+              font-size: 12px;
+              color: #334155;
+            }
+
+            .print-meta {
+              min-width: 240px;
+              border: 1px solid #dbeafe;
+              border-radius: 8px;
+              background: #ffffff;
+              padding: 8px 10px;
+            }
+
+            .print-meta-row {
+              display: flex;
+              justify-content: space-between;
+              gap: 12px;
+              font-size: 10px;
+              line-height: 1.4;
+              margin-bottom: 4px;
+            }
+
+            .print-meta-row:last-child {
+              margin-bottom: 0;
+            }
+
+            .print-meta-label {
+              font-weight: 700;
+              color: #475569;
+            }
+
+            .print-meta-value {
+              color: #0f172a;
+              text-align: right;
+            }
+
+            .print-note {
+              margin: 0;
+              padding-top: 8px;
+              border-top: 1px solid #dbeafe;
               font-size: 10px;
               color: #475569;
+            }
+
+            section {
+              border: 1px solid #cbd5e1;
+              border-radius: 10px;
+              padding: 10px;
+              overflow: hidden;
             }
 
             table {
@@ -1035,6 +1108,7 @@ export default function FluxoCaixaPage() {
               letter-spacing: 0.04em;
               color: #334155;
               border-bottom: 1px solid #cbd5e1;
+              background: #f8fafc;
               padding: 4px 3px;
               text-align: left;
             }
@@ -1049,6 +1123,10 @@ export default function FluxoCaixaPage() {
               overflow-wrap: anywhere;
             }
 
+            tbody tr:nth-child(even) {
+              background: #fcfcfd;
+            }
+
             th:nth-child(1), td:nth-child(1) { width: 6%; }
             th:nth-child(2), td:nth-child(2) { width: 10%; }
             th:nth-child(3), td:nth-child(3) { width: 15%; }
@@ -1056,6 +1134,16 @@ export default function FluxoCaixaPage() {
             th:nth-child(n+5), td:nth-child(n+5) {
               width: 4.8%;
               text-align: center;
+            }
+
+            .text-emerald-700 { color: #047857 !important; }
+            .text-rose-700 { color: #be123c !important; }
+            .text-slate-900,
+            .text-slate-800,
+            .text-slate-700,
+            .text-slate-600,
+            .text-slate-500 {
+              color: #0f172a !important;
             }
 
             @media print {
@@ -1069,9 +1157,34 @@ export default function FluxoCaixaPage() {
         <body>
           <div class="print-shell">
             <div class="print-header">
-              <h1>Tabela anual em colunas jan–dez</h1>
-              <p>Fluxo de Caixa · Impressão isolada em A4 horizontal</p>
+              <div class="print-header-top">
+                <div class="print-brand">
+                  <p class="print-kicker">Módulo Financeiro</p>
+                  <h1 class="print-company">${COMPANY_NAME}</h1>
+                  <p class="print-title">Tabela anual em colunas jan–dez · Fluxo de Caixa</p>
+                </div>
+
+                <div class="print-meta">
+                  <div class="print-meta-row">
+                    <span class="print-meta-label">Ano</span>
+                    <span class="print-meta-value">${payload.year}</span>
+                  </div>
+                  <div class="print-meta-row">
+                    <span class="print-meta-label">Emitido em</span>
+                    <span class="print-meta-value">${issuedAt}</span>
+                  </div>
+                  <div class="print-meta-row">
+                    <span class="print-meta-label">Formato</span>
+                    <span class="print-meta-value">A4 horizontal</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="print-note">
+                Consolidação anual por tipo, categoria e descrição para análise gerencial e impressão.
+              </p>
             </div>
+
             ${section.outerHTML}
           </div>
         </body>
