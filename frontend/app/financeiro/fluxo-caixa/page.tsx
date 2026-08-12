@@ -348,6 +348,7 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
   const fixedMonthly =
     fixedMonthlyFromCard ||
     pickNumberFromSources(sources, [
+      "total_fixed_amount",
       "total_paid_fixed_costs",
       "fixed_costs_total",
       "total_fixed_costs_monthly",
@@ -359,6 +360,7 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
 
   const fixedAnnual =
     pickNumberFromSources(sources, [
+      "total_fixed_amount",
       "total_fixed_costs",
       "fixed_costs_annual",
       "annual_fixed_costs",
@@ -371,6 +373,7 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
   const variableMonthly =
     variableMonthlyFromCard ||
     pickNumberFromSources(sources, [
+      "total_variable_amount",
       "total_variable_costs_monthly",
       "monthly_variable_costs",
       "variable_costs_monthly",
@@ -381,6 +384,7 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
 
   const variableAnnual =
     pickNumberFromSources(sources, [
+      "total_variable_amount",
       "total_variable_costs",
       "variable_costs_total",
       "annual_variable_costs",
@@ -391,6 +395,11 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
     variableMonthly * 12;
 
   const closingCostBase =
+    pickNumberFromSources([summary, metrics, payload], [
+      "total_costs",
+      "totalCosts",
+      "custos_total",
+    ]) ||
     totalCostsFromCard ||
     (fixedMonthly + variableMonthly);
 
