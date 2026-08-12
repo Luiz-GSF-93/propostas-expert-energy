@@ -188,6 +188,40 @@ function isVariableCostEntry(entry: Record<string, unknown>) {
   const description = safeText(entry.description).toLowerCase();
   const percent = toNumber(entry.percentage_rate);
 
+
+
+  const saldoFechamentoCorreto = useMemo(() => {
+    const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+    const cards =
+      (costsSnapshot as any)?.cards ||
+      (costsSnapshot as any)?.summaryCards ||
+      [];
+
+    const totalEntradasAnuais = entries
+      .filter((item: any) => String(item?.type || "").toLowerCase() === "receita")
+      .reduce((sum: number, item: any) => sum + toNumber(item?.amount), 0);
+
+    const totalCustosCard = findCardValue(cards, ["Custos", "Custo"]);
+
+    const totalPagoCustosFixos = findCardValue(cards, [
+      "Total Pago de Custos Fixos",
+      "Total pago de custos fixos",
+    ]);
+
+    const totalCustoVariavel = findCardValue(cards, [
+      "Total de Custo Variável",
+      "Total de custo variável",
+      "Total Custo Variável",
+    ]);
+
+    const totalCustosApi =
+      totalCustosCard > 0
+        ? totalCustosCard
+        : totalPagoCustosFixos + totalCustoVariavel;
+
+    return totalEntradasAnuais - totalCustosApi;
+  }, [payload, costsSnapshot]);
+
   return (
     category.includes("vari") ||
     costType.includes("vari") ||
@@ -405,6 +439,34 @@ function MiniBarChart({
   );
 }
 
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value !== "string") return 0;
+
+  const normalized = value
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace(/[^\d.-]/g, "");
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function findCardValue(cards: any[], names: string[]): number {
+  if (!Array.isArray(cards)) return 0;
+
+  const found = cards.find((card) => {
+    const title = String(card?.title || card?.label || card?.name || "")
+      .trim()
+      .toLowerCase();
+
+    return names.some((name) => title === name.toLowerCase());
+  });
+
+  return toNumber(found?.value ?? found?.amount ?? found?.total ?? 0);
+}
+
 export default function FluxoCaixaPage() {
   const router = useRouter();
 
@@ -560,7 +622,7 @@ export default function FluxoCaixaPage() {
 
   const saldoFinal = totalEntradas - totalSaidas;
 
-  const saldoFechamento = totalEntradas - (costsSnapshot.fixedAnnual + costsSnapshot.variableAnnual);
+  const saldoFechamento = saldoFechamentoCorreto;
   const reservaMinima = costsSnapshot.fixedMonthly * 3;
 
   const monthsWithMovement = useMemo(
@@ -1006,7 +1068,7 @@ export default function FluxoCaixaPage() {
           <ExecutiveCard
             title="Saldo de fechamento"
             value={formatMoney(saldoFechamento)}
-            subtitle="Entradas - (custos fixos + variáveis da API Custos)"
+            subtitle="Entradas anuais - custos da API Custos"
             accent="slate"
           />
           <ExecutiveCard
@@ -1069,7 +1131,7 @@ export default function FluxoCaixaPage() {
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Reserva mínima</div>
               <div className="mt-2 text-base font-semibold text-slate-900">{formatMoney(reservaMinima)}</div>
-              <div className="mt-1 text-xs text-slate-500">Base: custos fixos API Custos × 3</div>
+              <div className="mt-1 text-xs text-slate-500">Base: custos fixos da API Custos × 3</div>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Custos API utilizados</div>
