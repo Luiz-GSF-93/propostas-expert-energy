@@ -733,7 +733,7 @@ export default function FluxoCaixaPage() {
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">Fluxo de Caixa</h1>
               <p className="text-sm text-slate-500">
-                Gestão anual de receitas, despesas e lançamentos automáticos do caixa.
+                Gestão anual de receitas, despesas manuais e lançamentos automáticos de custos variáveis e empréstimos.
               </p>
             </div>
 
@@ -898,7 +898,7 @@ export default function FluxoCaixaPage() {
               {form.id ? "Editar lançamento manual" : "Novo lançamento manual"}
             </h2>
             <p className="text-sm text-slate-500">
-              Despesas automáticas de custos e empréstimos são calculadas pelo sistema.
+              Custos fixos, custos avulsos e investimentos são lançados manualmente. Custos variáveis e empréstimos são calculados automaticamente.
             </p>
           </div>
 

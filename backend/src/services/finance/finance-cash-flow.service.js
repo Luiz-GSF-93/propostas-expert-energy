@@ -211,13 +211,6 @@ async function buildAutoCostExpenses(adminSupabase, year, manualEntries) {
   const rows = await fetchActiveCostRows(adminSupabase);
   const activeRows = rows.filter((row) => isTruthyActive(row?.status));
 
-  const fixedMonthlyTotal = Number(
-    activeRows
-      .filter(isFixedCostRow)
-      .reduce((sum, row) => sum + toNumber(row?.monthly_amount), 0)
-      .toFixed(2)
-  );
-
   const totalVariablePercent = Number(
     activeRows
       .filter(isVariableCostRow)
@@ -228,20 +221,6 @@ async function buildAutoCostExpenses(adminSupabase, year, manualEntries) {
   const autoEntries = [];
 
   for (let month = 1; month <= 12; month += 1) {
-    if (fixedMonthlyTotal > 0) {
-      autoEntries.push(
-        buildAutoEntry({
-          id: `auto-fixo-${year}-${month}`,
-          year,
-          month,
-          category: "custos_fixos",
-          description: "custos fixos automáticos",
-          amount: fixedMonthlyTotal,
-          source: "custos",
-        })
-      );
-    }
-
     const monthRevenue = sumMonthlyRevenueByMonth(manualEntries, month);
     const variableAmount = Number(
       (monthRevenue * (totalVariablePercent / 100)).toFixed(2)
