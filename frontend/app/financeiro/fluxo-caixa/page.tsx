@@ -51,6 +51,13 @@ type PivotRow = {
   total: number;
 };
 
+type CostsSnapshot = {
+  fixedMonthly: number;
+  fixedAnnual: number;
+  variableMonthly: number;
+  variableAnnual: number;
+};
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -87,7 +94,6 @@ const EXPENSE_CATEGORIES: CategoryOption[] = [
   { value: "custos_variaveis", label: "Custos variáveis" },
   { value: "custos_avulsos", label: "Custos avulsos" },
   { value: "investimentos_capex", label: "Investimentos / Capex" },
-  { value: "emprestimo", label: "Empréstimo" },
 ];
 
 function getDefaultYear() {
@@ -107,10 +113,6 @@ function getEmptyForm(year = getDefaultYear()): FormState {
 
 function monthLabel(month: number) {
   return MONTHS.find((item) => item.value === month)?.label || String(month);
-}
-
-function monthShort(month: number) {
-  return MONTHS.find((item) => item.value === month)?.short || String(month);
 }
 
 function formatMoney(value: number) {
@@ -136,14 +138,26 @@ function formatInputAmount(value: number) {
   return String(Number(value || 0)).replace(".", ",");
 }
 
+function safeText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function csvEscape(value: unknown) {
+  const raw = String(value ?? "");
+  if (/[;"\n,]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
+  return raw;
+}
+
 function monthTone(saldo: number) {
   return saldo >= 0
     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
     : "bg-rose-50 text-rose-700 border border-rose-200";
 }
 
-function safeText(value: unknown) {
-  return String(value ?? "").trim();
+function metricTone(value: number) {
+  if (value > 0) return "text-emerald-700";
+  if (value < 0) return "text-rose-700";
+  return "text-slate-700";
 }
 
 function entryMatchesSearch(entry: CashFlowEntry, q: string) {
@@ -163,16 +177,144 @@ function entryMatchesSearch(entry: CashFlowEntry, q: string) {
   return haystack.includes(q.toLowerCase());
 }
 
-function csvEscape(value: unknown) {
-  const raw = String(value ?? "");
-  if (/[;"\n,]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
-  return raw;
+function isTruthyActive(status: unknown) {
+  const raw = safeText(status).toLowerCase();
+  return ["ativo", "active", "aberto", "open"].includes(raw);
 }
 
-function metricTone(value: number) {
-  if (value > 0) return "text-emerald-700";
-  if (value < 0) return "text-rose-700";
-  return "text-slate-700";
+function isVariableCostEntry(entry: Record<string, unknown>) {
+  const category = safeText(entry.category).toLowerCase();
+  const costType = safeText(entry.cost_type).toLowerCase();
+  const description = safeText(entry.description).toLowerCase();
+  const percent = toNumber(entry.percentage_rate);
+
+  return (
+    category.includes("vari") ||
+    costType.includes("vari") ||
+    description.includes("vari") ||
+    percent > 0
+  );
+}
+
+function isFixedCostEntry(entry: Record<string, unknown>) {
+  if (isVariableCostEntry(entry)) return false;
+  const category = safeText(entry.category).toLowerCase();
+  const costType = safeText(entry.cost_type).toLowerCase();
+  return category.includes("fix") || costType.includes("fix");
+}
+
+function pickNumberFromSources(
+  sources: Array<Record<string, unknown> | null | undefined>,
+  keys: string[]
+) {
+  for (const source of sources) {
+    if (!source) continue;
+    for (const key of keys) {
+      const value = source[key];
+      const parsed = toNumber(value);
+      if (parsed > 0) return parsed;
+    }
+  }
+  return 0;
+}
+
+function deriveCostsFromEntries(entries: Record<string, unknown>[]) {
+  const activeEntries = entries.filter((item) => isTruthyActive(item.status));
+
+  const fixedMonthly = activeEntries
+    .filter(isFixedCostEntry)
+    .reduce((sum, item) => sum + toNumber(item.monthly_amount || item.amount), 0);
+
+  const variableMonthly = activeEntries
+    .filter(isVariableCostEntry)
+    .reduce((sum, item) => sum + toNumber(item.monthly_amount || item.amount), 0);
+
+  const fixedAnnual = activeEntries
+    .filter(isFixedCostEntry)
+    .reduce(
+      (sum, item) =>
+        sum +
+        toNumber(
+          item.annual_amount ||
+            item.total_amount ||
+            (toNumber(item.monthly_amount || item.amount) * 12)
+        ),
+      0
+    );
+
+  const variableAnnual = activeEntries
+    .filter(isVariableCostEntry)
+    .reduce(
+      (sum, item) =>
+        sum +
+        toNumber(
+          item.annual_amount ||
+            item.total_amount ||
+            (toNumber(item.monthly_amount || item.amount) * 12)
+        ),
+      0
+    );
+
+  return {
+    fixedMonthly,
+    fixedAnnual,
+    variableMonthly,
+    variableAnnual,
+  };
+}
+
+function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
+  const summary = payload?.summary || null;
+  const metrics = payload?.metrics || null;
+  const cards = payload?.cards || null;
+  const sources = [summary, metrics, cards, payload];
+
+  const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+  const derived = deriveCostsFromEntries(entries);
+
+  const fixedMonthly =
+    pickNumberFromSources(sources, [
+      "total_paid_fixed_costs",
+      "fixed_costs_total",
+      "total_fixed_costs_monthly",
+      "monthly_fixed_costs",
+      "custos_fixos_mensal",
+      "totalPaidFixedCosts",
+    ]) || derived.fixedMonthly;
+
+  const fixedAnnual =
+    pickNumberFromSources(sources, [
+      "total_fixed_costs",
+      "fixed_costs_annual",
+      "annual_fixed_costs",
+      "custos_fixos_total",
+      "totalPaidFixedCostsAnnual",
+    ]) || derived.fixedAnnual || fixedMonthly * 12;
+
+  const variableMonthly =
+    pickNumberFromSources(sources, [
+      "total_variable_costs_monthly",
+      "monthly_variable_costs",
+      "variable_costs_monthly",
+      "custos_variaveis_mensal",
+      "totalVariableCostsMonthly",
+    ]) || derived.variableMonthly;
+
+  const variableAnnual =
+    pickNumberFromSources(sources, [
+      "total_variable_costs",
+      "variable_costs_total",
+      "annual_variable_costs",
+      "custos_variaveis_total",
+      "totalVariableCosts",
+    ]) || derived.variableAnnual || variableMonthly * 12;
+
+  return {
+    fixedMonthly,
+    fixedAnnual,
+    variableMonthly,
+    variableAnnual,
+  };
 }
 
 async function authJson(path: string, init?: RequestInit) {
@@ -234,11 +376,9 @@ function ExecutiveCard({
 function MiniBarChart({
   data,
   colorClass,
-  formatAsMoney = true,
 }: {
   data: { label: string; value: number }[];
   colorClass: string;
-  formatAsMoney?: boolean;
 }) {
   const maxValue = Math.max(...data.map((item) => Math.abs(item.value)), 1);
 
@@ -247,7 +387,7 @@ function MiniBarChart({
       {data.map((item) => {
         const width = Math.max(2, (Math.abs(item.value) / maxValue) * 100);
         return (
-          <div key={item.label} className="grid grid-cols-[56px_1fr_120px] items-center gap-3">
+          <div key={item.label} className="grid grid-cols-[44px_1fr_120px] items-center gap-3">
             <div className="text-xs font-medium text-slate-500">{item.label}</div>
             <div className="h-3 rounded-full bg-slate-100">
               <div
@@ -256,7 +396,7 @@ function MiniBarChart({
               />
             </div>
             <div className={`text-right text-sm font-medium ${metricTone(item.value)}`}>
-              {formatAsMoney ? formatMoney(item.value) : item.value}
+              {formatMoney(item.value)}
             </div>
           </div>
         );
@@ -274,6 +414,12 @@ export default function FluxoCaixaPage() {
     entries: [],
     auto_expenses: [],
   });
+  const [costsSnapshot, setCostsSnapshot] = useState<CostsSnapshot>({
+    fixedMonthly: 0,
+    fixedAnnual: 0,
+    variableMonthly: 0,
+    variableAnnual: 0,
+  });
   const [form, setForm] = useState<FormState>(getEmptyForm(getDefaultYear()));
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -281,6 +427,11 @@ export default function FluxoCaixaPage() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState("");
+  const [sectionsOpen, setSectionsOpen] = useState({
+    monthly: true,
+    pivot: true,
+    detailed: true,
+  });
 
   const categories =
     form.type === "receita" ? REVENUE_CATEGORIES : EXPENSE_CATEGORIES;
@@ -289,23 +440,32 @@ export default function FluxoCaixaPage() {
     setForm(getEmptyForm(nextYear));
   }
 
+  function toggleSection(key: "monthly" | "pivot" | "detailed") {
+    setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   async function load() {
     try {
       setLoading(true);
       setError(null);
       setSuccess("");
 
-      const response = await authJson(
-        `/api/finance/fluxo-caixa?year=${encodeURIComponent(year)}`
-      );
+      const [cashFlowResponse, costsResponse] = await Promise.all([
+        authJson(`/api/finance/fluxo-caixa?year=${encodeURIComponent(year)}`),
+        authJson("/api/finance/custos-v2/dashboard"),
+      ]);
 
       setPayload({
-        year: Number(response?.year || year),
-        entries: Array.isArray(response?.entries) ? response.entries : [],
-        auto_expenses: Array.isArray(response?.auto_expenses)
-          ? response.auto_expenses
+        year: Number(cashFlowResponse?.year || year),
+        entries: Array.isArray(cashFlowResponse?.entries)
+          ? cashFlowResponse.entries
+          : [],
+        auto_expenses: Array.isArray(cashFlowResponse?.auto_expenses)
+          ? cashFlowResponse.auto_expenses
           : [],
       });
+
+      setCostsSnapshot(parseCostsSnapshot(costsResponse || {}));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao carregar fluxo de caixa.");
     } finally {
@@ -400,6 +560,9 @@ export default function FluxoCaixaPage() {
 
   const saldoFinal = totalEntradas - totalSaidas;
 
+  const saldoFechamento = totalEntradas - (costsSnapshot.fixedAnnual + costsSnapshot.variableAnnual);
+  const reservaMinima = costsSnapshot.fixedMonthly * 3;
+
   const monthsWithMovement = useMemo(
     () =>
       monthlySummary.filter(
@@ -418,12 +581,6 @@ export default function FluxoCaixaPage() {
     return [...monthsWithMovement].sort((a, b) => a.saldo - b.saldo)[0];
   }, [monthsWithMovement]);
 
-  const latestFixedCostRow = useMemo(() => {
-    return [...monthlySummary].reverse().find((item) => item.custosFixos > 0) || null;
-  }, [monthlySummary]);
-
-  const reservaBase = latestFixedCostRow?.custosFixos || 0;
-  const reservaMinima = reservaBase * 3;
   const indicadorReserva =
     saldoFinal < reservaMinima
       ? "⚠️ Abaixo da reserva ideal de 3 meses"
@@ -691,20 +848,20 @@ export default function FluxoCaixaPage() {
             display: block !important;
           }
 
+          .screen-only-cards {
+            display: none !important;
+          }
+
           .print-wrapper {
             padding: 0 !important;
             margin: 0 !important;
           }
 
-          .print-table,
-          .print-summary {
+          .print-summary,
+          .print-table {
             box-shadow: none !important;
             break-inside: avoid;
             page-break-inside: avoid;
-          }
-
-          .screen-only-cards {
-            display: none !important;
           }
 
           .print-dense-table th,
@@ -724,7 +881,7 @@ export default function FluxoCaixaPage() {
           <h1 className="text-xl font-bold text-slate-900">{COMPANY_NAME}</h1>
           <p className="text-sm text-slate-600">Relatório de Fluxo de Caixa — Ano {payload.year}</p>
           <p className="text-xs text-slate-500">
-            Resumo executivo, evolução mensal e tabela anual consolidada.
+            Resumo executivo, evolução financeira e tabela anual consolidada.
           </p>
         </div>
 
@@ -733,7 +890,7 @@ export default function FluxoCaixaPage() {
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">Fluxo de Caixa</h1>
               <p className="text-sm text-slate-500">
-                Gestão anual de receitas, despesas manuais e lançamentos automáticos de custos variáveis e empréstimos.
+                Receitas manuais, despesas manuais, custos variáveis automáticos e parcelas reais de empréstimos por mês.
               </p>
             </div>
 
@@ -745,16 +902,31 @@ export default function FluxoCaixaPage() {
                 Voltar ao dashboard
               </button>
 
+              <button
+                onClick={() => setYear(String(Number(year || getDefaultYear()) - 1))}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Ano anterior
+              </button>
+
               <div>
                 <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
                   Ano
                 </label>
                 <input
+                  type="number"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
+
+              <button
+                onClick={() => setYear(String(Number(year || getDefaultYear()) + 1))}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Próximo ano
+              </button>
 
               <div>
                 <label className="mb-1 block text-xs font-medium uppercase text-slate-500">
@@ -812,24 +984,30 @@ export default function FluxoCaixaPage() {
           </div>
         ) : null}
 
-        <div className="screen-only-cards grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="screen-only-cards grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
           <ExecutiveCard
             title="Entradas anuais"
             value={formatMoney(totalEntradas)}
-            subtitle="Soma anual das receitas"
+            subtitle="Receitas lançadas no ano"
             accent="emerald"
           />
           <ExecutiveCard
             title="Saídas anuais"
             value={formatMoney(totalSaidas)}
-            subtitle="Soma anual das despesas"
+            subtitle="Despesas totais do fluxo"
             accent="rose"
           />
           <ExecutiveCard
             title="Saldo final"
             value={formatMoney(saldoFinal)}
-            subtitle={saldoFinal >= 0 ? "Caixa positivo" : "Atenção ao caixa"}
+            subtitle="Entradas - saídas"
             accent="sky"
+          />
+          <ExecutiveCard
+            title="Saldo de fechamento"
+            value={formatMoney(saldoFechamento)}
+            subtitle="Entradas - (custos fixos + variáveis da API Custos)"
+            accent="slate"
           />
           <ExecutiveCard
             title="Melhor mês"
@@ -846,7 +1024,7 @@ export default function FluxoCaixaPage() {
           <ExecutiveCard
             title="Reserva mínima"
             value={formatMoney(reservaMinima)}
-            subtitle={indicadorReserva}
+            subtitle="Custos fixos da API Custos × 3"
             accent="slate"
           />
         </div>
@@ -855,11 +1033,11 @@ export default function FluxoCaixaPage() {
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-slate-900">Resumo executivo</h2>
             <p className="text-sm text-slate-500">
-              Visão anual consolidada para análise financeira e impressão.
+              Painel consolidado do ano {payload.year}.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Entradas anuais</div>
               <div className="mt-2 text-lg font-semibold text-emerald-700">{formatMoney(totalEntradas)}</div>
@@ -871,6 +1049,10 @@ export default function FluxoCaixaPage() {
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Saldo final</div>
               <div className={`mt-2 text-lg font-semibold ${metricTone(saldoFinal)}`}>{formatMoney(saldoFinal)}</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Saldo de fechamento</div>
+              <div className={`mt-2 text-lg font-semibold ${metricTone(saldoFechamento)}`}>{formatMoney(saldoFechamento)}</div>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Melhor mês</div>
@@ -887,7 +1069,14 @@ export default function FluxoCaixaPage() {
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="text-xs uppercase text-slate-500">Reserva mínima</div>
               <div className="mt-2 text-base font-semibold text-slate-900">{formatMoney(reservaMinima)}</div>
-              <div className="mt-1 text-xs text-slate-500">{indicadorReserva}</div>
+              <div className="mt-1 text-xs text-slate-500">Base: custos fixos API Custos × 3</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-xs uppercase text-slate-500">Custos API utilizados</div>
+              <div className="mt-2 text-base font-semibold text-slate-900">
+                Fixos: {formatMoney(costsSnapshot.fixedAnnual)}<br />
+                Variáveis: {formatMoney(costsSnapshot.variableAnnual)}
+              </div>
             </div>
           </div>
         </div>
@@ -898,7 +1087,7 @@ export default function FluxoCaixaPage() {
               {form.id ? "Editar lançamento manual" : "Novo lançamento manual"}
             </h2>
             <p className="text-sm text-slate-500">
-              Custos fixos, custos avulsos e investimentos são lançados manualmente. Custos variáveis e empréstimos são calculados automaticamente.
+              Custos fixos são manuais. Custos variáveis e empréstimos são automáticos.
             </p>
           </div>
 
@@ -1005,255 +1194,263 @@ export default function FluxoCaixaPage() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-3">
-          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Evolução do saldo acumulado</h2>
-              <p className="text-sm text-slate-500">Saldo acumulado mês a mês.</p>
+              <h2 className="text-lg font-semibold text-slate-900">Saldo acumulado</h2>
+              <p className="text-sm text-slate-500">Evolução mês a mês.</p>
             </div>
-            <MiniBarChart data={acumuladoChart} colorClass="bg-sky-500" />
+            <MiniBarChart
+              data={monthlyAccumulated.map((item) => ({ label: item.monthShort, value: item.acumulado }))}
+              colorClass="bg-sky-500"
+            />
           </div>
 
-          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-slate-900">Entradas mensais</h2>
-              <p className="text-sm text-slate-500">Evolução das receitas no ano.</p>
+              <p className="text-sm text-slate-500">Receitas do ano.</p>
             </div>
-            <MiniBarChart data={entradasChart} colorClass="bg-emerald-500" />
+            <MiniBarChart
+              data={monthlySummary.map((item) => ({ label: item.monthShort, value: item.entradas }))}
+              colorClass="bg-emerald-500"
+            />
           </div>
 
-          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+          <div className="print-table rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-slate-900">Saídas mensais</h2>
-              <p className="text-sm text-slate-500">Evolução das despesas no ano.</p>
+              <p className="text-sm text-slate-500">Despesas do ano.</p>
             </div>
-            <MiniBarChart data={saidasChart} colorClass="bg-rose-500" />
+            <MiniBarChart
+              data={monthlySummary.map((item) => ({ label: item.monthShort, value: item.saidas }))}
+              colorClass="bg-rose-500"
+            />
           </div>
         </div>
 
         <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Resumo mensal de {payload.year}</h2>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm print-dense-table">
-              <thead className="bg-slate-50 text-left text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">Mês</th>
-                  <th className="px-4 py-3 text-right">Entradas</th>
-                  <th className="px-4 py-3 text-right">Saídas</th>
-                  <th className="px-4 py-3 text-right">Custos fixos</th>
-                  <th className="px-4 py-3 text-right">Custos variáveis</th>
-                  <th className="px-4 py-3 text-right">Empréstimos</th>
-                  <th className="px-4 py-3 text-right">Saldo</th>
-                  <th className="px-4 py-3 text-right">Acumulado</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyAccumulated.map((item) => (
-                  <tr key={item.month} className="border-t border-slate-100">
-                    <td className="px-4 py-3">{item.monthLabel}</td>
-                    <td className="px-4 py-3 text-right text-emerald-700">{formatMoney(item.entradas)}</td>
-                    <td className="px-4 py-3 text-right text-rose-700">{formatMoney(item.saidas)}</td>
-                    <td className="px-4 py-3 text-right">{formatMoney(item.custosFixos)}</td>
-                    <td className="px-4 py-3 text-right">{formatMoney(item.custosVariaveis)}</td>
-                    <td className="px-4 py-3 text-right">{formatMoney(item.emprestimos)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatMoney(item.saldo)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${metricTone(item.acumulado)}`}>
-                      {formatMoney(item.acumulado)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${monthTone(item.saldo)}`}>
-                        {item.indicador}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-slate-50 font-semibold text-slate-800">
-                <tr>
-                  <td className="px-4 py-3">Total anual</td>
-                  <td className="px-4 py-3 text-right text-emerald-700">{formatMoney(totalEntradas)}</td>
-                  <td className="px-4 py-3 text-right text-rose-700">{formatMoney(totalSaidas)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {formatMoney(monthlySummary.reduce((sum, item) => sum + item.custosFixos, 0))}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {formatMoney(monthlySummary.reduce((sum, item) => sum + item.custosVariaveis, 0))}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {formatMoney(monthlySummary.reduce((sum, item) => sum + item.emprestimos, 0))}
-                  </td>
-                  <td className="px-4 py-3 text-right">{formatMoney(saldoFinal)}</td>
-                  <td className={`px-4 py-3 text-right ${metricTone(saldoFinal)}`}>{formatMoney(saldoFinal)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${monthTone(saldoFinal)}`}>
-                      {saldoFinal >= 0 ? "✅ positivo" : "⚠️ prejuízo"}
-                    </span>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Tabela anual em colunas jan–dez</h2>
-            <p className="text-sm text-slate-500">
-              {search ? `Filtro aplicado: "${search}"` : "Consolidação anual por tipo, categoria e descrição."}
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-[1500px] text-sm print-dense-table">
-              <thead className="bg-slate-50 text-left text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">Tipo</th>
-                  <th className="px-4 py-3">Categoria</th>
-                  <th className="px-4 py-3">Descrição</th>
-                  <th className="px-4 py-3">Origem</th>
-                  {MONTHS.map((month) => (
-                    <th key={month.value} className="px-4 py-3 text-right">
-                      {month.short}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-right">Total ano</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pivotRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={16} className="px-4 py-6 text-center text-slate-500">
-                      Nenhum lançamento encontrado para o filtro atual.
-                    </td>
-                  </tr>
-                ) : (
-                  pivotRows.map((row) => (
-                    <tr key={row.key} className="border-t border-slate-100">
-                      <td className={`px-4 py-3 font-medium ${row.type === "despesa" ? "text-rose-700" : "text-emerald-700"}`}>
-                        {row.type}
-                      </td>
-                      <td className="px-4 py-3">{row.category}</td>
-                      <td className="px-4 py-3">{row.description}</td>
-                      <td className="px-4 py-3">{row.source}</td>
-                      {row.months.map((value, index) => (
-                        <td
-                          key={`${row.key}-${index}`}
-                          className={`px-4 py-3 text-right ${
-                            row.type === "despesa" ? "text-rose-700" : "text-emerald-700"
-                          }`}
-                        >
-                          {value ? formatMoney(value) : "—"}
-                        </td>
-                      ))}
-                      <td className={`px-4 py-3 text-right font-semibold ${
-                        row.type === "despesa" ? "text-rose-700" : "text-emerald-700"
-                      }`}>
-                        {formatMoney(row.total)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot className="bg-slate-50 font-semibold text-slate-800">
-                <tr>
-                  <td colSpan={4} className="px-4 py-3">Total geral filtrado</td>
-                  {pivotTotals.months.map((value, index) => (
-                    <td key={`total-${index}`} className="px-4 py-3 text-right">
-                      {value ? formatMoney(value) : "—"}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-right">{formatMoney(pivotTotals.total)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Lançamentos detalhados</h2>
-          </div>
-
-          {loading ? (
-            <div className="p-5 text-sm text-slate-500">Carregando...</div>
-          ) : filteredEntries.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">
-              Nenhum lançamento encontrado para o filtro atual.
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Resumo mensal de {payload.year}</h2>
             </div>
-          ) : (
+            <button
+              type="button"
+              onClick={() => toggleSection("monthly")}
+              className="no-print rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {sectionsOpen.monthly ? "Recuar" : "Expandir"}
+            </button>
+          </div>
+
+          {sectionsOpen.monthly ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm print-dense-table">
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Mês</th>
-                    <th className="px-4 py-3">Tipo</th>
-                    <th className="px-4 py-3">Categoria</th>
-                    <th className="px-4 py-3">Descrição</th>
-                    <th className="px-4 py-3">Origem</th>
-                    <th className="px-4 py-3 text-right">Valor</th>
-                    <th className="no-print px-4 py-3 text-center">Ações</th>
+                    <th className="px-4 py-3 text-right">Entradas</th>
+                    <th className="px-4 py-3 text-right">Saídas</th>
+                    <th className="px-4 py-3 text-right">Custos fixos</th>
+                    <th className="px-4 py-3 text-right">Custos variáveis</th>
+                    <th className="px-4 py-3 text-right">Empréstimos</th>
+                    <th className="px-4 py-3 text-right">Saldo</th>
+                    <th className="px-4 py-3 text-right">Acumulado</th>
+                    <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEntries.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-100">
-                      <td className="px-4 py-3">{monthLabel(item.month)}</td>
+                  {monthlyAccumulated.map((item) => (
+                    <tr key={item.month} className="border-t border-slate-100">
+                      <td className="px-4 py-3">{item.monthLabel}</td>
+                      <td className="px-4 py-3 text-right text-emerald-700">{formatMoney(item.entradas)}</td>
+                      <td className="px-4 py-3 text-right text-rose-700">{formatMoney(item.saidas)}</td>
+                      <td className="px-4 py-3 text-right">{formatMoney(item.custosFixos)}</td>
+                      <td className="px-4 py-3 text-right">{formatMoney(item.custosVariaveis)}</td>
+                      <td className="px-4 py-3 text-right">{formatMoney(item.emprestimos)}</td>
+                      <td className="px-4 py-3 text-right font-medium">{formatMoney(item.saldo)}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${metricTone(item.acumulado)}`}>
+                        {formatMoney(item.acumulado)}
+                      </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={
-                            item.type === "despesa"
-                              ? "font-medium text-rose-700"
-                              : "font-medium text-emerald-700"
-                          }
-                        >
-                          {item.type}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${monthTone(item.saldo)}`}>
+                          {item.indicador}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">{item.category}</td>
-                      <td className="px-4 py-3">{item.description}</td>
-                      <td className="px-4 py-3">
-                        {item.source || (item.auto_generated ? "automático" : "manual")}
-                      </td>
-                      <td
-                        className={`px-4 py-3 text-right font-medium ${
-                          item.type === "despesa"
-                            ? "text-rose-700"
-                            : "text-emerald-700"
-                        }`}
-                      >
-                        {formatMoney(item.amount)}
-                      </td>
-                      <td className="no-print px-4 py-3 text-center">
-                        {item.auto_generated ? (
-                          <span className="text-xs text-slate-400">Automático</span>
-                        ) : (
-                          <div className="flex justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(item)}
-                              className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item)}
-                              className="rounded-md border border-rose-200 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                            >
-                              Excluir
-                            </button>
-                          </div>
-                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
+        </div>
+
+        <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Tabela anual em colunas jan–dez</h2>
+              <p className="text-sm text-slate-500">
+                {search ? `Filtro aplicado: "${search}"` : "Consolidação anual por tipo, categoria e descrição."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleSection("pivot")}
+              className="no-print rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {sectionsOpen.pivot ? "Recuar" : "Expandir"}
+            </button>
+          </div>
+
+          {sectionsOpen.pivot ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-[1500px] text-sm print-dense-table">
+                <thead className="bg-slate-50 text-left text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3">Tipo</th>
+                    <th className="px-4 py-3">Categoria</th>
+                    <th className="px-4 py-3">Descrição</th>
+                    <th className="px-4 py-3">Origem</th>
+                    {MONTHS.map((month) => (
+                      <th key={month.value} className="px-4 py-3 text-right">
+                        {month.short}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-right">Total ano</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pivotRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={16} className="px-4 py-6 text-center text-slate-500">
+                        Nenhum lançamento encontrado para o filtro atual.
+                      </td>
+                    </tr>
+                  ) : (
+                    pivotRows.map((row) => (
+                      <tr key={row.key} className="border-t border-slate-100">
+                        <td className={`px-4 py-3 font-medium ${row.type === "despesa" ? "text-rose-700" : "text-emerald-700"}`}>
+                          {row.type}
+                        </td>
+                        <td className="px-4 py-3">{row.category}</td>
+                        <td className="px-4 py-3">{row.description}</td>
+                        <td className="px-4 py-3">{row.source}</td>
+                        {row.months.map((value, index) => (
+                          <td
+                            key={`${row.key}-${index}`}
+                            className={`px-4 py-3 text-right ${
+                              row.type === "despesa" ? "text-rose-700" : "text-emerald-700"
+                            }`}
+                          >
+                            {value ? formatMoney(value) : "—"}
+                          </td>
+                        ))}
+                        <td className={`px-4 py-3 text-right font-semibold ${
+                          row.type === "despesa" ? "text-rose-700" : "text-emerald-700"
+                        }`}>
+                          {formatMoney(row.total)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="print-table rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Lançamentos detalhados</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleSection("detailed")}
+              className="no-print rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {sectionsOpen.detailed ? "Recuar" : "Expandir"}
+            </button>
+          </div>
+
+          {sectionsOpen.detailed ? (
+            loading ? (
+              <div className="p-5 text-sm text-slate-500">Carregando...</div>
+            ) : filteredEntries.length === 0 ? (
+              <div className="p-5 text-sm text-slate-500">
+                Nenhum lançamento encontrado para o filtro atual.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm print-dense-table">
+                  <thead className="bg-slate-50 text-left text-slate-600">
+                    <tr>
+                      <th className="px-4 py-3">Mês</th>
+                      <th className="px-4 py-3">Tipo</th>
+                      <th className="px-4 py-3">Categoria</th>
+                      <th className="px-4 py-3">Descrição</th>
+                      <th className="px-4 py-3">Origem</th>
+                      <th className="px-4 py-3 text-right">Valor</th>
+                      <th className="no-print px-4 py-3 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-100">
+                        <td className="px-4 py-3">{monthLabel(item.month)}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={
+                              item.type === "despesa"
+                                ? "font-medium text-rose-700"
+                                : "font-medium text-emerald-700"
+                            }
+                          >
+                            {item.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">{item.category}</td>
+                        <td className="px-4 py-3">{item.description}</td>
+                        <td className="px-4 py-3">
+                          {item.source || (item.auto_generated ? "automático" : "manual")}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-right font-medium ${
+                            item.type === "despesa"
+                              ? "text-rose-700"
+                              : "text-emerald-700"
+                          }`}
+                        >
+                          {formatMoney(item.amount)}
+                        </td>
+                        <td className="no-print px-4 py-3 text-center">
+                          {item.auto_generated ? (
+                            <span className="text-xs text-slate-400">Automático</span>
+                          ) : (
+                            <div className="flex justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(item)}
+                                className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(item)}
+                                className="rounded-md border border-rose-200 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : null}
         </div>
       </div>
     </>
