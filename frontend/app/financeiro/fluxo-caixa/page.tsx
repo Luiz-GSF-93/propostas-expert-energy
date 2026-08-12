@@ -303,12 +303,50 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
   const summary = payload?.summary || null;
   const metrics = payload?.metrics || null;
   const cards = payload?.cards || null;
-  const sources = [summary, metrics, cards, payload];
+  const summaryCards = payload?.summaryCards || null;
+  const sources = [summary, metrics, payload];
 
   const entries = Array.isArray(payload?.entries) ? payload.entries : [];
   const derived = deriveCostsFromEntries(entries);
 
+  const fixedMonthlyFromCard =
+    findCardMetricValue(cards, [
+      "Total Pago de Custos Fixos",
+      "Total pago de custos fixos",
+    ]) ||
+    findCardMetricValue(summaryCards, [
+      "Total Pago de Custos Fixos",
+      "Total pago de custos fixos",
+    ]);
+
+  const variableMonthlyFromCard =
+    findCardMetricValue(cards, [
+      "Total de Custo Variável",
+      "Total de custo variável",
+      "Total Custo Variável",
+    ]) ||
+    findCardMetricValue(summaryCards, [
+      "Total de Custo Variável",
+      "Total de custo variável",
+      "Total Custo Variável",
+    ]);
+
+  const totalCostsFromCard =
+    findCardMetricValue(cards, [
+      "Custos",
+      "Custo",
+      "Total de Custo variável + Total pago de custos fixos",
+      "Total de custo variável + total pago de custos fixos",
+    ]) ||
+    findCardMetricValue(summaryCards, [
+      "Custos",
+      "Custo",
+      "Total de Custo variável + Total pago de custos fixos",
+      "Total de custo variável + total pago de custos fixos",
+    ]);
+
   const fixedMonthly =
+    fixedMonthlyFromCard ||
     pickNumberFromSources(sources, [
       "total_paid_fixed_costs",
       "fixed_costs_total",
@@ -316,7 +354,8 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
       "monthly_fixed_costs",
       "custos_fixos_mensal",
       "totalPaidFixedCosts",
-    ]) || derived.fixedMonthly;
+    ]) ||
+    derived.fixedMonthly;
 
   const fixedAnnual =
     pickNumberFromSources(sources, [
@@ -325,16 +364,20 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
       "annual_fixed_costs",
       "custos_fixos_total",
       "totalPaidFixedCostsAnnual",
-    ]) || derived.fixedAnnual || fixedMonthly * 12;
+    ]) ||
+    derived.fixedAnnual ||
+    fixedMonthly * 12;
 
   const variableMonthly =
+    variableMonthlyFromCard ||
     pickNumberFromSources(sources, [
       "total_variable_costs_monthly",
       "monthly_variable_costs",
       "variable_costs_monthly",
       "custos_variaveis_mensal",
       "totalVariableCostsMonthly",
-    ]) || derived.variableMonthly;
+    ]) ||
+    derived.variableMonthly;
 
   const variableAnnual =
     pickNumberFromSources(sources, [
@@ -343,21 +386,12 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
       "annual_variable_costs",
       "custos_variaveis_total",
       "totalVariableCosts",
-    ]) || derived.variableAnnual || variableMonthly * 12;
+    ]) ||
+    derived.variableAnnual ||
+    variableMonthly * 12;
 
   const closingCostBase =
-    findCardMetricValue(payload?.cards, [
-      "Custos",
-      "Custo",
-      "Total de Custo variável + Total pago de custos fixos",
-      "Total de custo variável + total pago de custos fixos",
-    ]) ||
-    findCardMetricValue(payload?.summaryCards, [
-      "Custos",
-      "Custo",
-      "Total de Custo variável + Total pago de custos fixos",
-      "Total de custo variável + total pago de custos fixos",
-    ]) ||
+    totalCostsFromCard ||
     (fixedMonthly + variableMonthly);
 
   return {
@@ -1060,7 +1094,7 @@ export default function FluxoCaixaPage() {
           <ExecutiveCard
             title="Saldo de fechamento"
             value={formatMoney(saldoFechamento)}
-            subtitle="Entradas anuais - card Custo da API Custos"
+            subtitle="Entradas anuais - custos do card Custos da API Custos"
             accent="slate"
           />
           <ExecutiveCard
@@ -1124,13 +1158,6 @@ export default function FluxoCaixaPage() {
               <div className="text-xs uppercase text-slate-500">Reserva mínima</div>
               <div className="mt-2 text-base font-semibold text-slate-900">{formatMoney(reservaMinima)}</div>
               <div className="mt-1 text-xs text-slate-500">Base: custos fixos da API Custos × 3</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <div className="text-xs uppercase text-slate-500">Custos API utilizados</div>
-              <div className="mt-2 text-base font-semibold text-slate-900">
-                Fixos: {formatMoney(costsSnapshot.fixedAnnual)}<br />
-                Variáveis: {formatMoney(costsSnapshot.variableAnnual)}
-              </div>
             </div>
           </div>
         </div>
