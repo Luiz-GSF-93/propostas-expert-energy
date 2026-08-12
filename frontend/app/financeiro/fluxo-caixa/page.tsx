@@ -689,7 +689,7 @@ export default function FluxoCaixaPage() {
 
   const saldoFinal = totalEntradas - totalSaidas;
 
-  const saldoFechamento = totalEntradas - (costsSnapshot.closingCostBase || 0);
+  const saldoFechamento = totalEntradas - ((costsSnapshot.closingCostBase || 0) * 12);
   const reservaMinima = costsSnapshot.fixedMonthly * 3;
 
   const monthsWithMovement = useMemo(
@@ -1500,7 +1500,7 @@ export default function FluxoCaixaPage() {
           <ExecutiveCard
             title="Saldo de fechamento"
             value={formatMoney(saldoFechamento)}
-            subtitle="Entradas anuais - custos do card Custos da API Custos"
+            subtitle="Entradas anuais - (card Custos da API Custos × 12)"
             accent="slate"
           />
           <ExecutiveCard
