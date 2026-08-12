@@ -412,6 +412,38 @@ function parseCostsSnapshot(payload: Record<string, any>): CostsSnapshot {
   };
 }
 
+
+function getAnnualPivotSection(): HTMLElement | null {
+  const normalize = (value: string) =>
+    String(value || "")
+      .normalize("NFKC")
+      .replace(/[–—]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+  const headings = Array.from(document.querySelectorAll("h2"));
+  const targetHeading = headings.find((node) => {
+    const text = normalize(node.textContent || "");
+    return (
+      text.includes("tabela anual em colunas jan-dez") ||
+      text.includes("tabela anual em colunas")
+    );
+  });
+
+  if (!targetHeading) return null;
+
+  let current: HTMLElement | null = targetHeading.parentElement;
+  while (current && current !== document.body) {
+    if (current.querySelector("table")) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
 async function authJson(path: string, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -920,16 +952,17 @@ export default function FluxoCaixaPage() {
   }
 
   function handlePrint() {
+    const pivotSection = getAnnualPivotSection();
+    if (pivotSection) {
+      pivotSection.classList.add("cashflow-hide-on-full-print");
+    }
+
     document.body.classList.add("cashflow-full-print");
     window.print();
   }
 
   function handlePrintPivotOnly() {
-    const headings = Array.from(document.querySelectorAll("h2"));
-    const pivotHeading = headings.find((node) =>
-      (node.textContent || "").includes("Tabela anual em colunas jan–dez")
-    );
-    const section = pivotHeading?.closest("section");
+    const section = getAnnualPivotSection();
 
     if (!section) {
       window.alert("Tabela anual não encontrada para impressão.");
@@ -990,13 +1023,6 @@ export default function FluxoCaixaPage() {
               color: #475569;
             }
 
-            section {
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-              padding: 10px;
-              overflow: hidden;
-            }
-
             table {
               width: 100%;
               border-collapse: collapse;
@@ -1027,14 +1053,10 @@ export default function FluxoCaixaPage() {
             th:nth-child(2), td:nth-child(2) { width: 10%; }
             th:nth-child(3), td:nth-child(3) { width: 15%; }
             th:nth-child(4), td:nth-child(4) { width: 8%; }
-
             th:nth-child(n+5), td:nth-child(n+5) {
               width: 4.8%;
               text-align: center;
             }
-
-            .text-emerald-700 { color: #047857 !important; }
-            .text-rose-700 { color: #be123c !important; }
 
             @media print {
               body {
@@ -1203,6 +1225,10 @@ export default function FluxoCaixaPage() {
           }
 
           body.cashflow-full-print .print-pivot {
+            display: none !important;
+          }
+
+          .cashflow-hide-on-full-print {
             display: none !important;
           }
 
