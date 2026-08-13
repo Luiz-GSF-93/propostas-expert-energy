@@ -3,6 +3,14 @@ const express = require("express");
 const { processImportedBatch } = require("../services/finance/finance-process-batch.service");
 const router = express.Router();
 
+const {
+  getDreYear,
+  upsertDreSettings,
+  createDreManualEntry,
+  updateDreManualEntry,
+  deleteDreManualEntry,
+} = require("../services/finance/finance-dre.service");
+
 
 
 async function getLatestFinanceBatch() {
@@ -775,7 +783,7 @@ router.get("/fluxo-caixa-importado", authMiddleware, requireAdmin, async (req, r
 });
 
 
-router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
+router.get("/dre-importado", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const latestBatch = await getLatestFinanceBatch();
 
@@ -1103,6 +1111,68 @@ router.delete("/fluxo-caixa/:id", authMiddleware, requireAdmin, async (req, res)
   }
 });
 
+
+
+router.get("/dre", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getDreYear(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("Erro ao carregar DRE:", error);
+    return res.status(500).json({
+      message: error?.message || "Erro ao carregar DRE.",
+    });
+  }
+});
+
+router.put("/dre/settings", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const data = await upsertDreSettings(adminSupabase, req.body || {});
+    return res.json(data);
+  } catch (error) {
+    console.error("Erro ao salvar configurações DRE:", error);
+    return res.status(500).json({
+      message: error?.message || "Erro ao salvar configurações do DRE.",
+    });
+  }
+});
+
+router.post("/dre/manual-entries", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const data = await createDreManualEntry(adminSupabase, req.body || {});
+    return res.status(201).json(data);
+  } catch (error) {
+    console.error("Erro ao criar lançamento manual do DRE:", error);
+    return res.status(500).json({
+      message: error?.message || "Erro ao criar lançamento manual do DRE.",
+    });
+  }
+});
+
+router.put("/dre/manual-entries/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const data = await updateDreManualEntry(adminSupabase, req.params.id, req.body || {});
+    return res.json(data);
+  } catch (error) {
+    console.error("Erro ao atualizar lançamento manual do DRE:", error);
+    return res.status(500).json({
+      message: error?.message || "Erro ao atualizar lançamento manual do DRE.",
+    });
+  }
+});
+
+router.delete("/dre/manual-entries/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const data = await deleteDreManualEntry(adminSupabase, req.params.id);
+    return res.json(data);
+  } catch (error) {
+    console.error("Erro ao excluir lançamento manual do DRE:", error);
+    return res.status(500).json({
+      message: error?.message || "Erro ao excluir lançamento manual do DRE.",
+    });
+  }
+});
 
 module.exports = router;
 
