@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 type DreSettings = {
   tax_percent: number;
   invested_capital: number;
+  equity_value: number;
 };
 
 type DreCardMetrics = {
@@ -21,7 +22,7 @@ type DreCardMetrics = {
   lucro_liquido_media_mensal: number;
   margem_liquida_percent: number;
   roi_percent: number;
-  ebit_anual: number;
+  roic_percent: number;
   depreciacao_amortizacao_anual: number;
 };
 
@@ -110,6 +111,7 @@ const DEFAULT_PAYLOAD: DrePayload = {
   settings: {
     tax_percent: 0,
     invested_capital: 0,
+    equity_value: 0,
   },
   cards: {
     receita_bruta_anual: 0,
@@ -123,7 +125,7 @@ const DEFAULT_PAYLOAD: DrePayload = {
     lucro_liquido_media_mensal: 0,
     margem_liquida_percent: 0,
     roi_percent: 0,
-    ebit_anual: 0,
+    roic_percent: 0,
     depreciacao_amortizacao_anual: 0,
   },
   months: [],
@@ -267,7 +269,7 @@ function IndicatorCard({
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {title}
       </div>
-      <div className="mt-2 break-words text-2xl font-bold text-slate-900">{value}</div>
+      <div className="mt-2 break-words text-[clamp(1.05rem,1.35vw,1.35rem)] font-bold text-slate-900">{value}</div>
       <div className="mt-2 text-xs leading-5 text-slate-600">{hint}</div>
     </div>
   );
@@ -303,6 +305,7 @@ export default function DrePage() {
   const [form, setForm] = useState<ManualFormState>(getEmptyForm(getDefaultYear()));
   const [taxPercentInput, setTaxPercentInput] = useState("0");
   const [capitalInput, setCapitalInput] = useState("0");
+  const [equityInput, setEquityInput] = useState("0");
 
   async function load() {
     try {
@@ -315,6 +318,7 @@ export default function DrePage() {
       setPayload(response || DEFAULT_PAYLOAD);
       setTaxPercentInput(String(toNumber(response?.settings?.tax_percent)).replace(".", ","));
       setCapitalInput(String(toNumber(response?.settings?.invested_capital)).replace(".", ","));
+      setEquityInput(String(toNumber(response?.settings?.equity_value)).replace(".", ","));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao carregar DRE.");
     } finally {
@@ -359,6 +363,7 @@ export default function DrePage() {
         year: Number(year),
         tax_percent: toNumber(taxPercentInput),
         invested_capital: toNumber(capitalInput),
+        equity_value: toNumber(equityInput),
       };
 
       await authJson("/api/finance/dre/settings", {
@@ -505,7 +510,75 @@ export default function DrePage() {
           <h1 className="text-xl font-semibold text-slate-900">Carregando DRE</h1>
           <p className="mt-2 text-sm text-slate-500">Buscando estrutura do Demonstrativo de Resultado do Exercício.</p>
         </div>
-      </main>
+      
+      <style jsx global>{`
+        .dre-card-value,
+        [data-dre-card-value="true"] {
+          font-size: clamp(1.2rem, 1.65vw, 1.75rem) !important;
+          line-height: 1.15 !important;
+          letter-spacing: -0.02em;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+
+        [data-dre-annual-table="true"] {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          table-layout: fixed;
+        }
+
+        [data-dre-annual-table="true"] thead th {
+          background: #e2e8f0;
+          color: #0f172a;
+          font-weight: 700;
+          border-bottom: 1px solid #cbd5e1;
+        }
+
+        [data-dre-annual-table="true"] tbody tr:nth-child(odd) {
+          background: #ffffff;
+        }
+
+        [data-dre-annual-table="true"] tbody tr:nth-child(even) {
+          background: #f8fafc;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"],
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"],
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] {
+          background: #ecfdf5 !important;
+          font-weight: 700;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="impostos"],
+        [data-dre-annual-table="true"] tbody tr[data-line-key="despesas_financeiras"],
+        [data-dre-annual-table="true"] tbody tr[data-line-key="irpj_csll"] {
+          background: #fff1f2 !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"],
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] {
+          background: #fef3c7 !important;
+          font-weight: 700;
+        }
+
+        [data-dre-annual-table="true"] td,
+        [data-dre-annual-table="true"] th {
+          padding: 8px 10px;
+          border-right: 1px solid #e2e8f0;
+          border-bottom: 1px solid #e2e8f0;
+          vertical-align: middle;
+        }
+
+        [data-dre-annual-table="true"] td:last-child,
+        [data-dre-annual-table="true"] th:last-child {
+          background: #f1f5f9;
+          font-weight: 800;
+          color: #0f172a;
+        }
+      `}</style>
+
+</main>
     );
   }
 
@@ -739,7 +812,7 @@ export default function DrePage() {
         <section className="no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">DRE</h1>
+              <h1 className="dre-card-value text-[clamp(1.05rem,1.35vw,1.35rem)] font-semibold text-slate-900">DRE</h1>
               <p className="text-sm text-slate-500">
                 Demonstrativo de Resultado do Exercício com integração de Fluxo de Caixa e Custos.
               </p>
@@ -859,9 +932,9 @@ export default function DrePage() {
             accent="emerald"
           />
           <IndicatorCard
-            title="EBIT"
-            value={formatMoney(payload.cards.ebit_anual)}
-            hint={`Depreciação/Amortização: ${formatMoney(payload.cards.depreciacao_amortizacao_anual)}`}
+            title="ROIC (%)"
+            value={formatMoney(payload.cards.roic_percent)}
+            hint={`NOPAT / Capital Investido: ${formatMoney(payload.cards.depreciacao_amortizacao_anual)}`}
             accent="sky"
           />
         </section>
@@ -897,6 +970,23 @@ export default function DrePage() {
                   placeholder="Ex.: 250000"
                 />
               </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700">
+                    Patrimônio operacional
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={equityInput}
+                    onChange={(e) => setEquityInput(e.target.value.replace(".", ","))}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    inputMode="decimal"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Usado no cálculo do Capital Investido para o ROIC.
+                  </p>
+                </div>
 
               <button
                 onClick={handleSaveSettings}
@@ -1070,7 +1160,7 @@ export default function DrePage() {
           </div>
 
           <div className="print-table-wrap overflow-x-auto">
-            <table className="print-table min-w-[1600px] border-collapse text-sm">
+            <table data-dre-annual-table="true" className="print-table min-w-[1600px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
