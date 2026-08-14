@@ -223,6 +223,22 @@ function metricTone(value: number) {
   return "text-slate-700";
 }
 
+function getDreAnnualRowClass(rowKey: string, index: number) {
+  if (["receita_bruta", "receita_liquida", "lucro_bruto"].includes(rowKey)) {
+    return "bg-emerald-100/90 border-y-2 border-emerald-300";
+  }
+
+  if (["impostos", "despesas_financeiras", "irpj_csll"].includes(rowKey)) {
+    return "bg-rose-100/90 border-y-2 border-rose-300";
+  }
+
+  if (["ebitda", "lucro_liquido"].includes(rowKey)) {
+    return "bg-amber-100/90 border-y-2 border-amber-300";
+  }
+
+  return index % 2 === 0 ? "bg-white" : "bg-slate-100";
+}
+
 function monthName(month: number) {
   return MONTH_LABELS[Math.max(0, Math.min(11, month - 1))] || String(month);
 }
@@ -279,7 +295,7 @@ function IndicatorCard({
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {title}
       </div>
-      <div className="mt-2 break-words text-[clamp(1.05rem,1.35vw,1.35rem)] font-bold text-slate-900">{value}</div>
+      <div className="mt-2 break-words text-[clamp(1.05rem,1.35vw,1.35rem)] font-extrabold leading-tight tracking-[-0.04em] text-[clamp(0.76rem,0.88vw,0.96rem)] text-slate-900 break-words">{value}</div>
       <div className="mt-2 text-xs leading-5 text-slate-600">{hint}</div>
     </div>
   );
@@ -834,7 +850,7 @@ export default function DrePage() {
 
       <div className="print-shell mx-auto max-w-[1700px] space-y-6 p-4 md:p-6">
         <div className="print-header">
-          <h1 className="text-xl font-bold text-slate-900">{COMPANY_NAME}</h1>
+          <h1 className="text-xl font-extrabold leading-tight tracking-[-0.04em] text-[clamp(0.76rem,0.88vw,0.96rem)] text-slate-900 break-words">{COMPANY_NAME}</h1>
           <p className="text-sm text-slate-700">{COMPANY_DOCUMENT}</p>
           <p className="text-sm text-slate-700">{COMPANY_SITE}</p>
           <p className="mt-2 text-sm text-slate-700">Demonstrativo de Resultado do Exercício (DRE) — Ano {payload.year}</p>
@@ -1214,9 +1230,9 @@ export default function DrePage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.key} data-line-key={row.key} className="border-b border-slate-100">
-                    <td className="px-3 py-3 font-medium text-slate-800">{row.label}</td>
+                {rows.map((row, index) => (
+                  <tr key={row.key} data-line-key={row.key} className={`${getDreAnnualRowClass(row.key, index)} border-b border-slate-200`}>
+                    <td className="px-3 py-3 font-semibold text-slate-900">{row.label}</td>
                     {row.months.map((value, index) => (
                       <td
                         key={`${row.key}-${index}`}
@@ -1225,10 +1241,10 @@ export default function DrePage() {
                         {row.key === "margem_liquida_percent" ? formatPercent(value) : formatMoney(value)}
                       </td>
                     ))}
-                    <td className={`px-3 py-3 text-center font-semibold ${metricTone(row.total)}`}>
+                    <td className={`px-3 py-3 text-center font-extrabold bg-slate-200 text-slate-900 ${metricTone(row.total)}`}>
                       {row.key === "margem_liquida_percent" ? formatPercent(row.total) : formatMoney(row.total)}
                     </td>
-                    <td className={`px-3 py-3 text-center font-semibold ${metricTone(row.percent)}`}>
+                    <td className={`px-3 py-3 text-center font-extrabold bg-slate-200 text-slate-900 ${metricTone(row.percent)}`}>
                       {formatPercent(row.percent)}
                     </td>
                   </tr>
