@@ -306,6 +306,14 @@ function buildRows(monthly, annualReceitaBruta) {
   ];
 }
 
+function getRoicHint(roic) {
+  if (roic > 20) return "ROIC acima de 20%: excelente";
+  if (roic > 15) return "ROIC acima de 15%: muito bom";
+  if (roic >= 10) return "ROIC entre 10% e 15%: bom";
+  if (roic < 8) return "ROIC abaixo de 8%: geralmente baixo";
+  return "ROIC em faixa intermediária";
+}
+
 async function getDreYear(adminSupabase, year) {
   const targetYear = Number(year);
 
@@ -349,6 +357,7 @@ async function getDreYear(adminSupabase, year) {
 
   const taxPercent = toNumber(settings?.tax_percent);
   const investedCapital = toNumber(settings?.invested_capital);
+  const equityValue = toNumber(settings?.equity_value);
   const cashFlow = cashFlowEntries || [];
   const costs = Array.isArray(costEntries) ? costEntries : [];
   const activeCosts = costs.filter((item) => isTruthyActive(item.status));
@@ -465,6 +474,37 @@ async function getDreYear(adminSupabase, year) {
   const annualEbitda = sumMonthMap(monthly.ebitda);
   const annualLucroLiquido = sumMonthMap(monthly.lucro_liquido);
 
+  const annualLoanPayments = activeCosts
+    .filter((item) => {
+      const loanText =
+        `${item?.cost_type || ""} ${item?.description || ""} ${item?.supplier || ""}`.toLowerCase();
+      return loanText.includes("empréstimo") || loanText.includes("emprestimo");
+    })
+    .reduce((sum, item) => sum + (toNumber(item?.monthly_amount) * 12), 0);
+
+  const cashFlowRows =
+    typeof activeCashFlowEntries !== "undefined"
+      ? activeCashFlowEntries
+      : typeof cashFlowEntries !== "undefined"
+      ? cashFlowEntries
+      : [];
+
+  const annualReceipts = (Array.isArray(cashFlowRows) ? cashFlowRows : [])
+    .filter((entry) => {
+      const type = String(entry?.type || "").toLowerCase();
+      return type === "receita" || type === "entrada" || type === "income";
+    })
+    .reduce((sum, entry) => sum + toNumber(entry?.amount), 0);
+
+  const annualFixedCostsFromCosts = activeCosts
+    .filter((item) => String(item?.category || "").toLowerCase() === "fixo")
+    .reduce((sum, item) => sum + (toNumber(item?.monthly_amount) * 12), 0);
+
+  const cashClosingBalance = annualReceipts - annualFixedCostsFromCosts;
+  const nopatAnnual = annualEbitda * (1 - taxPercent / 100);
+  const capitalInvested = (equityValue + cashClosingBalance) - annualLoanPayments;
+  const roicPercent = capitalInvested !== 0 ? (nopatAnnual / capitalInvested) * 100 : 0;
+
   const cards = {
     receita_bruta_anual: annualReceitaBruta,
     receita_bruta_media_mensal: round2(annualReceitaBruta / 12),
@@ -478,6 +518,10 @@ async function getDreYear(adminSupabase, year) {
     margem_liquida_percent: totalPercent(annualLucroLiquido, annualReceitaBruta),
     roi_percent: investedCapital ? round2((annualLucroLiquido / investedCapital) * 100) : 0,
     ebit_anual: annualEbit,
+    roic_percent: round2(roicPercent),
+    roic_nopat_anual: round2(nopatAnnual),
+    roic_capital_investido: round2(capitalInvested),
+    roic_hint: getRoicHint(roicPercent),
     depreciacao_amortizacao_anual: annualDepreciacao,
   };
 
@@ -511,6 +555,7 @@ async function getDreYear(adminSupabase, year) {
     settings: {
       tax_percent: round2(taxPercent),
       invested_capital: round2(investedCapital),
+      equity_value: round2(equityValue),
     },
     cards,
     months,
@@ -527,6 +572,7 @@ async function upsertDreSettings(adminSupabase, payload) {
   const year = Number(payload?.year);
   const tax_percent = round2(payload?.tax_percent);
   const invested_capital = round2(payload?.invested_capital);
+  const equity_value = round2(payload?.equity_value);
 
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     throw new Error("Ano inválido.");
@@ -539,6 +585,7 @@ async function upsertDreSettings(adminSupabase, payload) {
         year,
         tax_percent,
         invested_capital,
+        equity_value,
         active: true,
       },
       { onConflict: "year" }
