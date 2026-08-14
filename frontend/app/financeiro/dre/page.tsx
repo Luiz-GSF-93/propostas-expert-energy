@@ -344,7 +344,7 @@ export default function DrePage() {
   const [taxPercentInput, setTaxPercentInput] = useState("0");
   const [capitalInput, setCapitalInput] = useState("0");
   const [equityInput, setEquityInput] = useState("0");
-  const [showManualEntries, setShowManualEntries] = useState(true);
+  const [showManualEntries, setShowManualEntries] = useState(false);
 
   async function load() {
     try {
