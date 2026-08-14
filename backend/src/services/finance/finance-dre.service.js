@@ -139,16 +139,48 @@ function pickKeywordBucket(entry) {
     return "despesas_marketing";
   }
 
+  // Administrativas: regra prioritária solicitada
   if (
-    text.includes("energia") ||
+    text.includes("aluguel") ||
+    text.includes("contabilidade") ||
+    text.includes("limpeza") ||
+    text.includes("conservacao") ||
+    text.includes("conservação") ||
+    text.includes("material de escritorio") ||
+    text.includes("material de escritório") ||
+    text.includes("internet") ||
+    text.includes("sindicato") ||
+    text.includes("classe profissional") ||
+    text.includes("cesta bancaria") ||
+    text.includes("cesta bancária") ||
+    text.includes("convenio medico") ||
+    text.includes("convênio médico") ||
+    text.includes("software") ||
+    text.includes("sistema") ||
+    text.includes("assessoria juridica") ||
+    text.includes("assessoria jurídica") ||
+    text.includes("juridica") ||
+    text.includes("jurídica") ||
+    text.includes("servico m2m") ||
+    text.includes("serviço m2m") ||
+    text.includes("m2m") ||
+    text.includes("telefone") ||
+    text.includes("outros fixos") ||
+    text.includes("condominio") ||
+    text.includes("condomínio") ||
+    text.includes("predial") ||
+    text.includes("seguro") ||
+    text.includes("energia eletrica") ||
+    text.includes("energia elétrica")
+  ) {
+    return "despesas_administrativas";
+  }
+
+  if (
     text.includes("agua") ||
     text.includes("água") ||
-    text.includes("internet") ||
-    text.includes("seguro") ||
     text.includes("manutencao") ||
-    text.includes("manutenção") ||
-    text.includes("software") ||
-    text.includes("sistema")
+    text.includes("manutenção")
   ) {
     return "despesas_infraestrutura";
   }
@@ -179,18 +211,6 @@ function pickKeywordBucket(entry) {
     text.includes("amortização")
   ) {
     return "depreciacao_amortizacao";
-  }
-
-  if (
-    text.includes("aluguel") ||
-    text.includes("contabilidade") ||
-    text.includes("material") ||
-    text.includes("limpeza") ||
-    text.includes("escritorio") ||
-    text.includes("escritório") ||
-    text.includes("outros")
-  ) {
-    return "despesas_administrativas";
   }
 
   return "despesas_administrativas";
