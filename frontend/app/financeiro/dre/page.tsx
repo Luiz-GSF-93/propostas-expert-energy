@@ -283,6 +283,17 @@ export default function DrePage() {
   const router = useRouter();
 
   const [year, setYear] = useState(getDefaultYear());
+  const printGeneratedAt = useMemo(
+    () =>
+      new Date().toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    []
+  );
   const [payload, setPayload] = useState<DrePayload>(DEFAULT_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -475,6 +486,20 @@ export default function DrePage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 p-6">
+
+        <div className="dre-print-header print-only">
+          <div className="dre-print-header__left">
+            <div className="dre-print-header__eyebrow">Relatório Gerencial</div>
+            <h1 className="dre-print-header__title">Demonstrativo de Resultado do Exercício (DRE)</h1>
+            <div className="dre-print-header__company">Expert Energy Performance</div>
+            <div className="dre-print-header__subline">CNPJ 16.640.933/0001-83 • www.expertenergy.com.br</div>
+          </div>
+          <div className="dre-print-header__right">
+            <div><strong>Exercício:</strong> {year}</div>
+            <div><strong>Emitido em:</strong> {printGeneratedAt}</div>
+          </div>
+        </div>
+
         <div className="mx-auto max-w-[1600px] rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
           <h1 className="text-xl font-semibold text-slate-900">Carregando DRE</h1>
@@ -487,6 +512,143 @@ export default function DrePage() {
   return (
     <main className="min-h-screen bg-slate-50">
       <style jsx global>{`
+
+      .print-only {
+        display: none;
+      }
+
+      @media print {
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+
+        html,
+        body {
+          background: #ffffff !important;
+          color: #0f172a !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .print-only {
+          display: block !important;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        .dre-print-header {
+          display: flex !important;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+          margin-bottom: 14px;
+          padding: 0 0 10px 0;
+          border-bottom: 2px solid #0f172a;
+        }
+
+        .dre-print-header__eyebrow {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #475569;
+          margin-bottom: 4px;
+        }
+
+        .dre-print-header__title {
+          margin: 0;
+          font-size: 20px;
+          line-height: 1.15;
+          font-weight: 800;
+          color: #0f172a;
+        }
+
+        .dre-print-header__company {
+          margin-top: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .dre-print-header__subline {
+          margin-top: 2px;
+          font-size: 10px;
+          color: #475569;
+        }
+
+        .dre-print-header__right {
+          min-width: 220px;
+          text-align: right;
+          font-size: 10px;
+          line-height: 1.6;
+          color: #0f172a;
+        }
+
+        main {
+          padding: 0 !important;
+          margin: 0 !important;
+          max-width: 100% !important;
+        }
+
+        section,
+        .rounded-2xl,
+        .rounded-3xl,
+        .shadow-sm,
+        .shadow {
+          box-shadow: none !important;
+        }
+
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
+          font-size: 9px !important;
+        }
+
+        thead {
+          display: table-header-group;
+        }
+
+        th,
+        td {
+          border: 1px solid #cbd5e1 !important;
+          padding: 4px 6px !important;
+          vertical-align: middle !important;
+          word-break: break-word !important;
+        }
+
+        th {
+          background: #e2e8f0 !important;
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+
+        tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        h1, h2, h3 {
+          color: #0f172a !important;
+        }
+
+        .text-slate-500,
+        .text-slate-600,
+        .text-slate-700 {
+          color: #334155 !important;
+        }
+
+        .bg-white,
+        .bg-slate-50,
+        .bg-slate-100 {
+          background: #ffffff !important;
+        }
+      }
+
+
         @page {
           size: A4 landscape;
           margin: 8mm;
