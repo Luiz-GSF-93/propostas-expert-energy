@@ -444,18 +444,7 @@ async function getDreYear(adminSupabase, year) {
   for (const costEntry of activeCosts) {
     const bucket = pickKeywordBucket(costEntry);
 
-    if (bucket === "despesas_administrativas") {
-      console.log("[DRE][ADMIN][CLASSIFICADO]", {
-        year: targetYear,
-        category: costEntry.category,
-        cost_type: costEntry.cost_type,
-        description: costEntry.description,
-        supplier: costEntry.supplier,
-        monthly_amount: costEntry.monthly_amount,
-        percentage_rate: costEntry.percentage_rate,
-        status: costEntry.status,
-      });
-    }
+
 
     for (const month of MONTHS) {
       const receitaBrutaMes = monthly.receita_bruta[month];
