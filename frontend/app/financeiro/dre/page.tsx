@@ -524,10 +524,11 @@ export default function DrePage() {
       <style jsx global>{`
         .dre-card-value,
         [data-dre-card-value="true"] {
-          font-size: clamp(1.2rem, 1.65vw, 1.75rem) !important;
-          line-height: 1.15 !important;
-          letter-spacing: -0.02em;
-          word-break: break-word;
+          font-size: clamp(0.98rem, 1.18vw, 1.32rem) !important;
+          line-height: 1.08 !important;
+          letter-spacing: -0.03em;
+          font-variant-numeric: tabular-nums;
+          word-break: normal;
           overflow-wrap: anywhere;
         }
 
