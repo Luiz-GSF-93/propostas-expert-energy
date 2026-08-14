@@ -524,12 +524,12 @@ export default function DrePage() {
       <style jsx global>{`
         .dre-card-value,
         [data-dre-card-value="true"] {
-          font-size: clamp(0.82rem, 0.92vw, 1.02rem) !important;
-          line-height: 1.02 !important;
-          letter-spacing: -0.04em;
+          font-size: clamp(0.70rem, 0.78vw, 0.88rem) !important;
+          line-height: 0.98 !important;
+          letter-spacing: -0.05em;
           font-weight: 800 !important;
           font-variant-numeric: tabular-nums;
-          word-break: normal;
+          word-break: keep-all;
           overflow-wrap: anywhere;
           white-space: normal;
         }
@@ -549,39 +549,46 @@ export default function DrePage() {
         }
 
         [data-dre-annual-table="true"] tbody tr:nth-child(odd) > td {
-          background: #ffffff;
+          background: #ffffff !important;
         }
 
         [data-dre-annual-table="true"] tbody tr:nth-child(even) > td {
-          background: #f8fafc;
+          background: #eaf1f8 !important;
         }
 
         [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"] > td,
         [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"] > td,
         [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] > td {
-          background: #ecfdf5 !important;
-          font-weight: 700;
+          background: #d9fbe8 !important;
+          font-weight: 800;
+          border-top: 2px solid #86efac;
+          border-bottom: 2px solid #86efac;
         }
 
         [data-dre-annual-table="true"] tbody tr[data-line-key="impostos"] > td,
         [data-dre-annual-table="true"] tbody tr[data-line-key="despesas_financeiras"] > td,
         [data-dre-annual-table="true"] tbody tr[data-line-key="irpj_csll"] > td {
-          background: #fff1f2 !important;
+          background: #ffe4e6 !important;
+          border-top: 2px solid #fda4af;
+          border-bottom: 2px solid #fda4af;
         }
 
         [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"] > td,
         [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] > td {
-          background: #fef3c7 !important;
-          font-weight: 700;
+          background: #fde68a !important;
+          font-weight: 800;
+          border-top: 2px solid #f59e0b;
+          border-bottom: 2px solid #f59e0b;
         }
 
         [data-dre-annual-table="true"] tbody td:first-child {
-          font-weight: 600;
+          font-weight: 700;
           color: #0f172a;
+          background-clip: padding-box;
         }
 
         [data-dre-annual-table="true"] tbody td:last-child {
-          background: #e2e8f0 !important;
+          background: #cbd5e1 !important;
           font-weight: 800;
           color: #0f172a;
         }
@@ -589,8 +596,8 @@ export default function DrePage() {
         [data-dre-annual-table="true"] td,
         [data-dre-annual-table="true"] th {
           padding: 8px 10px;
-          border-right: 1px solid #e2e8f0;
-          border-bottom: 1px solid #e2e8f0;
+          border-right: 1px solid #cbd5e1;
+          border-bottom: 1px solid #cbd5e1;
           vertical-align: middle;
         }
 
