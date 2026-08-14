@@ -295,7 +295,7 @@ function IndicatorCard({
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {title}
       </div>
-      <div className="mt-2 break-words text-[clamp(1.05rem,1.35vw,1.35rem)] font-extrabold leading-tight tracking-[-0.04em] text-[clamp(0.76rem,0.88vw,0.96rem)] text-slate-900 break-words">{value}</div>
+      <div className="dre-card-value mt-2 break-words text-[clamp(1.05rem,1.35vw,1.35rem)] font-extrabold leading-tight tracking-[-0.04em] text-[clamp(0.76rem,0.88vw,0.96rem)] text-slate-900 break-words">{value}</div>
       <div className="mt-2 text-xs leading-5 text-slate-600">{hint}</div>
     </div>
   );
@@ -632,6 +632,87 @@ export default function DrePage() {
   return (
     <main className="min-h-screen bg-slate-50">
       <style jsx global>{`
+
+        .dre-card-value,
+        [data-dre-card-value="true"] {
+          font-size: clamp(0.62rem, 0.72vw, 0.82rem) !important;
+          line-height: 0.96 !important;
+          letter-spacing: -0.05em;
+          font-weight: 800 !important;
+          font-variant-numeric: tabular-nums;
+          word-break: keep-all;
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+
+        [data-dre-annual-table="true"] {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          table-layout: fixed;
+        }
+
+        [data-dre-annual-table="true"] thead th {
+          background: #dbe4ee !important;
+          color: #0f172a !important;
+          font-weight: 700 !important;
+          border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr:nth-child(odd) > td {
+          background: #ffffff !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr:nth-child(even) > td {
+          background: #dfeaf5 !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] > td {
+          background: #d7f7e6 !important;
+          font-weight: 800 !important;
+          border-top: 2px solid #86efac !important;
+          border-bottom: 2px solid #86efac !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="impostos"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="despesas_financeiras"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="irpj_csll"] > td {
+          background: #ffe0e6 !important;
+          border-top: 2px solid #fda4af !important;
+          border-bottom: 2px solid #fda4af !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] > td {
+          background: #fde68a !important;
+          font-weight: 800 !important;
+          border-top: 2px solid #f59e0b !important;
+          border-bottom: 2px solid #f59e0b !important;
+        }
+
+        [data-dre-annual-table="true"] tbody td:first-child {
+          font-weight: 700 !important;
+          color: #0f172a !important;
+        }
+
+        [data-dre-annual-table="true"] tbody td:last-child,
+        [data-dre-annual-table="true"] tbody th:last-child {
+          background: #cbd5e1 !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+        }
+
+        [data-dre-annual-table="true"] td,
+        [data-dre-annual-table="true"] th {
+          padding: 8px 10px !important;
+          border-right: 1px solid #cbd5e1 !important;
+          border-bottom: 1px solid #cbd5e1 !important;
+          vertical-align: middle !important;
+        }
+
+
 
       .print-only {
         display: none;
