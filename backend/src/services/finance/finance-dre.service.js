@@ -443,6 +443,17 @@ async function getDreYear(adminSupabase, year) {
   // Custos por bucket
   for (const costEntry of activeCosts) {
     const bucket = pickKeywordBucket(costEntry);
+    const costText =
+      `${costEntry?.category || ""} ${costEntry?.cost_type || ""} ${costEntry?.description || ""} ${costEntry?.supplier || ""}`.toLowerCase();
+
+    const isSalesTaxCost =
+      costText.includes("imposto sobre vendas") ||
+      costText.includes("simples nacional") ||
+      costText.includes("das");
+
+    if (isSalesTaxCost && taxPercent > 0) {
+      continue;
+    }
 
 
 
