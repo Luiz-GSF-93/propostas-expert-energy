@@ -524,12 +524,14 @@ export default function DrePage() {
       <style jsx global>{`
         .dre-card-value,
         [data-dre-card-value="true"] {
-          font-size: clamp(0.98rem, 1.18vw, 1.32rem) !important;
-          line-height: 1.08 !important;
-          letter-spacing: -0.03em;
+          font-size: clamp(0.82rem, 0.92vw, 1.02rem) !important;
+          line-height: 1.02 !important;
+          letter-spacing: -0.04em;
+          font-weight: 800 !important;
           font-variant-numeric: tabular-nums;
           word-break: normal;
           overflow-wrap: anywhere;
+          white-space: normal;
         }
 
         [data-dre-annual-table="true"] {
@@ -546,31 +548,42 @@ export default function DrePage() {
           border-bottom: 1px solid #cbd5e1;
         }
 
-        [data-dre-annual-table="true"] tbody tr:nth-child(odd) {
+        [data-dre-annual-table="true"] tbody tr:nth-child(odd) > td {
           background: #ffffff;
         }
 
-        [data-dre-annual-table="true"] tbody tr:nth-child(even) {
+        [data-dre-annual-table="true"] tbody tr:nth-child(even) > td {
           background: #f8fafc;
         }
 
-        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"],
-        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"],
-        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] {
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] > td {
           background: #ecfdf5 !important;
           font-weight: 700;
         }
 
-        [data-dre-annual-table="true"] tbody tr[data-line-key="impostos"],
-        [data-dre-annual-table="true"] tbody tr[data-line-key="despesas_financeiras"],
-        [data-dre-annual-table="true"] tbody tr[data-line-key="irpj_csll"] {
+        [data-dre-annual-table="true"] tbody tr[data-line-key="impostos"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="despesas_financeiras"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="irpj_csll"] > td {
           background: #fff1f2 !important;
         }
 
-        [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"],
-        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] {
+        [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] > td {
           background: #fef3c7 !important;
           font-weight: 700;
+        }
+
+        [data-dre-annual-table="true"] tbody td:first-child {
+          font-weight: 600;
+          color: #0f172a;
+        }
+
+        [data-dre-annual-table="true"] tbody td:last-child {
+          background: #e2e8f0 !important;
+          font-weight: 800;
+          color: #0f172a;
         }
 
         [data-dre-annual-table="true"] td,
@@ -823,7 +836,7 @@ export default function DrePage() {
         <section className="no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h1 className="dre-card-value text-[clamp(1.05rem,1.35vw,1.35rem)] font-semibold text-slate-900">DRE</h1>
+              <h1 className="text-[clamp(1.05rem,1.35vw,1.35rem)] font-semibold text-slate-900">DRE</h1>
               <p className="text-sm text-slate-500">
                 Demonstrativo de Resultado do Exercício com integração de Fluxo de Caixa e Custos.
               </p>
@@ -945,7 +958,7 @@ export default function DrePage() {
           <IndicatorCard
             title="ROIC (%)"
             value={formatPercent(payload.cards.roic_percent)}
-            hint={`NOPAT / Capital Investido: ${formatMoney(payload.cards.depreciacao_amortizacao_anual)}`}
+            hint={payload.cards.roic_hint || getRoicHint(payload.cards.roic_percent)}
             accent="sky"
           />
         </section>
@@ -1195,7 +1208,7 @@ export default function DrePage() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.key} className="border-b border-slate-100 even:bg-slate-50/50">
+                  <tr key={row.key} data-line-key={row.key} className="border-b border-slate-100">
                     <td className="px-3 py-3 font-medium text-slate-800">{row.label}</td>
                     {row.months.map((value, index) => (
                       <td
