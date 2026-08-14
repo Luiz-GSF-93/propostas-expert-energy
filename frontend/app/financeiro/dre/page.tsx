@@ -213,6 +213,18 @@ function getRoicHint(roic: number) {
   return "ROIC em faixa intermediária";
 }
 
+function getLucroLiquidoHint(valor: number) {
+  return valor > 0
+    ? "✅ Empresa lucrativa"
+    : "❌ Empresa deficitária - revisar estrutura";
+}
+
+function getMargemLiquidaHint(valor: number) {
+  if (valor >= 10) return "✅ Margem saudável (>10%)";
+  if (valor >= 5) return "⚠️ Margem regular (5-10%)";
+  return "🟠 Margem baixa (<5%)";
+}
+
 function formatInputAmount(value: number) {
   return String(Number(value || 0)).replace(".", ",");
 }
@@ -332,6 +344,7 @@ export default function DrePage() {
   const [taxPercentInput, setTaxPercentInput] = useState("0");
   const [capitalInput, setCapitalInput] = useState("0");
   const [equityInput, setEquityInput] = useState("0");
+  const [showManualEntries, setShowManualEntries] = useState(true);
 
   async function load() {
     try {
@@ -1068,13 +1081,13 @@ export default function DrePage() {
           <IndicatorCard
             title="Lucro Líquido"
             value={formatMoney(payload.cards.lucro_liquido_anual)}
-            hint={`Média mensal: ${formatMoney(payload.cards.lucro_liquido_media_mensal)}`}
+            hint={getLucroLiquidoHint(payload.cards.lucro_liquido_anual)}
             accent="rose"
           />
           <IndicatorCard
             title="Margem Líquida (%)"
             value={formatPercent(payload.cards.margem_liquida_percent)}
-            hint="Lucro líquido / receita bruta"
+            hint={getMargemLiquidaHint(payload.cards.margem_liquida_percent)}
             accent="slate"
           />
           <IndicatorCard
@@ -1368,10 +1381,19 @@ export default function DrePage() {
               </p>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setShowManualEntries((prev) => !prev)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {showManualEntries ? "Recuar" : "Expandir"}
+            </button>
+
             <div className="text-xs text-slate-500">
               Origem custos: {payload.sources?.cost_table || "—"} · Fluxo: {payload.sources?.cash_flow_table || "—"}
             </div>
           </div>
+          <div className={showManualEntries ? "space-y-4" : "hidden"}>
 
           <div className="overflow-x-auto">
             <table className="min-w-[1000px] border-collapse text-sm">
@@ -1425,6 +1447,7 @@ export default function DrePage() {
                 )}
               </tbody>
             </table>
+          </div>
           </div>
         </section>
       </div>
