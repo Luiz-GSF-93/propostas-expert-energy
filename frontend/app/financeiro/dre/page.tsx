@@ -938,7 +938,7 @@ export default function DrePage() {
           <IndicatorCard
             title="ROI (%)"
             value={formatPercent(payload.cards.roi_percent)}
-            hint={payload.cards.roic_hint || getRoicHint(payload.cards.roic_percent)}
+            hint={`Capital investido: ${formatMoney(payload.settings.invested_capital)}`}
             accent="emerald"
           />
           <IndicatorCard
