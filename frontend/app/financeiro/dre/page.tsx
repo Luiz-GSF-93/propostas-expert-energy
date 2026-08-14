@@ -23,6 +23,7 @@ type DreCardMetrics = {
   margem_liquida_percent: number;
   roi_percent: number;
   roic_percent: number;
+  roic_hint?: string;
   depreciacao_amortizacao_anual: number;
 };
 
@@ -126,6 +127,7 @@ const DEFAULT_PAYLOAD: DrePayload = {
     margem_liquida_percent: 0,
     roi_percent: 0,
     roic_percent: 0,
+    roic_hint: "",
     depreciacao_amortizacao_anual: 0,
   },
   months: [],
@@ -201,6 +203,14 @@ function formatPercent(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}%`;
+}
+
+function getRoicHint(roic: number) {
+  if (roic > 20) return "ROIC acima de 20%: excelente";
+  if (roic > 15) return "ROIC acima de 15%: muito bom";
+  if (roic >= 10) return "ROIC entre 10% e 15%: bom";
+  if (roic < 8) return "ROIC abaixo de 8%: geralmente baixo";
+  return "ROIC em faixa intermediária";
 }
 
 function formatInputAmount(value: number) {
@@ -928,12 +938,12 @@ export default function DrePage() {
           <IndicatorCard
             title="ROI (%)"
             value={formatPercent(payload.cards.roi_percent)}
-            hint={`Capital investido: ${formatMoney(payload.settings.invested_capital)}`}
+            hint={payload.cards.roic_hint || getRoicHint(payload.cards.roic_percent)}
             accent="emerald"
           />
           <IndicatorCard
             title="ROIC (%)"
-            value={formatMoney(payload.cards.roic_percent)}
+            value={formatPercent(payload.cards.roic_percent)}
             hint={`NOPAT / Capital Investido: ${formatMoney(payload.cards.depreciacao_amortizacao_anual)}`}
             accent="sky"
           />
