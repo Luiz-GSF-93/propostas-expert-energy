@@ -697,7 +697,31 @@ export default function DrePage() {
           color: #0f172a !important;
         }
 
+        
+        [data-dre-annual-table="true"] tbody td {
+          font-size: 11px !important;
+          line-height: 1.15 !important;
+        }
+
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_bruta"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="receita_liquida"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_bruto"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="ebitda"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lucro_liquido"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="ebit"] > td,
+        [data-dre-annual-table="true"] tbody tr[data-line-key="lajir"] > td {
+          font-size: 10px !important;
+          line-height: 1.1 !important;
+          font-weight: 700 !important;
+        }
+
         [data-dre-annual-table="true"] tbody td:last-child,
+        [data-dre-annual-table="true"] tbody td:nth-last-child(2) {
+          font-size: 10px !important;
+          line-height: 1.1 !important;
+        }
+
+[data-dre-annual-table="true"] tbody td:last-child,
         [data-dre-annual-table="true"] tbody th:last-child {
           background: #cbd5e1 !important;
           font-weight: 800 !important;
@@ -1313,7 +1337,7 @@ export default function DrePage() {
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={row.key} data-line-key={row.key} className={`${getDreAnnualRowClass(row.key, index)} border-b border-slate-200`}>
-                    <td className="px-3 py-3 font-semibold text-slate-900">{row.label}</td>
+                    <td className="px-3 py-3 text-[11px] font-semibold leading-tight text-slate-900">{row.label}</td>
                     {row.months.map((value, index) => (
                       <td
                         key={`${row.key}-${index}`}
@@ -1322,10 +1346,10 @@ export default function DrePage() {
                         {row.key === "margem_liquida_percent" ? formatPercent(value) : formatMoney(value)}
                       </td>
                     ))}
-                    <td className={`px-3 py-3 text-center font-extrabold bg-slate-200 text-slate-900 ${metricTone(row.total)}`}>
+                    <td className={`px-3 py-3 text-center text-[11px] font-bold leading-tight bg-slate-200 text-slate-900 ${metricTone(row.total)}`}>
                       {row.key === "margem_liquida_percent" ? formatPercent(row.total) : formatMoney(row.total)}
                     </td>
-                    <td className={`px-3 py-3 text-center font-extrabold bg-slate-200 text-slate-900 ${metricTone(row.percent)}`}>
+                    <td className={`px-3 py-3 text-center text-[11px] font-bold leading-tight bg-slate-200 text-slate-900 ${metricTone(row.percent)}`}>
                       {formatPercent(row.percent)}
                     </td>
                   </tr>
