@@ -446,6 +446,8 @@ async function getDreYear(adminSupabase, year) {
 
 
 
+
+
     for (const month of MONTHS) {
       const receitaBrutaMes = monthly.receita_bruta[month];
       const value = getCostEntryMonthlyAmount(costEntry, receitaBrutaMes);
