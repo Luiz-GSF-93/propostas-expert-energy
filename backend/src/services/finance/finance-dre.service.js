@@ -139,39 +139,45 @@ function pickKeywordBucket(entry) {
     return "despesas_marketing";
   }
 
-  // Administrativas: regra prioritária solicitada
+  // Administrativas: SOMENTE os tipos informados pelo usuário
   if (
-    text.includes("aluguel") ||
-    text.includes("contabilidade") ||
-    text.includes("limpeza") ||
-    text.includes("conservacao") ||
-    text.includes("conservação") ||
-    text.includes("material de escritorio") ||
-    text.includes("material de escritório") ||
-    text.includes("internet") ||
-    text.includes("sindicato") ||
-    text.includes("classe profissional") ||
-    text.includes("cesta bancaria") ||
-    text.includes("cesta bancária") ||
-    text.includes("convenio medico") ||
-    text.includes("convênio médico") ||
-    text.includes("software") ||
-    text.includes("sistema") ||
-    text.includes("assessoria juridica") ||
-    text.includes("assessoria jurídica") ||
-    text.includes("juridica") ||
-    text.includes("jurídica") ||
-    text.includes("servico m2m") ||
-    text.includes("serviço m2m") ||
-    text.includes("m2m") ||
-    text.includes("telefone") ||
-    text.includes("outros fixos") ||
-    text.includes("condominio") ||
-    text.includes("condomínio") ||
-    text.includes("predial") ||
-    text.includes("seguro") ||
-    text.includes("energia eletrica") ||
-    text.includes("energia elétrica")
+    (
+      category.includes("fixo") ||
+      text.includes("fixo")
+    ) &&
+    (
+      text.includes("aluguel") ||
+      text.includes("contabilidade") ||
+      text.includes("limpeza") ||
+      text.includes("conservacao") ||
+      text.includes("conservação") ||
+      text.includes("material de escritorio") ||
+      text.includes("material de escritório") ||
+      text.includes("internet") ||
+      text.includes("sindicato") ||
+      text.includes("classe profissional") ||
+      text.includes("cesta bancaria") ||
+      text.includes("cesta bancária") ||
+      text.includes("convenio medico") ||
+      text.includes("convênio médico") ||
+      text.includes("software") ||
+      text.includes("sistema") ||
+      text.includes("assessoria juridica") ||
+      text.includes("assessoria jurídica") ||
+      text.includes("juridica") ||
+      text.includes("jurídica") ||
+      text.includes("servico m2m") ||
+      text.includes("serviço m2m") ||
+      text.includes("m2m") ||
+      text.includes("telefone") ||
+      text.includes("outros fixos") ||
+      text.includes("condominio") ||
+      text.includes("condomínio") ||
+      text.includes("predial") ||
+      text.includes("seguro") ||
+      text.includes("energia eletrica") ||
+      text.includes("energia elétrica")
+    )
   ) {
     return "despesas_administrativas";
   }
@@ -190,7 +196,9 @@ function pickKeywordBucket(entry) {
     text.includes("emprestimo") ||
     text.includes("empréstimo") ||
     text.includes("banco") ||
-    text.includes("financiamento")
+    text.includes("financiamento") ||
+    text.includes("cesta bancaria") ||
+    text.includes("cesta bancária")
   ) {
     return "despesas_financeiras";
   }
@@ -213,7 +221,16 @@ function pickKeywordBucket(entry) {
     return "depreciacao_amortizacao";
   }
 
-  return "despesas_administrativas";
+  // Fallback mais seguro: evita inflar administrativas
+  if (category.includes("variavel")) {
+    return "despesas_vendas";
+  }
+
+  if (category.includes("fixo")) {
+    return "despesas_infraestrutura";
+  }
+
+  return "despesas_infraestrutura";
 }
 
 function getCostEntryMonthlyAmount(entry, receitaBrutaMes) {
@@ -426,6 +443,19 @@ async function getDreYear(adminSupabase, year) {
   // Custos por bucket
   for (const costEntry of activeCosts) {
     const bucket = pickKeywordBucket(costEntry);
+
+    if (bucket === "despesas_administrativas") {
+      console.log("[DRE][ADMIN][CLASSIFICADO]", {
+        year: targetYear,
+        category: costEntry.category,
+        cost_type: costEntry.cost_type,
+        description: costEntry.description,
+        supplier: costEntry.supplier,
+        monthly_amount: costEntry.monthly_amount,
+        percentage_rate: costEntry.percentage_rate,
+        status: costEntry.status,
+      });
+    }
 
     for (const month of MONTHS) {
       const receitaBrutaMes = monthly.receita_bruta[month];
