@@ -1823,19 +1823,19 @@ export default function PlanejamentoPage() {
               <div className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meta recorrente</div>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Realizado recorrente</div>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Performance recorrente</div>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Comissão projetada</div>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commission?.commission_amount || 0)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commission?.commission_amount || 0)}</div>
                   <div className="mt-2 text-xs text-slate-500">{commission?.eligible ? "Elegível para comissão" : "Ainda não elegível"}</div>
                 </div>
               </div>
