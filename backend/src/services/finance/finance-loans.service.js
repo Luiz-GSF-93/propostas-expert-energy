@@ -379,14 +379,37 @@ function summarizeContract(contract, schedule) {
   const overdue = overdueItems.length;
   const open = openItems.length;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const startOfDay = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const parseDateOnly = (value) => {
+    if (!value) return null;
+    const raw = String(value).slice(0, 10);
+    const [year, month, day] = raw.split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+  };
+
+  const today = startOfDay(new Date());
 
   const futureOpenItems = openItems.filter((item) => {
-    if (!item.due_date) return false;
-    const due = new Date(`${item.due_date}T00:00:00`);
-    return !Number.isNaN(due.getTime()) && due >= today;
+    const due = parseDateOnly(item.due_date);
+    return due && due >= today;
   });
+
+  const dueWithin = (days) => {
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + days);
+    limit.setHours(23, 59, 59, 999);
+
+    return futureOpenItems.filter((item) => {
+      const due = parseDateOnly(item.due_date);
+      return due && due >= today && due <= limit;
+    }).length;
+  };
 
   const firstOverdue = overdueItems[0] || null;
   const nextFuture = futureOpenItems[0] || null;
@@ -427,6 +450,9 @@ function summarizeContract(contract, schedule) {
     installments_paid_count: paid,
     installments_open_count: open,
     installments_overdue_count: overdue,
+    installments_due_7_count: dueWithin(7),
+    installments_due_15_count: dueWithin(15),
+    installments_due_30_count: dueWithin(30),
     total_overdue_amount: totalOverdueAmount,
     first_overdue_date: firstOverdue?.due_date || null,
     next_future_due_date: nextFuture?.due_date || null,
