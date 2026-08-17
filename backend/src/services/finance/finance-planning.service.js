@@ -393,6 +393,226 @@ async function deletePlanningMonthlyGoal(adminSupabase, year, month) {
   return getPlanningMonthlyGoals(adminSupabase, referenceYear);
 }
 
+
+const PLANNING_ACTION_CATEGORIES = [
+  "Marketing",
+  "Vendas",
+  "Compras",
+  "Tecnologia",
+  "Produto",
+  "Operações",
+  "Infraestrutura",
+  "Outros",
+];
+
+const PLANNING_ACTION_STATUSES = [
+  "Planejado",
+  "Não Iniciado",
+  "Em Andamento",
+  "Aguardando",
+  "Inviável",
+  "Concluído",
+];
+
+const PLANNING_ACTION_IMPACT_TYPES = ["financeiro", "reducao_custos"];
+
+function planningSanitizeShortText(value, maxLength = 200) {
+  if (value == null) return "";
+  return String(value).trim().slice(0, maxLength);
+}
+
+function planningSanitizeLongText(value, maxLength = 4000) {
+  if (value == null) return "";
+  return String(value).trim().slice(0, maxLength);
+}
+
+function planningSanitizeDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? raw : null;
+}
+
+function planningValidateEnum(value, allowedValues, fallbackValue) {
+  const normalized = String(value ?? "").trim();
+  return allowedValues.includes(normalized) ? normalized : fallbackValue;
+}
+
+function planningComputePaybackMonths(investmentAmount, expectedImpactAmount) {
+  const investment = planningSanitizeMoney(investmentAmount);
+  const impact = planningSanitizeMoney(expectedImpactAmount);
+
+  if (investment <= 0 || impact <= 0) return null;
+  return Number((investment / impact).toFixed(2));
+}
+
+function planningNormalizeActionPlanRow(row) {
+  const investmentAmount = planningSanitizeMoney(row?.investment_amount);
+  const expectedImpactAmount = planningSanitizeMoney(row?.expected_impact_amount);
+
+  return {
+    id: row?.id || null,
+    reference_year: planningSanitizeYear(row?.reference_year),
+    initiative: planningSanitizeShortText(row?.initiative, 200),
+    category: planningValidateEnum(row?.category, PLANNING_ACTION_CATEGORIES, "Outros"),
+    owner_name: planningSanitizeShortText(row?.owner_name, 160),
+    start_date: planningSanitizeDate(row?.start_date),
+    end_date: planningSanitizeDate(row?.end_date),
+    investment_amount: investmentAmount,
+    expected_impact_amount: expectedImpactAmount,
+    impact_type: planningValidateEnum(row?.impact_type, PLANNING_ACTION_IMPACT_TYPES, "financeiro"),
+    payback_months: planningComputePaybackMonths(investmentAmount, expectedImpactAmount),
+    status: planningValidateEnum(row?.status, PLANNING_ACTION_STATUSES, "Planejado"),
+    notes: planningSanitizeLongText(row?.notes, 4000),
+    created_at: row?.created_at || null,
+    updated_at: row?.updated_at || null,
+    created_by: row?.created_by || null,
+    updated_by: row?.updated_by || null,
+  };
+}
+
+async function getPlanningActionPlans(adminSupabase, year = getCurrentYear()) {
+  const normalizedYear = planningSanitizeYear(year);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_plano_acao")
+    .select("id, reference_year, initiative, category, owner_name, start_date, end_date, investment_amount, expected_impact_amount, impact_type, status, notes, created_at, updated_at, created_by, updated_by")
+    .eq("reference_year", normalizedYear)
+    .order("start_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Erro ao carregar plano de ação: ${error.message}`);
+  }
+
+  const items = (data || []).map(planningNormalizeActionPlanRow);
+
+  const summary = items.reduce(
+    (acc, item) => {
+      acc.total_items += 1;
+      acc.total_investment_amount += item.investment_amount;
+      acc.total_expected_impact_amount += item.expected_impact_amount;
+      acc.status_breakdown[item.status] = (acc.status_breakdown[item.status] || 0) + 1;
+
+      if (typeof item.payback_months === "number" && Number.isFinite(item.payback_months)) {
+        acc.payback_sum += item.payback_months;
+        acc.payback_count += 1;
+      }
+
+      return acc;
+    },
+    {
+      total_items: 0,
+      total_investment_amount: 0,
+      total_expected_impact_amount: 0,
+      status_breakdown: {},
+      payback_sum: 0,
+      payback_count: 0,
+    }
+  );
+
+  return {
+    year: normalizedYear,
+    items,
+    summary: {
+      total_items: summary.total_items,
+      total_investment_amount: summary.total_investment_amount,
+      total_expected_impact_amount: summary.total_expected_impact_amount,
+      average_payback_months:
+        summary.payback_count > 0
+          ? Number((summary.payback_sum / summary.payback_count).toFixed(2))
+          : null,
+      status_breakdown: summary.status_breakdown,
+    },
+    options: {
+      categories: PLANNING_ACTION_CATEGORIES,
+      statuses: PLANNING_ACTION_STATUSES,
+      impact_types: PLANNING_ACTION_IMPACT_TYPES,
+    },
+  };
+}
+
+async function upsertPlanningActionPlan(adminSupabase, payload, userId = null) {
+  const id = planningSanitizeShortText(payload?.id, 80) || null;
+  const referenceYear = planningSanitizeYear(payload?.reference_year);
+  const row = {
+    reference_year: referenceYear,
+    initiative: planningSanitizeShortText(payload?.initiative, 200),
+    category: planningValidateEnum(payload?.category, PLANNING_ACTION_CATEGORIES, "Outros"),
+    owner_name: planningSanitizeShortText(payload?.owner_name, 160),
+    start_date: planningSanitizeDate(payload?.start_date),
+    end_date: planningSanitizeDate(payload?.end_date),
+    investment_amount: planningSanitizeMoney(payload?.investment_amount),
+    expected_impact_amount: planningSanitizeMoney(payload?.expected_impact_amount),
+    impact_type: planningValidateEnum(payload?.impact_type, PLANNING_ACTION_IMPACT_TYPES, "financeiro"),
+    status: planningValidateEnum(payload?.status, PLANNING_ACTION_STATUSES, "Planejado"),
+    notes: planningSanitizeLongText(payload?.notes, 4000),
+    updated_by: userId || null,
+  };
+
+  if (!row.initiative) {
+    throw new Error("A iniciativa é obrigatória no Plano de Ação.");
+  }
+
+  if (id) {
+    const { error } = await adminSupabase
+      .from("planejamento_plano_acao")
+      .update(row)
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(`Erro ao atualizar plano de ação: ${error.message}`);
+    }
+  } else {
+    const { error } = await adminSupabase
+      .from("planejamento_plano_acao")
+      .insert({
+        ...row,
+        created_by: userId || null,
+      });
+
+    if (error) {
+      throw new Error(`Erro ao criar plano de ação: ${error.message}`);
+    }
+  }
+
+  return getPlanningActionPlans(adminSupabase, referenceYear);
+}
+
+async function deletePlanningActionPlan(adminSupabase, id) {
+  const normalizedId = planningSanitizeShortText(id, 80);
+
+  if (!normalizedId) {
+    throw new Error("ID inválido para remoção do plano de ação.");
+  }
+
+  const { data: existing, error: existingError } = await adminSupabase
+    .from("planejamento_plano_acao")
+    .select("id, reference_year")
+    .eq("id", normalizedId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Erro ao localizar plano de ação: ${existingError.message}`);
+  }
+
+  if (!existing) {
+    throw new Error("Plano de ação não encontrado.");
+  }
+
+  const { error } = await adminSupabase
+    .from("planejamento_plano_acao")
+    .delete()
+    .eq("id", normalizedId);
+
+  if (error) {
+    throw new Error(`Erro ao remover plano de ação: ${error.message}`);
+  }
+
+  return getPlanningActionPlans(adminSupabase, existing.reference_year || getCurrentYear());
+}
+
 module.exports = {
   getPlanningSummary,
   getPlanningIndicators,
@@ -400,4 +620,7 @@ module.exports = {
   getPlanningMonthlyGoals,
   upsertPlanningMonthlyGoal,
   deletePlanningMonthlyGoal,
+  getPlanningActionPlans,
+  upsertPlanningActionPlan,
+  deletePlanningActionPlan,
 };

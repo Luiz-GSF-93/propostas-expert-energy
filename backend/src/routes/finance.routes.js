@@ -17,6 +17,9 @@ const {
   getPlanningMonthlyGoals,
   upsertPlanningMonthlyGoal,
   deletePlanningMonthlyGoal,
+  getPlanningActionPlans,
+  upsertPlanningActionPlan,
+  deletePlanningActionPlan,
 } = require("../services/finance/finance-planning.service");
 
 
@@ -1266,6 +1269,49 @@ router.delete("/planejamento/metas/:year/:month", authMiddleware, requireAdmin, 
     console.error("finance.planejamento.metas.delete.error", error);
     return res.status(500).json({
       message: "Erro ao remover meta mensal do Planejamento.",
+      detail: error.message,
+    });
+  }
+});
+
+
+
+router.get("/planejamento/plano-acao", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningActionPlans(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.plano-acao.list.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar plano de ação do Planejamento.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/plano-acao", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningActionPlan(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.plano-acao.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar item do plano de ação.",
+      detail: error.message,
+    });
+  }
+});
+
+router.delete("/planejamento/plano-acao/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const payload = await deletePlanningActionPlan(adminSupabase, req.params.id);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.plano-acao.delete.error", error);
+    return res.status(500).json({
+      message: "Erro ao remover item do plano de ação.",
       detail: error.message,
     });
   }

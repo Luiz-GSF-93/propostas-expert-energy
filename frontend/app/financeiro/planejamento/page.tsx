@@ -6,6 +6,12 @@ import { supabase } from "@/lib/supabase";
 
 const API_BASE = "/api/backend";
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const ACTION_CATEGORIES = ["Marketing", "Vendas", "Compras", "Tecnologia", "Produto", "Operações", "Infraestrutura", "Outros"];
+const ACTION_STATUSES = ["Planejado", "Não Iniciado", "Em Andamento", "Aguardando", "Inviável", "Concluído"];
+const ACTION_IMPACT_TYPES = [
+  { value: "financeiro", label: "Financeiro" },
+  { value: "reducao_custos", label: "Redução de custos" },
+];
 
 type PlanningSummary = {
   year: number;
@@ -67,6 +73,34 @@ type PlanningMonthlyGoalsResponse = {
   };
 };
 
+type PlanningActionItem = {
+  id: string | null;
+  reference_year: number;
+  initiative: string;
+  category: string;
+  owner_name: string;
+  start_date: string | null;
+  end_date: string | null;
+  investment_amount: number;
+  expected_impact_amount: number;
+  impact_type: string;
+  payback_months: number | null;
+  status: string;
+  notes: string;
+};
+
+type PlanningActionPlansResponse = {
+  year: number;
+  items: PlanningActionItem[];
+  summary: {
+    total_items: number;
+    total_investment_amount: number;
+    total_expected_impact_amount: number;
+    average_payback_months: number | null;
+    status_breakdown: Record<string, number>;
+  };
+};
+
 type ManualIndicatorsForm = {
   reference_year: number;
   recurring_clients: string;
@@ -81,6 +115,21 @@ type MonthlyGoalForm = {
   reference_month: number;
   meta_amount: string;
   actual_amount: string;
+  notes: string;
+};
+
+type ActionPlanForm = {
+  id: string;
+  reference_year: number;
+  initiative: string;
+  category: string;
+  owner_name: string;
+  start_date: string;
+  end_date: string;
+  investment_amount: string;
+  expected_impact_amount: string;
+  impact_type: string;
+  status: string;
   notes: string;
 };
 
@@ -110,17 +159,33 @@ function formatPercent(value: unknown): string {
   })}%`;
 }
 
+function formatDateBr(value?: string | null): string {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
 function statusTone(statusCode: string) {
-  if (statusCode === "success") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-  if (statusCode === "warning") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-  if (statusCode === "danger") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
-  }
+  if (statusCode === "success") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (statusCode === "warning") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (statusCode === "danger") return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function actionStatusTone(status: string) {
+  if (status === "Concluído") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "Em Andamento") return "border-sky-200 bg-sky-50 text-sky-700";
+  if (status === "Aguardando") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (status === "Inviável") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function computePaybackMonths(investmentAmount: unknown, expectedImpactAmount: unknown): number | null {
+  const investment = toNumber(investmentAmount);
+  const impact = toNumber(expectedImpactAmount);
+  if (investment <= 0 || impact <= 0) return null;
+  return Number((investment / impact).toFixed(2));
 }
 
 async function authJson(path: string, token: string, init?: RequestInit) {
@@ -138,10 +203,7 @@ async function authJson(path: string, token: string, init?: RequestInit) {
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const message =
-      json?.message ||
-      json?.error ||
-      `Erro HTTP ${response.status}`;
+    const message = json?.message || json?.error || `Erro HTTP ${response.status}`;
     throw new Error(message);
   }
 
@@ -175,10 +237,7 @@ function DashboardCard({
 }
 
 function MiniBarsChart({ items }: { items: PlanningMonthlyGoal[] }) {
-  const maxValue = Math.max(
-    1,
-    ...items.flatMap((item) => [item.meta_amount || 0, item.actual_amount || 0])
-  );
+  const maxValue = Math.max(1, ...items.flatMap((item) => [item.meta_amount || 0, item.actual_amount || 0]));
 
   return (
     <div className="space-y-3">
@@ -221,6 +280,7 @@ export default function PlanejamentoPage() {
   const [loading, setLoading] = useState(true);
   const [savingIndicators, setSavingIndicators] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
+  const [savingAction, setSavingAction] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [summary, setSummary] = useState<PlanningSummary | null>(null);
@@ -235,6 +295,15 @@ export default function PlanejamentoPage() {
     actual_amount: 0,
     difference_amount: 0,
     achieved_percent: 0,
+  });
+
+  const [actionPlans, setActionPlans] = useState<PlanningActionItem[]>([]);
+  const [actionSummary, setActionSummary] = useState<PlanningActionPlansResponse["summary"]>({
+    total_items: 0,
+    total_investment_amount: 0,
+    total_expected_impact_amount: 0,
+    average_payback_months: null,
+    status_breakdown: {},
   });
 
   const [form, setForm] = useState<ManualIndicatorsForm>({
@@ -254,6 +323,21 @@ export default function PlanejamentoPage() {
     notes: "",
   });
 
+  const [actionForm, setActionForm] = useState<ActionPlanForm>({
+    id: "",
+    reference_year: currentYear,
+    initiative: "",
+    category: "Marketing",
+    owner_name: "",
+    start_date: "",
+    end_date: "",
+    investment_amount: "",
+    expected_impact_amount: "",
+    impact_type: "financeiro",
+    status: "Planejado",
+    notes: "",
+  });
+
   async function loadData(token: string) {
     const requestId = ++requestIdRef.current;
     const year = Number(goalForm.reference_year || currentYear);
@@ -263,9 +347,10 @@ export default function PlanejamentoPage() {
     setSuccess("");
 
     try {
-      const [summaryResponse, goalsResponse] = await Promise.all([
+      const [summaryResponse, goalsResponse, actionsResponse] = await Promise.all([
         authJson(`/api/finance/planejamento/resumo?year=${year}`, token),
         authJson(`/api/finance/planejamento/metas?year=${year}`, token),
+        authJson(`/api/finance/planejamento/plano-acao?year=${year}`, token),
       ]);
 
       if (requestId !== requestIdRef.current) return;
@@ -285,6 +370,11 @@ export default function PlanejamentoPage() {
         reference_year: Number(goalsResponse?.year || year),
       }));
 
+      setActionForm((prev) => ({
+        ...prev,
+        reference_year: Number(actionsResponse?.year || year),
+      }));
+
       setMonthlyGoals(Array.isArray(goalsResponse?.months) ? goalsResponse.months : []);
       setMonthlyTotals(
         goalsResponse?.totals || {
@@ -292,6 +382,17 @@ export default function PlanejamentoPage() {
           actual_amount: 0,
           difference_amount: 0,
           achieved_percent: 0,
+        }
+      );
+
+      setActionPlans(Array.isArray(actionsResponse?.items) ? actionsResponse.items : []);
+      setActionSummary(
+        actionsResponse?.summary || {
+          total_items: 0,
+          total_investment_amount: 0,
+          total_expected_impact_amount: 0,
+          average_payback_months: null,
+          status_breakdown: {},
         }
       );
 
@@ -425,10 +526,7 @@ export default function PlanejamentoPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Remover meta mensal de ${item.month_label}/${item.reference_year}?`
-    );
-    if (!confirmed) return;
+    if (!window.confirm(`Remover meta mensal de ${item.month_label}/${item.reference_year}?`)) return;
 
     setError("");
     setSuccess("");
@@ -458,6 +556,127 @@ export default function PlanejamentoPage() {
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  async function handleSaveActionPlan() {
+    if (!accessToken) {
+      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+      return;
+    }
+
+    setSavingAction(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authJson("/api/finance/planejamento/plano-acao", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          id: actionForm.id || undefined,
+          reference_year: actionForm.reference_year,
+          initiative: actionForm.initiative,
+          category: actionForm.category,
+          owner_name: actionForm.owner_name,
+          start_date: actionForm.start_date || null,
+          end_date: actionForm.end_date || null,
+          investment_amount: toNumber(actionForm.investment_amount),
+          expected_impact_amount: toNumber(actionForm.expected_impact_amount),
+          impact_type: actionForm.impact_type,
+          status: actionForm.status,
+          notes: actionForm.notes,
+        }),
+      });
+
+      setActionPlans(Array.isArray(response?.items) ? response.items : []);
+      setActionSummary(
+        response?.summary || {
+          total_items: 0,
+          total_investment_amount: 0,
+          total_expected_impact_amount: 0,
+          average_payback_months: null,
+          status_breakdown: {},
+        }
+      );
+
+      setSuccess(actionForm.id ? "Item do plano de ação atualizado com sucesso." : "Item do plano de ação criado com sucesso.");
+
+      setActionForm({
+        id: "",
+        reference_year: actionForm.reference_year,
+        initiative: "",
+        category: "Marketing",
+        owner_name: "",
+        start_date: "",
+        end_date: "",
+        investment_amount: "",
+        expected_impact_amount: "",
+        impact_type: "financeiro",
+        status: "Planejado",
+        notes: "",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar item do plano de ação.");
+    } finally {
+      setSavingAction(false);
+    }
+  }
+
+  async function handleDeleteActionPlan(item: PlanningActionItem) {
+    if (!accessToken) {
+      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+      return;
+    }
+
+    if (!item.id) return;
+    if (!window.confirm(`Remover a iniciativa "${item.initiative}"?`)) return;
+
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authJson(`/api/finance/planejamento/plano-acao/${item.id}`, accessToken, {
+        method: "DELETE",
+      });
+
+      setActionPlans(Array.isArray(response?.items) ? response.items : []);
+      setActionSummary(
+        response?.summary || {
+          total_items: 0,
+          total_investment_amount: 0,
+          total_expected_impact_amount: 0,
+          average_payback_months: null,
+          status_breakdown: {},
+        }
+      );
+
+      setSuccess("Item do plano de ação removido com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao remover item do plano de ação.");
+    }
+  }
+
+  function handleEditActionPlan(item: PlanningActionItem) {
+    setActionForm({
+      id: item.id || "",
+      reference_year: item.reference_year,
+      initiative: item.initiative || "",
+      category: item.category || "Marketing",
+      owner_name: item.owner_name || "",
+      start_date: item.start_date || "",
+      end_date: item.end_date || "",
+      investment_amount: item.investment_amount ? String(item.investment_amount) : "",
+      expected_impact_amount: item.expected_impact_amount ? String(item.expected_impact_amount) : "",
+      impact_type: item.impact_type || "financeiro",
+      status: item.status || "Planejado",
+      notes: item.notes || "",
+    });
+
+    window.scrollTo({ top: document.body.scrollHeight * 0.35, behavior: "smooth" });
+  }
+
+  const actionPaybackPreview = useMemo(
+    () => computePaybackMonths(actionForm.investment_amount, actionForm.expected_impact_amount),
+    [actionForm.investment_amount, actionForm.expected_impact_amount]
+  );
 
   const cards = useMemo(() => {
     if (!summary) return [];
@@ -537,7 +756,7 @@ export default function PlanejamentoPage() {
                   Dashboard Executivo
                 </h1>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Patch 2: Metas Mensais com cálculo automático, status e visual comparativo.
+                  Patch 3: Metas Mensais + Plano de Ação com payback automático.
                 </p>
               </div>
 
@@ -589,12 +808,7 @@ export default function PlanejamentoPage() {
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {cards.map((card) => (
-              <DashboardCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                hint={card.hint}
-              />
+              <DashboardCard key={card.label} label={card.label} value={card.value} hint={card.hint} />
             ))}
           </section>
 
@@ -713,9 +927,7 @@ export default function PlanejamentoPage() {
                   <span className="text-sm font-medium">Mês</span>
                   <select
                     value={goalForm.reference_month}
-                    onChange={(e) =>
-                      setGoalForm((prev) => ({ ...prev, reference_month: Number(e.target.value) }))
-                    }
+                    onChange={(e) => setGoalForm((prev) => ({ ...prev, reference_month: Number(e.target.value) }))}
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
                   >
                     {MONTH_LABELS.map((label, index) => (
@@ -730,9 +942,7 @@ export default function PlanejamentoPage() {
                   <span className="text-sm font-medium">Ano</span>
                   <input
                     value={goalForm.reference_year}
-                    onChange={(e) =>
-                      setGoalForm((prev) => ({ ...prev, reference_year: Number(e.target.value || currentYear) }))
-                    }
+                    onChange={(e) => setGoalForm((prev) => ({ ...prev, reference_year: Number(e.target.value || currentYear) }))}
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
                     inputMode="numeric"
                   />
@@ -862,9 +1072,7 @@ export default function PlanejamentoPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {monthlyGoals.map((item) => (
                     <tr key={`${item.reference_year}-${item.reference_month}`} className="align-top">
-                      <td className="px-3 py-3 font-semibold text-slate-700 dark:text-slate-200">
-                        {item.month_label}
-                      </td>
+                      <td className="px-3 py-3 font-semibold text-slate-700 dark:text-slate-200">{item.month_label}</td>
                       <td className="px-3 py-3">{formatMoney(item.meta_amount)}</td>
                       <td className="px-3 py-3">{formatMoney(item.actual_amount)}</td>
                       <td className="px-3 py-3">{formatMoney(item.difference_amount)}</td>
@@ -907,10 +1115,312 @@ export default function PlanejamentoPage() {
             </div>
           </section>
 
+          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                    Plano de Ação
+                  </p>
+                  <h2 className="mt-2 text-xl font-black">
+                    {actionForm.id ? "Editar iniciativa" : "Nova iniciativa"}
+                  </h2>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                  Payback: {actionPaybackPreview != null ? `${actionPaybackPreview.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} meses` : "—"}
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-medium">Iniciativa</span>
+                  <input
+                    value={actionForm.initiative}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, initiative: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Categoria</span>
+                  <select
+                    value={actionForm.category}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, category: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  >
+                    {ACTION_CATEGORIES.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Responsável</span>
+                  <input
+                    value={actionForm.owner_name}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, owner_name: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Data início</span>
+                  <input
+                    type="date"
+                    value={actionForm.start_date}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Data fim</span>
+                  <input
+                    type="date"
+                    value={actionForm.end_date}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, end_date: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Investimento (R$)</span>
+                  <input
+                    value={actionForm.investment_amount}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, investment_amount: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                    inputMode="decimal"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Impacto esperado (R$)</span>
+                  <input
+                    value={actionForm.expected_impact_amount}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, expected_impact_amount: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                    inputMode="decimal"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Tipo de impacto</span>
+                  <select
+                    value={actionForm.impact_type}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, impact_type: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  >
+                    {ACTION_IMPACT_TYPES.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Status</span>
+                  <select
+                    value={actionForm.status}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, status: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  >
+                    {ACTION_STATUSES.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-medium">Observações</span>
+                  <textarea
+                    value={actionForm.notes}
+                    onChange={(e) => setActionForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="min-h-[110px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  onClick={handleSaveActionPlan}
+                  disabled={savingAction}
+                  className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingAction ? "Salvando..." : actionForm.id ? "Atualizar iniciativa" : "Salvar iniciativa"}
+                </button>
+
+                <button
+                  onClick={() =>
+                    setActionForm({
+                      id: "",
+                      reference_year: currentYear,
+                      initiative: "",
+                      category: "Marketing",
+                      owner_name: "",
+                      start_date: "",
+                      end_date: "",
+                      investment_amount: "",
+                      expected_impact_amount: "",
+                      impact_type: "financeiro",
+                      status: "Planejado",
+                      notes: "",
+                    })
+                  }
+                  className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Limpar formulário
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                Resumo do Plano de Ação
+              </p>
+              <h2 className="mt-2 text-xl font-black">Visão executiva</h2>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Iniciativas</div>
+                  <div className="mt-2 text-xl font-extrabold">{actionSummary.total_items}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Investimento total</div>
+                  <div className="mt-2 text-xl font-extrabold">{formatMoney(actionSummary.total_investment_amount)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Impacto esperado total</div>
+                  <div className="mt-2 text-xl font-extrabold">{formatMoney(actionSummary.total_expected_impact_amount)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Payback médio</div>
+                  <div className="mt-2 text-xl font-extrabold">
+                    {actionSummary.average_payback_months != null
+                      ? `${actionSummary.average_payback_months.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })} meses`
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                {ACTION_STATUSES.map((status) => (
+                  <div key={status} className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
+                    <span>{status}</span>
+                    <strong>{actionSummary.status_breakdown?.[status] || 0}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                  Plano de Ação
+                </p>
+                <h2 className="mt-2 text-xl font-black">Tabela consolidada</h2>
+              </div>
+
+              <button
+                onClick={() =>
+                  accessToken
+                    ? loadData(accessToken)
+                    : setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.")
+                }
+                className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Recarregar plano
+              </button>
+            </div>
+
+            <div className="mt-5 overflow-x-auto">
+              <table className="min-w-[1200px] divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
+                    <th className="px-3 py-3">Iniciativa</th>
+                    <th className="px-3 py-3">Categoria</th>
+                    <th className="px-3 py-3">Responsável</th>
+                    <th className="px-3 py-3">Início</th>
+                    <th className="px-3 py-3">Fim</th>
+                    <th className="px-3 py-3">Investimento</th>
+                    <th className="px-3 py-3">Impacto esperado</th>
+                    <th className="px-3 py-3">Tipo</th>
+                    <th className="px-3 py-3">Payback</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {actionPlans.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="px-3 py-6 text-center text-sm text-slate-500">
+                        Nenhuma iniciativa cadastrada para este ano.
+                      </td>
+                    </tr>
+                  ) : (
+                    actionPlans.map((item) => (
+                      <tr key={item.id || `${item.reference_year}-${item.initiative}`} className="align-top">
+                        <td className="px-3 py-3">
+                          <div className="font-semibold text-slate-800">{item.initiative}</div>
+                          {item.notes ? <div className="mt-1 max-w-[280px] text-xs text-slate-500">{item.notes}</div> : null}
+                        </td>
+                        <td className="px-3 py-3">{item.category}</td>
+                        <td className="px-3 py-3">{item.owner_name || "—"}</td>
+                        <td className="px-3 py-3">{formatDateBr(item.start_date)}</td>
+                        <td className="px-3 py-3">{formatDateBr(item.end_date)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.investment_amount)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.expected_impact_amount)}</td>
+                        <td className="px-3 py-3">{item.impact_type === "reducao_custos" ? "Redução de custos" : "Financeiro"}</td>
+                        <td className="px-3 py-3">
+                          {item.payback_months != null
+                            ? `${item.payback_months.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} meses`
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${actionStatusTone(item.status)}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleEditActionPlan(item)}
+                              className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteActionPlan(item)}
+                              className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           {showPlaceholders ? (
             <section className="grid gap-4 lg:grid-cols-2">
               {[
-                "Plano de Ação",
                 "Projeção Plurianual",
                 "Meta Comercial",
                 "Comissionamento",
