@@ -534,6 +534,69 @@ function MetricBarsChart({
   );
 }
 
+function PositiveNegativeColumnsChart({
+  title,
+  subtitle,
+  items,
+  formatter = (value: number) => value.toLocaleString("pt-BR"),
+}: {
+  title: string;
+  subtitle?: string;
+  items: Array<{ label: string; value: number; note?: string }>;
+  formatter?: (value: number) => string;
+}) {
+  if (!items.length) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-base font-black text-slate-900">{title}</div>
+        {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          Sem dados suficientes para exibir este gráfico no ano selecionado.
+        </div>
+      </div>
+    );
+  }
+
+  const maxAbs = Math.max(1, ...items.map((item) => Math.abs(item.value || 0)));
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div>
+        <div className="text-base font-black text-slate-900">{title}</div>
+        {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+      </div>
+
+      <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-3 2xl:grid-cols-5">
+        {items.map((item) => {
+          const value = Number(item.value || 0);
+          const height = `${Math.max(10, (Math.abs(value) / maxAbs) * 100)}%`;
+          const positive = value >= 0;
+
+          return (
+            <div key={`${title}-${item.label}`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-4">
+              <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{item.label}</div>
+              <div className="mt-2 text-center text-xs font-medium text-slate-500 [overflow-wrap:anywhere]">{formatter(value)}</div>
+              {item.note ? <div className="mt-1 text-center text-[10px] leading-4 text-slate-400">{item.note}</div> : null}
+
+              <div className="mt-4 flex h-40 items-stretch justify-center">
+                <div className="relative flex h-full w-full flex-col">
+                  <div className="flex h-1/2 items-end justify-center pb-1">
+                    {positive ? <div className="w-10 rounded-t-xl bg-emerald-500" style={{ height }} /> : <div className="w-10" />}
+                  </div>
+                  <div className="h-px w-full bg-slate-300" />
+                  <div className="flex h-1/2 items-start justify-center pt-1">
+                    {!positive ? <div className="w-10 rounded-b-xl bg-rose-500" style={{ height }} /> : <div className="w-10" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SectionCard({
   sectionKey,
   kicker,
@@ -1457,6 +1520,32 @@ export default function PlanejamentoPage() {
     [actionSummary]
   );
 
+  const monthlyPerformanceChartItems = useMemo(
+    () => monthlyGoals.map((item) => ({
+      label: item.month_label,
+      value: item.meta_amount || 0,
+      secondaryValue: item.actual_amount || 0,
+      note: `Atingimento ${formatPercent(item.achieved_percent || 0)}`,
+    })),
+    [monthlyGoals]
+  );
+
+  const monthlyCumulativeChartItems = useMemo(() => {
+    let metaAcc = 0;
+    let actualAcc = 0;
+    return monthlyGoals.map((item) => {
+      metaAcc += Number(item.meta_amount || 0);
+      actualAcc += Number(item.actual_amount || 0);
+      const achieved = metaAcc > 0 ? (actualAcc / metaAcc) * 100 : 0;
+      return {
+        label: item.month_label,
+        value: metaAcc,
+        secondaryValue: actualAcc,
+        note: `Acumulado ${formatPercent(achieved)}`,
+      };
+    });
+  }, [monthlyGoals]);
+
   const fourteenthRule = useMemo(
     () => computeFourteenthEligibility(fourteenth?.achievement_percent || 0),
     [fourteenth?.achievement_percent]
@@ -1633,19 +1722,19 @@ export default function PlanejamentoPage() {
               <div className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meta recorrente</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
+                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Realizado recorrente</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
+                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Performance recorrente</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
+                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Comissão projetada</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(commission?.commission_amount || 0)}</div>
+                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commission?.commission_amount || 0)}</div>
                   <div className="mt-2 text-xs text-slate-500">{commission?.eligible ? "Elegível para comissão" : "Ainda não elegível"}</div>
                 </div>
               </div>
@@ -1710,6 +1799,24 @@ export default function PlanejamentoPage() {
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% atingido</div>
                   <div className="mt-2 text-xl font-extrabold">{formatPercent(monthlyTotals.achieved_percent)}</div>
                 </div>
+              </div>
+              <div className="mt-6 grid gap-4 xl:grid-cols-2">
+                <MetricBarsChart
+                  title="Gráfico mensal · Meta vs realizado"
+                  subtitle="Comparação mês a mês entre a meta financeira e o valor realizado."
+                  items={monthlyPerformanceChartItems}
+                  formatter={formatMoney}
+                  primaryLabel="Meta"
+                  secondaryLabel="Realizado"
+                />
+                <MetricBarsChart
+                  title="Gráfico acumulado · Janeiro a dezembro"
+                  subtitle="Comparativo acumulado da meta e do realizado ao longo do ano."
+                  items={monthlyCumulativeChartItems}
+                  formatter={formatMoney}
+                  primaryLabel="Meta acum."
+                  secondaryLabel="Realizado acum."
+                />
               </div>
               <div className="mt-6"><MiniBarsChart items={monthlyGoals} /></div>
             </SectionCard>
@@ -1938,12 +2045,11 @@ export default function PlanejamentoPage() {
                 formatter={formatMoney}
                 primaryLabel="Receita"
               />
-              <MetricBarsChart
+              <PositiveNegativeColumnsChart
                 title="Gráfico avançado · Lucro líquido projetado"
-                subtitle="Acompanhamento do resultado líquido por ano da projeção plurianual."
+                subtitle="Colunas positivas sobem e colunas negativas descem para comparar o resultado líquido por ano."
                 items={projectionProfitChartItems}
                 formatter={formatMoney}
-                primaryLabel="Lucro"
               />
               <MetricBarsChart
                 title="Gráfico avançado · Meta comercial por tipo"
