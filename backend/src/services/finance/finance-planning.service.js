@@ -203,8 +203,201 @@ async function upsertPlanningIndicators(adminSupabase, payload, userId = null) {
   return data;
 }
 
+
+const PLANNING_MONTH_LABELS = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
+
+function planningSanitizeYear(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  const year = Number.isFinite(parsed) ? parsed : getCurrentYear();
+  return Math.min(Math.max(year, 2020), 2100);
+}
+
+function planningSanitizeMonth(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 12) {
+    throw new Error("Mês inválido para metas mensais.");
+  }
+  return parsed;
+}
+
+function planningSanitizeMoney(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? Number(value) : 0;
+  if (typeof value === "string") {
+    const normalized = value
+      .replace(/\s/g, "")
+      .replace(/R\$/gi, "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function planningBuildMonthlyGoalStatus(metaAmount, actualAmount) {
+  const meta = planningSanitizeMoney(metaAmount);
+  const actual = planningSanitizeMoney(actualAmount);
+  const difference = actual - meta;
+  const achievedPercent = meta > 0 ? (actual / meta) * 100 : 0;
+
+  if (meta <= 0) {
+    return {
+      difference_amount: difference,
+      achieved_percent: 0,
+      status_code: "sem_meta",
+      status_icon: "—",
+      status_label: "Sem meta",
+    };
+  }
+
+  if (achievedPercent >= 100) {
+    return {
+      difference_amount: difference,
+      achieved_percent: achievedPercent,
+      status_code: "success",
+      status_icon: "✅",
+      status_label: "Meta atingida",
+    };
+  }
+
+  if (achievedPercent >= 80) {
+    return {
+      difference_amount: difference,
+      achieved_percent: achievedPercent,
+      status_code: "warning",
+      status_icon: "⚠️",
+      status_label: "Atenção",
+    };
+  }
+
+  return {
+    difference_amount: difference,
+    achieved_percent: achievedPercent,
+    status_code: "danger",
+    status_icon: "🔴",
+    status_label: "Abaixo da meta",
+  };
+}
+
+async function getPlanningMonthlyGoals(adminSupabase, year = getCurrentYear()) {
+  const normalizedYear = planningSanitizeYear(year);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_metas_mensais")
+    .select("id, reference_year, reference_month, meta_amount, actual_amount, notes, created_at, updated_at, created_by, updated_by")
+    .eq("reference_year", normalizedYear)
+    .order("reference_month", { ascending: true });
+
+  if (error) {
+    throw new Error(`Erro ao carregar metas mensais: ${error.message}`);
+  }
+
+  const byMonth = new Map(
+    (data || []).map((row) => [Number(row.reference_month), row])
+  );
+
+  const months = PLANNING_MONTH_LABELS.map((label, index) => {
+    const month = index + 1;
+    const row = byMonth.get(month) || null;
+    const metaAmount = planningSanitizeMoney(row?.meta_amount);
+    const actualAmount = planningSanitizeMoney(row?.actual_amount);
+    const status = planningBuildMonthlyGoalStatus(metaAmount, actualAmount);
+
+    return {
+      id: row?.id || null,
+      reference_year: normalizedYear,
+      reference_month: month,
+      month_label: label,
+      meta_amount: metaAmount,
+      actual_amount: actualAmount,
+      difference_amount: status.difference_amount,
+      achieved_percent: Number(status.achieved_percent.toFixed(2)),
+      status_code: status.status_code,
+      status_icon: status.status_icon,
+      status_label: status.status_label,
+      notes: row?.notes || "",
+      created_at: row?.created_at || null,
+      updated_at: row?.updated_at || null,
+      created_by: row?.created_by || null,
+      updated_by: row?.updated_by || null,
+    };
+  });
+
+  const totals = months.reduce(
+    (acc, item) => {
+      acc.meta_amount += item.meta_amount;
+      acc.actual_amount += item.actual_amount;
+      return acc;
+    },
+    { meta_amount: 0, actual_amount: 0 }
+  );
+
+  totals.difference_amount = totals.actual_amount - totals.meta_amount;
+  totals.achieved_percent =
+    totals.meta_amount > 0
+      ? Number(((totals.actual_amount / totals.meta_amount) * 100).toFixed(2))
+      : 0;
+
+  return {
+    year: normalizedYear,
+    months,
+    totals,
+  };
+}
+
+async function upsertPlanningMonthlyGoal(adminSupabase, payload, userId = null) {
+  const referenceYear = planningSanitizeYear(payload?.reference_year);
+  const referenceMonth = planningSanitizeMonth(payload?.reference_month);
+
+  const row = {
+    reference_year: referenceYear,
+    reference_month: referenceMonth,
+    meta_amount: planningSanitizeMoney(payload?.meta_amount),
+    actual_amount: planningSanitizeMoney(payload?.actual_amount),
+    notes: payload?.notes ? String(payload.notes).trim() : "",
+    updated_by: userId || null,
+    created_by: userId || null,
+  };
+
+  const { error } = await adminSupabase
+    .from("planejamento_metas_mensais")
+    .upsert(row, {
+      onConflict: "reference_year,reference_month",
+      ignoreDuplicates: false,
+    });
+
+  if (error) {
+    throw new Error(`Erro ao salvar meta mensal: ${error.message}`);
+  }
+
+  return getPlanningMonthlyGoals(adminSupabase, referenceYear);
+}
+
+async function deletePlanningMonthlyGoal(adminSupabase, year, month) {
+  const referenceYear = planningSanitizeYear(year);
+  const referenceMonth = planningSanitizeMonth(month);
+
+  const { error } = await adminSupabase
+    .from("planejamento_metas_mensais")
+    .delete()
+    .eq("reference_year", referenceYear)
+    .eq("reference_month", referenceMonth);
+
+  if (error) {
+    throw new Error(`Erro ao remover meta mensal: ${error.message}`);
+  }
+
+  return getPlanningMonthlyGoals(adminSupabase, referenceYear);
+}
+
 module.exports = {
   getPlanningSummary,
   getPlanningIndicators,
   upsertPlanningIndicators,
+  getPlanningMonthlyGoals,
+  upsertPlanningMonthlyGoal,
+  deletePlanningMonthlyGoal,
 };

@@ -14,6 +14,9 @@ const {
   getPlanningSummary,
   getPlanningIndicators,
   upsertPlanningIndicators,
+  getPlanningMonthlyGoals,
+  upsertPlanningMonthlyGoal,
+  deletePlanningMonthlyGoal,
 } = require("../services/finance/finance-planning.service");
 
 
@@ -1221,6 +1224,53 @@ router.put("/planejamento/indicadores", authMiddleware, requireAdmin, async (req
     });
   }
 });
+
+
+router.get("/planejamento/metas", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningMonthlyGoals(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.metas.list.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar metas mensais do Planejamento.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/metas", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningMonthlyGoal(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.metas.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar meta mensal do Planejamento.",
+      detail: error.message,
+    });
+  }
+});
+
+router.delete("/planejamento/metas/:year/:month", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const payload = await deletePlanningMonthlyGoal(
+      adminSupabase,
+      req.params.year,
+      req.params.month
+    );
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.metas.delete.error", error);
+    return res.status(500).json({
+      message: "Erro ao remover meta mensal do Planejamento.",
+      detail: error.message,
+    });
+  }
+});
+
 
 module.exports = router;
 
