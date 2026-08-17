@@ -597,6 +597,107 @@ function PositiveNegativeColumnsChart({
   );
 }
 
+function LineTrendChart({
+  title,
+  subtitle,
+  items,
+  formatter = (value: number) => value.toLocaleString("pt-BR"),
+  primaryLabel = "Meta",
+  secondaryLabel = "Realizado",
+}: {
+  title: string;
+  subtitle?: string;
+  items: Array<{ label: string; value: number; secondaryValue?: number | null; note?: string }>;
+  formatter?: (value: number) => string;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+}) {
+  if (!items.length) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-base font-black text-slate-900">{title}</div>
+        {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          Sem dados suficientes para exibir este gráfico no ano selecionado.
+        </div>
+      </div>
+    );
+  }
+
+  const width = 560;
+  const height = 240;
+  const paddingX = 24;
+  const paddingY = 20;
+  const chartWidth = width - paddingX * 2;
+  const chartHeight = height - paddingY * 2;
+  const maxValue = Math.max(1, ...items.flatMap((item) => [Number(item.value || 0), Number(item.secondaryValue || 0)]));
+  const stepX = items.length > 1 ? chartWidth / (items.length - 1) : 0;
+  const toY = (value: number) => paddingY + chartHeight - (Number(value || 0) / maxValue) * chartHeight;
+
+  const metaPoints = items
+    .map((item, index) => `${paddingX + index * stepX},${toY(Number(item.value || 0))}`)
+    .join(" ");
+
+  const realizedPoints = items
+    .map((item, index) => `${paddingX + index * stepX},${toY(Number(item.secondaryValue || 0))}`)
+    .join(" ");
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-base font-black text-slate-900">{title}</div>
+          {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        <div className="flex flex-wrap gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" />{primaryLabel}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" />{secondaryLabel}</span>
+        </div>
+      </div>
+
+      <div className="mt-6 overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[560px] w-full">
+          {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+            const y = paddingY + chartHeight - tick * chartHeight;
+            const labelValue = maxValue * tick;
+            return (
+              <g key={tick}>
+                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#e2e8f0" strokeDasharray="4 4" />
+                <text x={paddingX} y={Math.max(12, y - 6)} fontSize="10" fill="#94a3b8">{formatter(labelValue)}</text>
+              </g>
+            );
+          })}
+          <polyline fill="none" stroke="#0ea5e9" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" points={metaPoints} />
+          <polyline fill="none" stroke="#cbd5e1" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" points={realizedPoints} />
+          {items.map((item, index) => {
+            const x = paddingX + index * stepX;
+            const yMeta = toY(Number(item.value || 0));
+            const yReal = toY(Number(item.secondaryValue || 0));
+            return (
+              <g key={`${title}-${item.label}`}>
+                <circle cx={x} cy={yMeta} r="4" fill="#0ea5e9" />
+                <circle cx={x} cy={yReal} r="4" fill="#cbd5e1" />
+                <text x={x} y={height - 6} textAnchor="middle" fontSize="11" fill="#64748b">{item.label}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => (
+          <div key={`${title}-legend-${item.label}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
+            <div className="font-semibold text-slate-700">{item.label}</div>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500"><span>{primaryLabel}</span><span>{formatter(Number(item.value || 0))}</span></div>
+            <div className="mt-1 flex items-center justify-between gap-3 text-xs text-slate-500"><span>{secondaryLabel}</span><span>{formatter(Number(item.secondaryValue || 0))}</span></div>
+            {item.note ? <div className="mt-2 text-[11px] text-slate-400">{item.note}</div> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SectionCard({
   sectionKey,
   kicker,
@@ -1722,19 +1823,19 @@ export default function PlanejamentoPage() {
               <div className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meta recorrente</div>
-                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Realizado recorrente</div>
-                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commercialRecurringTotals.actual_amount)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Performance recorrente</div>
-                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Comissão projetada</div>
-                  <div className="mt-2 text-[clamp(1.25rem,1.6vw,1.7rem)] font-extrabold leading-tight tracking-tight text-slate-900 [overflow-wrap:anywhere]">{formatMoney(commission?.commission_amount || 0)}</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1rem,1.25vw,1.35rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commission?.commission_amount || 0)}</div>
                   <div className="mt-2 text-xs text-slate-500">{commission?.eligible ? "Elegível para comissão" : "Ainda não elegível"}</div>
                 </div>
               </div>
@@ -1799,24 +1900,6 @@ export default function PlanejamentoPage() {
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% atingido</div>
                   <div className="mt-2 text-xl font-extrabold">{formatPercent(monthlyTotals.achieved_percent)}</div>
                 </div>
-              </div>
-              <div className="mt-6 grid gap-4 xl:grid-cols-2">
-                <MetricBarsChart
-                  title="Gráfico mensal · Meta vs realizado"
-                  subtitle="Comparação mês a mês entre a meta financeira e o valor realizado."
-                  items={monthlyPerformanceChartItems}
-                  formatter={formatMoney}
-                  primaryLabel="Meta"
-                  secondaryLabel="Realizado"
-                />
-                <MetricBarsChart
-                  title="Gráfico acumulado · Janeiro a dezembro"
-                  subtitle="Comparativo acumulado da meta e do realizado ao longo do ano."
-                  items={monthlyCumulativeChartItems}
-                  formatter={formatMoney}
-                  primaryLabel="Meta acum."
-                  secondaryLabel="Realizado acum."
-                />
               </div>
               <div className="mt-6"><MiniBarsChart items={monthlyGoals} /></div>
             </SectionCard>
@@ -2038,6 +2121,22 @@ export default function PlanejamentoPage() {
 
           {showPlaceholders ? (
             <section className="grid gap-4 lg:grid-cols-2 no-print">
+              <MetricBarsChart
+                title="Gráfico mensal · Meta vs realizado"
+                subtitle="Comparação mês a mês entre a meta financeira e o valor realizado."
+                items={monthlyPerformanceChartItems}
+                formatter={formatMoney}
+                primaryLabel="Meta"
+                secondaryLabel="Realizado"
+              />
+              <LineTrendChart
+                title="Gráfico acumulado · Janeiro a dezembro"
+                subtitle="Linha crescente acumulada da meta e do realizado ao longo do ano."
+                items={monthlyCumulativeChartItems}
+                formatter={formatMoney}
+                primaryLabel="Meta acumulada"
+                secondaryLabel="Realizado acumulado"
+              />
               <MetricBarsChart
                 title="Gráfico avançado · Faturamento projetado"
                 subtitle="Comparativo do ano base com Ano +1 e Ano +2 calculados automaticamente."
