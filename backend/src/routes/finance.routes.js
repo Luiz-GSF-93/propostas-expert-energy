@@ -20,6 +20,16 @@ const {
   getPlanningActionPlans,
   upsertPlanningActionPlan,
   deletePlanningActionPlan,
+  getPlanningProjections,
+  upsertPlanningProjection,
+  deletePlanningProjection,
+  getPlanningCommercialGoals,
+  upsertPlanningCommercialGoal,
+  deletePlanningCommercialGoal,
+  getPlanningCommissionSettings,
+  upsertPlanningCommissionSettings,
+  getPlanningFourteenth,
+  upsertPlanningFourteenth,
 } = require("../services/finance/finance-planning.service");
 
 
@@ -1312,6 +1322,147 @@ router.delete("/planejamento/plano-acao/:id", authMiddleware, requireAdmin, asyn
     console.error("finance.planejamento.plano-acao.delete.error", error);
     return res.status(500).json({
       message: "Erro ao remover item do plano de ação.",
+      detail: error.message,
+    });
+  }
+});
+
+
+
+router.get("/planejamento/projecoes", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningProjections(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.projecoes.list.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar projeções plurianuais.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/projecoes", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningProjection(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.projecoes.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar projeção plurianual.",
+      detail: error.message,
+    });
+  }
+});
+
+router.delete("/planejamento/projecoes/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const payload = await deletePlanningProjection(adminSupabase, req.params.id);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.projecoes.delete.error", error);
+    return res.status(500).json({
+      message: "Erro ao remover projeção plurianual.",
+      detail: error.message,
+    });
+  }
+});
+
+router.get("/planejamento/meta-comercial", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningCommercialGoals(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.meta-comercial.list.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar metas comerciais.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/meta-comercial", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningCommercialGoal(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.meta-comercial.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar meta comercial.",
+      detail: error.message,
+    });
+  }
+});
+
+router.delete("/planejamento/meta-comercial/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await deletePlanningCommercialGoal(adminSupabase, req.params.id, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.meta-comercial.delete.error", error);
+    return res.status(500).json({
+      message: "Erro ao remover meta comercial.",
+      detail: error.message,
+    });
+  }
+});
+
+router.get("/planejamento/comissao", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningCommissionSettings(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.comissao.get.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar comissão.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/comissao", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningCommissionSettings(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.comissao.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar comissão.",
+      detail: error.message,
+    });
+  }
+});
+
+router.get("/planejamento/decimo-quarto", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const year = Number(req.query.year || new Date().getFullYear());
+    const payload = await getPlanningFourteenth(adminSupabase, year);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.decimo-quarto.get.error", error);
+    return res.status(500).json({
+      message: "Erro ao carregar 14º salário.",
+      detail: error.message,
+    });
+  }
+});
+
+router.put("/planejamento/decimo-quarto", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.profile?.id || null;
+    const payload = await upsertPlanningFourteenth(adminSupabase, req.body, userId);
+    return res.json(payload);
+  } catch (error) {
+    console.error("finance.planejamento.decimo-quarto.upsert.error", error);
+    return res.status(500).json({
+      message: "Erro ao salvar 14º salário.",
       detail: error.message,
     });
   }

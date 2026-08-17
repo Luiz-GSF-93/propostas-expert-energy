@@ -613,6 +613,504 @@ async function deletePlanningActionPlan(adminSupabase, id) {
   return getPlanningActionPlans(adminSupabase, existing.reference_year || getCurrentYear());
 }
 
+
+const PLANNING_COMMERCIAL_GOAL_TYPES = ["Contrato Recorrente", "Contrato Avulso"];
+
+function planningSanitizeInteger(value, fallback = 0) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function planningComputeWorkingCapital(monthlyFixedCost) {
+  const fixed = planningSanitizeMoney(monthlyFixedCost);
+  return Number((fixed * 3).toFixed(2));
+}
+
+function planningComputePerformancePercent(goalAmount, actualAmount) {
+  const goal = planningSanitizeMoney(goalAmount);
+  const actual = planningSanitizeMoney(actualAmount);
+  if (goal <= 0) return 0;
+  return Number(((actual / goal) * 100).toFixed(2));
+}
+
+function planningNormalizeProjectionRow(row) {
+  const revenueAmount = planningSanitizeMoney(row?.revenue_amount);
+  const netProfitAmount = planningSanitizeMoney(row?.net_profit_amount);
+  const netMarginPercent = planningSanitizeMoney(row?.net_margin_percent);
+  const monthlyFixedCost = planningSanitizeMoney(row?.monthly_fixed_cost);
+  const employeeCount = planningSanitizeInteger(row?.employee_count, 0);
+  const workingCapitalAmount = planningSanitizeMoney(
+    row?.working_capital_amount || planningComputeWorkingCapital(monthlyFixedCost)
+  );
+
+  return {
+    id: row?.id || null,
+    base_year: planningSanitizeYear(row?.base_year),
+    projection_year: planningSanitizeYear(row?.projection_year),
+    revenue_amount: revenueAmount,
+    net_profit_amount: netProfitAmount,
+    net_margin_percent: netMarginPercent,
+    monthly_fixed_cost: monthlyFixedCost,
+    employee_count: employeeCount,
+    working_capital_amount: workingCapitalAmount,
+    notes: planningSanitizeLongText(row?.notes, 4000),
+    created_at: row?.created_at || null,
+    updated_at: row?.updated_at || null,
+    created_by: row?.created_by || null,
+    updated_by: row?.updated_by || null,
+  };
+}
+
+async function getPlanningProjections(adminSupabase, baseYear = getCurrentYear()) {
+  const normalizedBaseYear = planningSanitizeYear(baseYear);
+
+  const summary = await getPlanningSummary(adminSupabase, normalizedBaseYear);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_projecoes")
+    .select("id, base_year, projection_year, revenue_amount, net_profit_amount, net_margin_percent, monthly_fixed_cost, employee_count, working_capital_amount, notes, created_at, updated_at, created_by, updated_by")
+    .eq("base_year", normalizedBaseYear)
+    .order("projection_year", { ascending: true });
+
+  if (error) {
+    throw new Error(`Erro ao carregar projeções plurianuais: ${error.message}`);
+  }
+
+  const rowMap = new Map((data || []).map((row) => [Number(row.projection_year), row]));
+  const years = [normalizedBaseYear, normalizedBaseYear + 1, normalizedBaseYear + 2];
+
+  const items = years.map((year, index) => {
+    const row = rowMap.get(year);
+    const isCurrentYear = year === normalizedBaseYear;
+
+    const normalized = isCurrentYear
+      ? {
+          id: row?.id || null,
+          base_year: normalizedBaseYear,
+          projection_year: year,
+          revenue_amount: planningSanitizeMoney(summary?.cards?.faturamento_anual),
+          net_profit_amount: planningSanitizeMoney(summary?.cards?.lucro_liquido_anual),
+          net_margin_percent: planningSanitizeMoney(summary?.cards?.margem_liquida_percent),
+          monthly_fixed_cost: planningSanitizeMoney(summary?.cards?.custo_fixo_mensal),
+          employee_count: planningSanitizeInteger(row?.employee_count, 0),
+          working_capital_amount: planningComputeWorkingCapital(summary?.cards?.custo_fixo_mensal),
+          notes: planningSanitizeLongText(row?.notes, 4000),
+          created_at: row?.created_at || null,
+          updated_at: row?.updated_at || null,
+          created_by: row?.created_by || null,
+          updated_by: row?.updated_by || null,
+        }
+      : planningNormalizeProjectionRow({
+          ...row,
+          base_year: normalizedBaseYear,
+          projection_year: year,
+        });
+
+    const previous = index > 0 ? years[index - 1] : null;
+    const previousItem = previous ? rowMap.get(previous) : null;
+
+    return {
+      ...normalized,
+      is_auto_current_year: isCurrentYear,
+      revenue_delta_amount: null,
+      revenue_delta_percent: null,
+      net_profit_delta_amount: null,
+      net_profit_delta_percent: null,
+      monthly_fixed_cost_delta_amount: null,
+      monthly_fixed_cost_delta_percent: null,
+      working_capital_delta_amount: null,
+      working_capital_delta_percent: null,
+    };
+  });
+
+  for (let i = 1; i < items.length; i += 1) {
+    const current = items[i];
+    const previous = items[i - 1];
+
+    const delta = (curr, prev) => Number((curr - prev).toFixed(2));
+    const percent = (curr, prev) => {
+      if (!prev) return 0;
+      return Number((((curr - prev) / prev) * 100).toFixed(2));
+    };
+
+    current.revenue_delta_amount = delta(current.revenue_amount, previous.revenue_amount);
+    current.revenue_delta_percent = previous.revenue_amount ? percent(current.revenue_amount, previous.revenue_amount) : 0;
+    current.net_profit_delta_amount = delta(current.net_profit_amount, previous.net_profit_amount);
+    current.net_profit_delta_percent = previous.net_profit_amount ? percent(current.net_profit_amount, previous.net_profit_amount) : 0;
+    current.monthly_fixed_cost_delta_amount = delta(current.monthly_fixed_cost, previous.monthly_fixed_cost);
+    current.monthly_fixed_cost_delta_percent = previous.monthly_fixed_cost ? percent(current.monthly_fixed_cost, previous.monthly_fixed_cost) : 0;
+    current.working_capital_delta_amount = delta(current.working_capital_amount, previous.working_capital_amount);
+    current.working_capital_delta_percent = previous.working_capital_amount ? percent(current.working_capital_amount, previous.working_capital_amount) : 0;
+  }
+
+  return {
+    base_year: normalizedBaseYear,
+    items,
+  };
+}
+
+async function upsertPlanningProjection(adminSupabase, payload, userId = null) {
+  const baseYear = planningSanitizeYear(payload?.base_year || payload?.reference_year || getCurrentYear());
+  const projectionYear = planningSanitizeYear(payload?.projection_year);
+  const currentYear = baseYear;
+
+  const row = {
+    base_year: baseYear,
+    projection_year: projectionYear,
+    revenue_amount: planningSanitizeMoney(payload?.revenue_amount),
+    net_profit_amount: planningSanitizeMoney(payload?.net_profit_amount),
+    net_margin_percent: planningSanitizeMoney(payload?.net_margin_percent),
+    monthly_fixed_cost: planningSanitizeMoney(payload?.monthly_fixed_cost),
+    employee_count: planningSanitizeInteger(payload?.employee_count, 0),
+    working_capital_amount: planningComputeWorkingCapital(payload?.monthly_fixed_cost),
+    notes: planningSanitizeLongText(payload?.notes, 4000),
+    updated_by: userId || null,
+  };
+
+  if (projectionYear === currentYear) {
+    row.revenue_amount = planningSanitizeMoney(payload?.revenue_amount);
+    row.net_profit_amount = planningSanitizeMoney(payload?.net_profit_amount);
+    row.net_margin_percent = planningSanitizeMoney(payload?.net_margin_percent);
+    row.monthly_fixed_cost = planningSanitizeMoney(payload?.monthly_fixed_cost);
+    row.working_capital_amount = planningComputeWorkingCapital(row.monthly_fixed_cost);
+  }
+
+  const { error } = await adminSupabase
+    .from("planejamento_projecoes")
+    .upsert(
+      {
+        ...row,
+        created_by: userId || null,
+      },
+      {
+        onConflict: "base_year,projection_year",
+        ignoreDuplicates: false,
+      }
+    );
+
+  if (error) {
+    throw new Error(`Erro ao salvar projeção plurianual: ${error.message}`);
+  }
+
+  return getPlanningProjections(adminSupabase, baseYear);
+}
+
+async function deletePlanningProjection(adminSupabase, id) {
+  const normalizedId = planningSanitizeShortText(id, 80);
+
+  const { data: existing, error: existingError } = await adminSupabase
+    .from("planejamento_projecoes")
+    .select("id, base_year")
+    .eq("id", normalizedId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Erro ao localizar projeção: ${existingError.message}`);
+  }
+
+  if (!existing) {
+    throw new Error("Projeção não encontrada.");
+  }
+
+  const { error } = await adminSupabase
+    .from("planejamento_projecoes")
+    .delete()
+    .eq("id", normalizedId);
+
+  if (error) {
+    throw new Error(`Erro ao remover projeção: ${error.message}`);
+  }
+
+  return getPlanningProjections(adminSupabase, existing.base_year || getCurrentYear());
+}
+
+function planningNormalizeCommercialRow(row, year, month, goalType) {
+  const goalAmount = planningSanitizeMoney(row?.goal_amount);
+  const actualAmount = planningSanitizeMoney(row?.actual_amount);
+  const performancePercent = planningComputePerformancePercent(goalAmount, actualAmount);
+
+  return {
+    id: row?.id || null,
+    reference_year: planningSanitizeYear(row?.reference_year || year),
+    reference_month: planningSanitizeInteger(row?.reference_month || month, month),
+    month_label: PLANNING_MONTH_LABELS[month - 1] || String(month),
+    goal_type: planningValidateEnum(row?.goal_type || goalType, PLANNING_COMMERCIAL_GOAL_TYPES, "Contrato Recorrente"),
+    goal_amount: goalAmount,
+    actual_amount: actualAmount,
+    performance_percent: performancePercent,
+    notes: planningSanitizeLongText(row?.notes, 4000),
+    created_at: row?.created_at || null,
+    updated_at: row?.updated_at || null,
+    created_by: row?.created_by || null,
+    updated_by: row?.updated_by || null,
+  };
+}
+
+async function getPlanningCommercialGoals(adminSupabase, year = getCurrentYear()) {
+  const normalizedYear = planningSanitizeYear(year);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_meta_comercial")
+    .select("id, reference_year, reference_month, goal_type, goal_amount, actual_amount, notes, created_at, updated_at, created_by, updated_by")
+    .eq("reference_year", normalizedYear)
+    .order("reference_month", { ascending: true });
+
+  if (error) {
+    throw new Error(`Erro ao carregar metas comerciais: ${error.message}`);
+  }
+
+  const rowMap = new Map(
+    (data || []).map((row) => [`${row.reference_month}-${row.goal_type}`, row])
+  );
+
+  const items = [];
+  for (let month = 1; month <= 12; month += 1) {
+    for (const goalType of PLANNING_COMMERCIAL_GOAL_TYPES) {
+      const row = rowMap.get(`${month}-${goalType}`) || null;
+      items.push(planningNormalizeCommercialRow(row, normalizedYear, month, goalType));
+    }
+  }
+
+  const totals = items.reduce(
+    (acc, item) => {
+      const bucket = acc.by_type[item.goal_type] || {
+        goal_amount: 0,
+        actual_amount: 0,
+        performance_percent: 0,
+      };
+
+      bucket.goal_amount += item.goal_amount;
+      bucket.actual_amount += item.actual_amount;
+      bucket.performance_percent = planningComputePerformancePercent(bucket.goal_amount, bucket.actual_amount);
+
+      acc.by_type[item.goal_type] = bucket;
+      acc.goal_amount += item.goal_amount;
+      acc.actual_amount += item.actual_amount;
+      acc.performance_percent = planningComputePerformancePercent(acc.goal_amount, acc.actual_amount);
+
+      return acc;
+    },
+    {
+      goal_amount: 0,
+      actual_amount: 0,
+      performance_percent: 0,
+      by_type: {},
+    }
+  );
+
+  return {
+    year: normalizedYear,
+    items,
+    totals,
+    goal_types: PLANNING_COMMERCIAL_GOAL_TYPES,
+  };
+}
+
+async function upsertPlanningCommercialGoal(adminSupabase, payload, userId = null) {
+  const referenceYear = planningSanitizeYear(payload?.reference_year);
+  const referenceMonth = planningSanitizeMonth(payload?.reference_month);
+  const goalType = planningValidateEnum(payload?.goal_type, PLANNING_COMMERCIAL_GOAL_TYPES, "Contrato Recorrente");
+
+  const row = {
+    reference_year: referenceYear,
+    reference_month: referenceMonth,
+    goal_type: goalType,
+    goal_amount: planningSanitizeMoney(payload?.goal_amount),
+    actual_amount: planningSanitizeMoney(payload?.actual_amount),
+    notes: planningSanitizeLongText(payload?.notes, 4000),
+    updated_by: userId || null,
+    created_by: userId || null,
+  };
+
+  const { error } = await adminSupabase
+    .from("planejamento_meta_comercial")
+    .upsert(row, {
+      onConflict: "reference_year,reference_month,goal_type",
+      ignoreDuplicates: false,
+    });
+
+  if (error) {
+    throw new Error(`Erro ao salvar meta comercial: ${error.message}`);
+  }
+
+  return getPlanningCommercialGoals(adminSupabase, referenceYear);
+}
+
+async function deletePlanningCommercialGoal(adminSupabase, id, fallbackYear = getCurrentYear()) {
+  const normalizedId = planningSanitizeShortText(id, 80);
+
+  const { data: existing, error: existingError } = await adminSupabase
+    .from("planejamento_meta_comercial")
+    .select("id, reference_year")
+    .eq("id", normalizedId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Erro ao localizar meta comercial: ${existingError.message}`);
+  }
+
+  if (!existing) {
+    throw new Error("Meta comercial não encontrada.");
+  }
+
+  const { error } = await adminSupabase
+    .from("planejamento_meta_comercial")
+    .delete()
+    .eq("id", normalizedId);
+
+  if (error) {
+    throw new Error(`Erro ao remover meta comercial: ${error.message}`);
+  }
+
+  return getPlanningCommercialGoals(adminSupabase, existing.reference_year || fallbackYear);
+}
+
+async function getPlanningCommissionSettings(adminSupabase, year = getCurrentYear()) {
+  const normalizedYear = planningSanitizeYear(year);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_comissoes")
+    .select("id, reference_year, commission_percent, recurrent_goal_required_percent, notes, created_at, updated_at, created_by, updated_by")
+    .eq("reference_year", normalizedYear)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Erro ao carregar configuração de comissão: ${error.message}`);
+  }
+
+  const commercial = await getPlanningCommercialGoals(adminSupabase, normalizedYear);
+  const recurring = commercial?.totals?.by_type?.["Contrato Recorrente"] || {
+    goal_amount: 0,
+    actual_amount: 0,
+    performance_percent: 0,
+  };
+
+  const commissionPercent = planningSanitizeMoney(data?.commission_percent);
+  const recurrentGoalRequiredPercent = planningSanitizeMoney(data?.recurrent_goal_required_percent || 100);
+
+  const eligible = recurring.performance_percent >= recurrentGoalRequiredPercent;
+  const commissionAmount = eligible
+    ? Number(((recurring.actual_amount * commissionPercent) / 100).toFixed(2))
+    : 0;
+
+  return {
+    id: data?.id || null,
+    reference_year: normalizedYear,
+    commission_percent: commissionPercent,
+    recurrent_goal_required_percent: recurrentGoalRequiredPercent,
+    notes: planningSanitizeLongText(data?.notes, 4000),
+    recurring_goal_amount: recurring.goal_amount,
+    recurring_actual_amount: recurring.actual_amount,
+    recurring_performance_percent: recurring.performance_percent,
+    eligible,
+    commission_amount: commissionAmount,
+  };
+}
+
+async function upsertPlanningCommissionSettings(adminSupabase, payload, userId = null) {
+  const referenceYear = planningSanitizeYear(payload?.reference_year);
+
+  const row = {
+    reference_year: referenceYear,
+    commission_percent: planningSanitizeMoney(payload?.commission_percent),
+    recurrent_goal_required_percent: planningSanitizeMoney(payload?.recurrent_goal_required_percent || 100),
+    notes: planningSanitizeLongText(payload?.notes, 4000),
+    updated_by: userId || null,
+    created_by: userId || null,
+  };
+
+  const { error } = await adminSupabase
+    .from("planejamento_comissoes")
+    .upsert(row, {
+      onConflict: "reference_year",
+      ignoreDuplicates: false,
+    });
+
+  if (error) {
+    throw new Error(`Erro ao salvar configuração de comissão: ${error.message}`);
+  }
+
+  return getPlanningCommissionSettings(adminSupabase, referenceYear);
+}
+
+function planningComputeFourteenthFactor(achievementPercent) {
+  const percent = planningSanitizeMoney(achievementPercent);
+  if (percent < 50) return 0;
+  return Number((percent / 100).toFixed(2));
+}
+
+async function getPlanningFourteenth(adminSupabase, year = getCurrentYear()) {
+  const normalizedYear = planningSanitizeYear(year);
+
+  const { data, error } = await adminSupabase
+    .from("planejamento_decimo_quarto")
+    .select("id, reference_year, achievement_percent, salary_base_amount, projected_payment_amount, notes, created_at, updated_at, created_by, updated_by")
+    .eq("reference_year", normalizedYear)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Erro ao carregar 14º salário: ${error.message}`);
+  }
+
+  const monthlyGoals = await getPlanningMonthlyGoals(adminSupabase, normalizedYear);
+  const achievementPercent = planningSanitizeMoney(
+    monthlyGoals?.totals?.achieved_percent || data?.achievement_percent || 0
+  );
+  const salaryBaseAmount = planningSanitizeMoney(data?.salary_base_amount);
+  const factor = planningComputeFourteenthFactor(achievementPercent);
+  const projectedPaymentAmount = Number((salaryBaseAmount * factor).toFixed(2));
+
+  let ruleLabel = "Sem pagamento";
+  if (achievementPercent >= 100) {
+    ruleLabel = "Pagamento integral ou proporcional ao excedente";
+  } else if (achievementPercent >= 50) {
+    ruleLabel = "Pagamento proporcional";
+  }
+
+  return {
+    id: data?.id || null,
+    reference_year: normalizedYear,
+    achievement_percent: achievementPercent,
+    salary_base_amount: salaryBaseAmount,
+    factor,
+    projected_payment_amount: projectedPaymentAmount,
+    notes: planningSanitizeLongText(data?.notes, 4000),
+    rule_label: ruleLabel,
+  };
+}
+
+async function upsertPlanningFourteenth(adminSupabase, payload, userId = null) {
+  const referenceYear = planningSanitizeYear(payload?.reference_year);
+  const monthlyGoals = await getPlanningMonthlyGoals(adminSupabase, referenceYear);
+  const achievementPercent = planningSanitizeMoney(monthlyGoals?.totals?.achieved_percent || 0);
+  const salaryBaseAmount = planningSanitizeMoney(payload?.salary_base_amount);
+  const factor = planningComputeFourteenthFactor(achievementPercent);
+  const projectedPaymentAmount = Number((salaryBaseAmount * factor).toFixed(2));
+
+  const row = {
+    reference_year: referenceYear,
+    achievement_percent: achievementPercent,
+    salary_base_amount: salaryBaseAmount,
+    projected_payment_amount: projectedPaymentAmount,
+    notes: planningSanitizeLongText(payload?.notes, 4000),
+    updated_by: userId || null,
+    created_by: userId || null,
+  };
+
+  const { error } = await adminSupabase
+    .from("planejamento_decimo_quarto")
+    .upsert(row, {
+      onConflict: "reference_year",
+      ignoreDuplicates: false,
+    });
+
+  if (error) {
+    throw new Error(`Erro ao salvar 14º salário: ${error.message}`);
+  }
+
+  return getPlanningFourteenth(adminSupabase, referenceYear);
+}
+
 module.exports = {
   getPlanningSummary,
   getPlanningIndicators,
@@ -623,4 +1121,14 @@ module.exports = {
   getPlanningActionPlans,
   upsertPlanningActionPlan,
   deletePlanningActionPlan,
+  getPlanningProjections,
+  upsertPlanningProjection,
+  deletePlanningProjection,
+  getPlanningCommercialGoals,
+  upsertPlanningCommercialGoal,
+  deletePlanningCommercialGoal,
+  getPlanningCommissionSettings,
+  upsertPlanningCommissionSettings,
+  getPlanningFourteenth,
+  upsertPlanningFourteenth,
 };
