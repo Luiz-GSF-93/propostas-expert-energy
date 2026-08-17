@@ -505,14 +505,39 @@ export default function EmprestimosPage() {
   }, [filteredContracts]);
 
   const alerts = useMemo(() => {
-    const today = new Date();
+    const startOfDay = (date: Date) => {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const endOfDay = (date: Date) => {
+      const d = new Date(date);
+      d.setHours(23, 59, 59, 999);
+      return d;
+    };
+
+    const parseDateOnly = (value?: string | null) => {
+      if (!value) return null;
+      const raw = String(value).slice(0, 10);
+      const [year, month, day] = raw.split("-").map(Number);
+      if (!year || !month || !day) return null;
+      return new Date(year, month - 1, day, 12, 0, 0, 0);
+    };
+
+    const today = startOfDay(new Date());
+
     const mk = (days: number) => {
-      const end = new Date();
-      end.setDate(end.getDate() + days);
+      const limit = endOfDay(new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + days
+      ));
+
       return filteredContracts.filter((item) => {
-        if (!item.next_due_date) return false;
-        const due = new Date(`${item.next_due_date}T00:00:00`);
-        return due >= today && due <= end;
+        const due = parseDateOnly(item.next_future_due_date || item.next_due_date);
+        if (!due) return false;
+        return due >= today && due <= limit;
       }).length;
     };
 
