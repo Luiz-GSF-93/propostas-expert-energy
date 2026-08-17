@@ -1715,13 +1715,13 @@ export default function PlanejamentoPage() {
             </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="grid gap-6 xl:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_380px] 2xl:items-start">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Meta Comercial</p>
               <h2 className="mt-2 text-xl font-black">Tabela consolidada</h2>
 
               <div className="mt-5 overflow-x-auto">
-                <table className="min-w-[1000px] divide-y divide-slate-200 text-sm">
+                <table className="min-w-[860px] divide-y divide-slate-200 text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
                       <th className="px-3 py-3">Mês</th>
@@ -1755,12 +1755,12 @@ export default function PlanejamentoPage() {
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 2xl:sticky 2xl:top-6">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Comissão</p>
                 <h2 className="mt-2 text-xl font-black">Configuração e cálculo automático</h2>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="mt-5 grid gap-4 grid-cols-1">
                   <label className="space-y-2">
                     <span className="text-sm font-medium">% Comissão</span>
                     <input value={commissionForm.commission_percent} onChange={(e) => setCommissionForm((prev) => ({ ...prev, commission_percent: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" />
@@ -1775,7 +1775,7 @@ export default function PlanejamentoPage() {
                   </label>
                 </div>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <div className="mt-5 grid gap-3 grid-cols-1">
                   <div className="rounded-2xl border border-slate-200 p-4">
                     <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meta recorrente</div>
                     <div className="mt-2 text-xl font-extrabold">{formatMoney(commercialRecurringTotals.goal_amount)}</div>
@@ -1798,7 +1798,7 @@ export default function PlanejamentoPage() {
                 </div>
 
                 <div className="mt-5">
-                  <button onClick={handleSaveCommission} disabled={savingCommission} className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
+                  <button onClick={handleSaveCommission} disabled={savingCommission} className="w-full rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
                     {savingCommission ? "Salvando..." : "Salvar comissão"}
                   </button>
                 </div>
@@ -1808,7 +1808,7 @@ export default function PlanejamentoPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">14º salário</p>
                 <h2 className="mt-2 text-xl font-black">Simulação automática</h2>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="mt-5 grid gap-4 grid-cols-1">
                   <label className="space-y-2">
                     <span className="text-sm font-medium">Salário base (R$)</span>
                     <input
@@ -1874,7 +1874,7 @@ export default function PlanejamentoPage() {
                   <button
                     onClick={handleSaveFourteenth}
                     disabled={savingFourteenth}
-                    className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+                    className="w-full rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
                   >
                     {savingFourteenth ? "Salvando..." : "Salvar 14º salário"}
                   </button>
