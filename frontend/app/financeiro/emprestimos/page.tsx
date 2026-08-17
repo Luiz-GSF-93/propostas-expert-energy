@@ -38,6 +38,9 @@ type LoanContract = {
   first_overdue_date?: string | null;
   next_future_due_date?: string | null;
   next_due_date?: string | null;
+  installments_due_7_count?: number | string;
+  installments_due_15_count?: number | string;
+  installments_due_30_count?: number | string;
   balance_outstanding?: number | string;
   remaining_scheduled_amount?: number | string;
   total_scheduled_amount?: number | string;
@@ -505,47 +508,15 @@ export default function EmprestimosPage() {
   }, [filteredContracts]);
 
   const alerts = useMemo(() => {
-    const startOfDay = (date: Date) => {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    };
-
-    const endOfDay = (date: Date) => {
-      const d = new Date(date);
-      d.setHours(23, 59, 59, 999);
-      return d;
-    };
-
-    const parseDateOnly = (value?: string | null) => {
-      if (!value) return null;
-      const raw = String(value).slice(0, 10);
-      const [year, month, day] = raw.split("-").map(Number);
-      if (!year || !month || !day) return null;
-      return new Date(year, month - 1, day, 12, 0, 0, 0);
-    };
-
-    const today = startOfDay(new Date());
-
-    const mk = (days: number) => {
-      const limit = endOfDay(new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + days
-      ));
-
-      return filteredContracts.filter((item) => {
-        const due = parseDateOnly(item.next_future_due_date || item.next_due_date);
-        if (!due) return false;
-        return due >= today && due <= limit;
-      }).length;
-    };
-
-    return {
-      d7: mk(7),
-      d15: mk(15),
-      d30: mk(30),
-    };
+    return filteredContracts.reduce(
+      (acc, item) => {
+        acc.d7 += toNumber(item.installments_due_7_count);
+        acc.d15 += toNumber(item.installments_due_15_count);
+        acc.d30 += toNumber(item.installments_due_30_count);
+        return acc;
+      },
+      { d7: 0, d15: 0, d30: 0 }
+    );
   }, [filteredContracts]);
 
   const totalPrincipal = filteredContracts.reduce((acc, item) => acc + toNumber(item.principal_amount), 0);
@@ -1174,7 +1145,7 @@ export default function EmprestimosPage() {
           <DashboardCard label="Total pago" value={formatMoney(totalPago)} hint="Somente parcelas pagas registradas (resumo consolidado)" />
           <DashboardCard label="Contratos" value={`${filteredContracts.length}/${contracts.length}`} hint="Filtrados / totais" />
           <DashboardCard label="Próximo vencimento" value={nextDueCardValue} hint={nextDueCardHint} />
-          <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Vencimentos próximos" />
+          <DashboardCard label="Alertas 7/15/30" value={`${alerts.d7}/${alerts.d15}/${alerts.d30}`} hint="Parcelas a vencer em até 7, 15 e 30 dias" />
           <DashboardCard
             label="Parcelas atrasadas"
             value={String(overdueInstallmentsCount)}
