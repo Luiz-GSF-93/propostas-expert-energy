@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FinanceModuleShell from "@/components/finance/FinanceModuleShell";
 import { supabase } from "@/lib/supabase";
 const API_BASE = "/api/backend";
@@ -74,15 +74,12 @@ function formatPercent(value: unknown): string {
   })}%`;
 }
 
-async function authJson(path: string, init?: RequestInit) {
-  const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
-
+async function authJson(path: string, token: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE}?path=${encodeURIComponent(path)}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
       ...(init?.headers || {}),
     },
     credentials: "include",
@@ -137,6 +134,9 @@ export default function PlanejamentoPage() {
   const [success, setSuccess] = useState("");
   const [summary, setSummary] = useState<PlanningSummary | null>(null);
   const [showPlaceholders, setShowPlaceholders] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const requestIdRef = useRef(0);
   const [form, setForm] = useState<ManualIndicatorsForm>({
     reference_year: currentYear,
     recurring_clients: "0",
@@ -146,13 +146,18 @@ export default function PlanejamentoPage() {
     notes: "",
   });
 
-  async function loadData() {
+  async function loadData(token: string) {
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      const response = await authJson(`/api/finance/planejamento/resumo?year=${currentYear}`);
+      const response = await authJson(`/api/finance/planejamento/resumo?year=${currentYear}`, token);
+
+      if (requestId !== requestIdRef.current) return;
+
       setSummary(response);
       setForm({
         reference_year: Number(response?.manual_indicators?.reference_year || currentYear),
@@ -163,26 +168,71 @@ export default function PlanejamentoPage() {
         notes: String(response?.manual_indicators?.notes || ""),
       });
       setShowPlaceholders(false);
+      setError("");
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
+
       const message = err instanceof Error ? err.message : "Erro ao carregar Planejamento.";
       setError(message.includes("403") ? "Acesso restrito a administradores." : message);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let mounted = true;
+
+    async function syncSession() {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      setAccessToken(data?.session?.access_token || "");
+      setAuthReady(true);
+    }
+
+    syncSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      setAccessToken(session?.access_token || "");
+      setAuthReady(true);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
+  useEffect(() => {
+    if (!authReady) return;
+
+    if (!accessToken) {
+      setLoading(false);
+      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+      return;
+    }
+
+    loadData(accessToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, accessToken]);
+
   async function handleSaveIndicators() {
+    if (!accessToken) {
+      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
 
     try {
-      await authJson("/api/finance/planejamento/indicadores", {
+      await authJson("/api/finance/planejamento/indicadores", accessToken, {
         method: "PUT",
         body: JSON.stringify({
           reference_year: form.reference_year,
@@ -195,7 +245,7 @@ export default function PlanejamentoPage() {
       });
 
       setSuccess("Indicadores do Planejamento salvos com sucesso.");
-      await loadData();
+      await loadData(accessToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar indicadores.");
     } finally {
@@ -287,7 +337,7 @@ export default function PlanejamentoPage() {
 
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => loadData()}
+                onClick={() => accessToken ? loadData(accessToken) : setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.")}
                 className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Atualizar painel
