@@ -2,9 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-const navItems = [
+type FinanceModuleShellProps = {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+};
+
+type NavItem = {
+  label: string;
+  href: string;
+  enabled: boolean;
+  adminOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   {
     label: "Visão Geral",
     href: "/financeiro",
@@ -27,8 +41,9 @@ const navItems = [
   },
   {
     label: "Planejamento",
-    href: "#",
-    enabled: false,
+    href: "/financeiro/planejamento",
+    enabled: true,
+    adminOnly: true,
   },
   {
     label: "Empréstimos",
@@ -41,53 +56,92 @@ export default function FinanceModuleShell({
   title,
   subtitle,
   children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}) {
+}: FinanceModuleShellProps) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSessionRole() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const user = session?.user;
+
+        const roleCandidates = [
+          user?.app_metadata?.role,
+          user?.user_metadata?.role,
+          user?.user_metadata?.profile,
+          user?.user_metadata?.perfil,
+          user?.user_metadata?.access,
+        ]
+          .filter(Boolean)
+          .map((value) => String(value).toLowerCase());
+
+        const admin =
+          roleCandidates.includes("admin") ||
+          roleCandidates.includes("administrator") ||
+          roleCandidates.includes("administrador");
+
+        if (mounted) {
+          setIsAdmin(admin);
+        }
+      } catch (error) {
+        console.error("finance.shell.role.error", error);
+        if (mounted) {
+          setIsAdmin(false);
+        }
+      }
+    }
+
+    loadSessionRole();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => !item.adminOnly || isAdmin),
+    [isAdmin]
+  );
 
   return (
-    <main className="min-h-screen bg-slate-100">
-      <div className="mx-auto flex max-w-[1600px] gap-6 px-4 py-6 lg:px-6">
-        <aside className="hidden w-72 shrink-0 lg:block">
-          <div className="sticky top-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#334155_100%)] px-5 py-5 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                Módulo Financeiro
-              </p>
-              <h2 className="mt-2 text-2xl font-bold">Gestão Financeira</h2>
-              <p className="mt-2 text-sm text-slate-300">
-                Navegação administrativa do ambiente financeiro.
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
+        <aside className="w-full border-b border-slate-200 bg-white lg:min-h-screen lg:w-80 lg:border-b-0 lg:border-r">
+          <div className="p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">
+              Expert Energy
+            </p>
+            <h1 className="mt-3 text-2xl font-black tracking-tight">{title}</h1>
+            {subtitle ? (
+              <p className="mt-2 text-sm leading-6 text-slate-500">{subtitle}</p>
+            ) : null}
+          </div>
 
-            <div className="space-y-2 p-4">
-              <Link
-                href="/dashboard"
-                className="mb-2 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                ← Voltar ao dashboard
-              </Link>
+          <nav className="px-4 pb-6">
+            <div className="space-y-2">
+              {visibleNavItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/financeiro" && pathname?.startsWith(item.href));
 
-              {navItems.map((item) => {
-                const active =
-                  item.enabled &&
-                  (pathname === item.href ||
-                    (item.href !== "/financeiro" && pathname.startsWith(item.href)));
+                const baseClass =
+                  "flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition";
 
                 if (!item.enabled) {
                   return (
-                    <div
+                    <span
                       key={item.label}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"
+                      className={`${baseClass} cursor-not-allowed bg-slate-100 text-slate-400`}
                     >
-                      <span className="font-medium text-slate-500">{item.label}</span>
-                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                        Em breve
-                      </span>
-                    </div>
+                      <span>{item.label}</span>
+                      <span className="text-[10px] uppercase tracking-[0.2em]">Em breve</span>
+                    </span>
                   );
                 }
 
@@ -95,51 +149,29 @@ export default function FinanceModuleShell({
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition ${
-                      active
-                        ? "bg-slate-900 text-white"
-                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    }`}
+                    className={
+                      isActive
+                        ? `${baseClass} bg-slate-900 text-white shadow-sm`
+                        : `${baseClass} bg-white text-slate-700 hover:bg-slate-100`
+                    }
                   >
                     <span>{item.label}</span>
-                    {active && (
-                      <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold text-white">
-                        atual
+                    {isActive ? (
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                        Atual
                       </span>
-                    )}
+                    ) : null}
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </nav>
         </aside>
 
-        <section className="min-w-0 flex-1 space-y-6">
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <div className="bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#334155_100%)] px-6 py-6 text-white md:px-8">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-                  {subtitle ? (
-                    <p className="mt-2 max-w-3xl text-sm text-slate-300">{subtitle}</p>
-                  ) : null}
-                </div>
-
-                <div className="lg:hidden">
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
-                  >
-                    ← Dashboard
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {children}
-        </section>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <div className="space-y-6">{children}</div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
