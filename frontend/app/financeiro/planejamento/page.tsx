@@ -317,6 +317,44 @@ function computeWorkingCapital(monthlyFixedCost: unknown): number {
   return Number((toNumber(monthlyFixedCost) * 3).toFixed(2));
 }
 
+function computeFourteenthEligibility(achievementPercent: unknown) {
+  const percent = Number(toNumber(achievementPercent).toFixed(2));
+
+  if (percent <= 50) {
+    return {
+      eligible: false,
+      factor: 0,
+      paymentLabel: "Sem pagamento",
+      ruleLabel: "De 0,01% até 50,00%: sem pagamento.",
+    };
+  }
+
+  if (percent < 100) {
+    return {
+      eligible: true,
+      factor: Number((percent / 100).toFixed(4)),
+      paymentLabel: "Pagamento proporcional",
+      ruleLabel: "De 50,01% até 99,99%: pagamento proporcional abaixo de 100%.",
+    };
+  }
+
+  if (percent === 100) {
+    return {
+      eligible: true,
+      factor: 1,
+      paymentLabel: "Pagamento obtido",
+      ruleLabel: "100,00%: pagamento obtido integral.",
+    };
+  }
+
+  return {
+    eligible: true,
+    factor: Number((percent / 100).toFixed(4)),
+    paymentLabel: "Pagamento obtido proporcional positivo",
+    ruleLabel: "> 100,00%: pagamento obtido com proporcional positivo.",
+  };
+}
+
 function downloadTextFile(filename: string, content: string, contentType = "text/plain;charset=utf-8") {
   const blob = new Blob([content], { type: contentType });
   const url = URL.createObjectURL(blob);
@@ -1166,9 +1204,9 @@ export default function PlanejamentoPage() {
     rows.push(["% atingimento anual", "Fator", "Haverá pagamento", "Regra aplicada"]);
     rows.push([
       String(fourteenth?.achievement_percent ?? 0),
-      String(fourteenth?.factor ?? 0),
-      (fourteenth?.factor || 0) > 0 ? "Sim" : "Não",
-      fourteenth?.rule_label || "Sem regra",
+      String(fourteenthRule.factor),
+      fourteenthRule.eligible ? "Sim" : "Não",
+      fourteenthRule.ruleLabel,
     ]);
 
     const content = rows.map((row) => row.map(csvEscape).join(";")).join("\n");
@@ -1207,7 +1245,12 @@ export default function PlanejamentoPage() {
     ];
   }, [summary]);
 
-  const fourteenthEligible = (fourteenth?.factor || 0) > 0;
+  const fourteenthRule = useMemo(
+    () => computeFourteenthEligibility(fourteenth?.achievement_percent || 0),
+    [fourteenth?.achievement_percent]
+  );
+
+  const fourteenthEligible = fourteenthRule.eligible;
 
   if (loading) {
     return (
@@ -1291,7 +1334,7 @@ export default function PlanejamentoPage() {
             }
           >
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Patch 4.1: UX ajustada, seletor de ano, recuo por seção, impressão A4 e exportação CSV.
+              Patch 4.2: UX ajustada, seletor de ano, recuo por seção, impressão A4, exportação CSV e regra automática do 14º salário.
             </p>
 
             {error ? (
@@ -1641,15 +1684,15 @@ export default function PlanejamentoPage() {
             <SectionCard sectionKey="decimo_quarto" kicker="14º salário" title="Elegibilidade automática" collapsed={collapsedSections.decimo_quarto} onToggle={toggleSection} sticky>
               <div className="space-y-4">
                 <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${fourteenthEligible ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
-                  {fourteenthEligible ? "Com pagamento" : "Sem pagamento"}
+                  {fourteenthRule.paymentLabel}
                 </div>
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 p-4"><div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% atingimento anual</div><div className="mt-2 text-xl font-extrabold">{formatPercent(fourteenth?.achievement_percent || 0)}</div></div>
-                  <div className="rounded-2xl border border-slate-200 p-4"><div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Fator aplicado</div><div className="mt-2 text-xl font-extrabold">{(fourteenth?.factor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                  <div className="rounded-2xl border border-slate-200 p-4"><div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Fator aplicado</div><div className="mt-2 text-xl font-extrabold">{fourteenthRule.factor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Regra aplicada</div>
-                  <div className="mt-2 font-medium text-slate-700">{fourteenth?.rule_label || "Sem regra calculada"}</div>
+                  <div className="mt-2 font-medium text-slate-700">{fourteenthRule.ruleLabel}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   Objetivo deste bloco: informar se haverá direito ao pagamento conforme o percentual atingido da meta anual, independentemente do salário individual.
