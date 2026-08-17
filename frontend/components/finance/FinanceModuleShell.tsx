@@ -63,7 +63,7 @@ export default function FinanceModuleShell({
   useEffect(() => {
     let mounted = true;
 
-    async function loadSessionRole() {
+    async function loadProfileRole() {
       try {
         const {
           data: { session },
@@ -71,33 +71,58 @@ export default function FinanceModuleShell({
 
         const user = session?.user;
 
-        const roleCandidates = [
-          user?.app_metadata?.role,
-          user?.user_metadata?.role,
-          user?.user_metadata?.profile,
-          user?.user_metadata?.perfil,
-          user?.user_metadata?.access,
-        ]
-          .filter(Boolean)
-          .map((value) => String(value).toLowerCase());
+        if (!user) {
+          if (mounted) setIsAdmin(false);
+          return;
+        }
+
+        let profileRow: {
+          id?: string;
+          email?: string;
+          role?: string;
+          is_active?: boolean;
+          full_name?: string | null;
+        } | null = null;
+
+        const { data: byId, error: byIdError } = await supabase
+          .from("profiles")
+          .select("id, email, role, is_active, full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!byIdError && byId) {
+          profileRow = byId;
+        }
+
+        if (!profileRow && user.email) {
+          const { data: byEmail, error: byEmailError } = await supabase
+            .from("profiles")
+            .select("id, email, role, is_active, full_name")
+            .eq("email", user.email)
+            .maybeSingle();
+
+          if (!byEmailError && byEmail) {
+            profileRow = byEmail;
+          }
+        }
 
         const admin =
-          roleCandidates.includes("admin") ||
-          roleCandidates.includes("administrator") ||
-          roleCandidates.includes("administrador");
+          Boolean(profileRow) &&
+          profileRow?.is_active !== false &&
+          String(profileRow?.role || "").toLowerCase() === "admin";
 
         if (mounted) {
           setIsAdmin(admin);
         }
       } catch (error) {
-        console.error("finance.shell.role.error", error);
+        console.error("finance.shell.profile.error", error);
         if (mounted) {
           setIsAdmin(false);
         }
       }
     }
 
-    loadSessionRole();
+    loadProfileRole();
 
     return () => {
       mounted = false;
@@ -121,6 +146,15 @@ export default function FinanceModuleShell({
             {subtitle ? (
               <p className="mt-2 text-sm leading-6 text-slate-500">{subtitle}</p>
             ) : null}
+
+            <div className="mt-5">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                ← Voltar para Dashboard
+              </Link>
+            </div>
           </div>
 
           <nav className="px-4 pb-6">

@@ -62,6 +62,7 @@ const hrefMap: Record<string, string> = {
   "fluxo-caixa": "/financeiro/fluxo-caixa",
   dre: "/financeiro/dre",
   custos: "/financeiro/custos",
+  planejamento: "/financeiro/planejamento",
   emprestimos: "/financeiro/emprestimos",
 };
 
@@ -204,6 +205,10 @@ export default function FinanceiroPage() {
             {(data?.sections || []).map((section) => {
               const href = hrefMap[section.key];
               const activeLink = Boolean(href && href !== "/financeiro");
+              const displayStatus =
+                section.key === "planejamento" && activeLink
+                  ? "READY"
+                  : section.status;
 
               return (
                 <div
@@ -215,7 +220,7 @@ export default function FinanceiroPage() {
                       <div className="text-sm font-semibold text-slate-900">{section.label}</div>
                       <div className="mt-1 text-xs text-slate-500">{section.key}</div>
                       <div className="mt-2 text-xs uppercase tracking-wide text-slate-500">
-                        {section.status}
+                        {displayStatus}
                       </div>
                     </div>
 
