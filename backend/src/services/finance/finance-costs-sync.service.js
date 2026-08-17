@@ -151,7 +151,6 @@ function isLoanContractActive(contract) {
 
   if (inactiveStatuses.has(status)) return false;
   if (contract.is_active === false) return false;
-  if (contract.deleted_at) return false;
   if (contract.closed_at) return false;
   if (contract.ended_at) return false;
   if (contract.settled_at) return false;

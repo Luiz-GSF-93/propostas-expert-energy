@@ -10,11 +10,6 @@ const {
   updateDreManualEntry,
   deleteDreManualEntry,
 } = require("../services/finance/finance-dre.service");
-const {
-  getPlanningSummary,
-  getPlanningIndicators,
-  upsertPlanningIndicators,
-} = require("../services/finance/finance-planning.service");
 
 
 
@@ -1175,49 +1170,6 @@ router.delete("/dre/manual-entries/:id", authMiddleware, requireAdmin, async (re
     console.error("Erro ao excluir lançamento manual do DRE:", error);
     return res.status(500).json({
       message: error?.message || "Erro ao excluir lançamento manual do DRE.",
-    });
-  }
-});
-
-
-router.get("/planejamento/resumo", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const year = Number(req.query.year || new Date().getFullYear());
-    const payload = await getPlanningSummary(adminSupabase, year);
-    return res.json(payload);
-  } catch (error) {
-    console.error("finance.planejamento.resumo.error", error);
-    return res.status(500).json({
-      message: "Erro ao carregar resumo do Planejamento.",
-      detail: error.message,
-    });
-  }
-});
-
-router.get("/planejamento/indicadores", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const year = Number(req.query.year || new Date().getFullYear());
-    const payload = await getPlanningIndicators(adminSupabase, year);
-    return res.json(payload);
-  } catch (error) {
-    console.error("finance.planejamento.indicadores.error", error);
-    return res.status(500).json({
-      message: "Erro ao carregar indicadores do Planejamento.",
-      detail: error.message,
-    });
-  }
-});
-
-router.put("/planejamento/indicadores", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const userId = req.user?.id || null;
-    const payload = await upsertPlanningIndicators(adminSupabase, req.body || {}, userId);
-    return res.json(payload);
-  } catch (error) {
-    console.error("finance.planejamento.indicadores.put.error", error);
-    return res.status(500).json({
-      message: "Erro ao salvar indicadores do Planejamento.",
-      detail: error.message,
     });
   }
 });
