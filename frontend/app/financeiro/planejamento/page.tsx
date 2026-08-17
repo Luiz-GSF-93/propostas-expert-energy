@@ -216,6 +216,7 @@ type ProjectionForm = {
   id: string;
   base_year: number;
   projection_year: number;
+  growth_percent: string;
   revenue_amount: string;
   net_profit_amount: string;
   net_margin_percent: string;
@@ -261,8 +262,10 @@ type SectionKey =
 function toNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") {
-    const cleaned = value.replace(/\s/g, "").replace("R$", "").replace(/\./g, "").replace(",", ".");
-    const parsed = Number(cleaned);
+    const cleaned = value.trim().replace(/\s/g, "").replace(/R\$\s?/g, "").replace(/[^\d,.-]/g, "");
+    if (!cleaned) return 0;
+    const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+    const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
@@ -447,6 +450,90 @@ function MiniBarsChart({ items }: { items: PlanningMonthlyGoal[] }) {
   );
 }
 
+function MetricBarsChart({
+  title,
+  subtitle,
+  items,
+  formatter = (value: number) => value.toLocaleString("pt-BR"),
+  primaryLabel = "Principal",
+  secondaryLabel,
+}: {
+  title: string;
+  subtitle?: string;
+  items: Array<{ label: string; value: number; secondaryValue?: number | null; note?: string }>;
+  formatter?: (value: number) => string;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+}) {
+  if (!items.length) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-base font-black text-slate-900">{title}</div>
+        {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          Sem dados suficientes para exibir este gráfico no ano selecionado.
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(1, ...items.flatMap((item) => [Math.abs(item.value || 0), Math.abs(item.secondaryValue || 0)]));
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-base font-black text-slate-900">{title}</div>
+          {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        <div className="flex flex-wrap gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" />{primaryLabel}</span>
+          {secondaryLabel ? <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" />{secondaryLabel}</span> : null}
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {items.map((item) => {
+          const primaryWidth = `${Math.max(4, (Math.abs(item.value || 0) / maxValue) * 100)}%`;
+          const secondaryWidth = item.secondaryValue != null ? `${Math.max(4, (Math.abs(item.secondaryValue || 0) / maxValue) * 100)}%` : "0%";
+
+          return (
+            <div key={`${title}-${item.label}`} className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">{item.label}</div>
+                  {item.note ? <div className="text-xs text-slate-400">{item.note}</div> : null}
+                </div>
+                <div className="text-right text-xs text-slate-500">
+                  <div>{formatter(item.value)}</div>
+                  {item.secondaryValue != null ? <div>{formatter(item.secondaryValue)}</div> : null}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-14 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{primaryLabel}</span>
+                  <div className="h-2.5 w-full rounded-full bg-slate-100">
+                    <div className="h-2.5 rounded-full bg-sky-500" style={{ width: primaryWidth }} />
+                  </div>
+                </div>
+                {item.secondaryValue != null ? (
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{secondaryLabel}</span>
+                    <div className="h-2.5 w-full rounded-full bg-slate-100">
+                      <div className="h-2.5 rounded-full bg-slate-300" style={{ width: secondaryWidth }} />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SectionCard({
   sectionKey,
   kicker,
@@ -506,7 +593,7 @@ export default function PlanejamentoPage() {
   const [savingCommission, setSavingCommission] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showPlaceholders, setShowPlaceholders] = useState(false);
+  const [showPlaceholders, setShowPlaceholders] = useState(true);
   const [summary, setSummary] = useState<PlanningSummary | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [accessToken, setAccessToken] = useState("");
@@ -595,6 +682,7 @@ export default function PlanejamentoPage() {
     id: "",
     base_year: currentYear,
     projection_year: currentYear + 1,
+    growth_percent: "0",
     revenue_amount: "",
     net_profit_amount: "",
     net_margin_percent: "",
@@ -629,7 +717,15 @@ export default function PlanejamentoPage() {
     setForm((prev) => ({ ...prev, reference_year: year }));
     setGoalForm((prev) => ({ ...prev, reference_year: year }));
     setActionForm((prev) => ({ ...prev, reference_year: year }));
-    setProjectionForm((prev) => ({ ...prev, base_year: year, projection_year: prev.projection_year < year ? year + 1 : prev.projection_year }));
+    setProjectionForm((prev) => {
+      const offset = prev.projection_year - prev.base_year === 2 ? 2 : 1;
+      return {
+        ...prev,
+        base_year: year,
+        projection_year: year + offset,
+        growth_percent: prev.projection_year - prev.base_year === offset ? prev.growth_percent : "0",
+      };
+    });
     setCommercialForm((prev) => ({ ...prev, reference_year: year }));
     setCommissionForm((prev) => ({ ...prev, reference_year: year }));
   }
@@ -732,7 +828,19 @@ export default function PlanejamentoPage() {
 
       setGoalForm((prev) => ({ ...prev, reference_year: Number(goalsResponse?.year || year) }));
       setActionForm((prev) => ({ ...prev, reference_year: Number(actionsResponse?.year || year) }));
-      setProjectionForm((prev) => ({ ...prev, base_year: Number(projectionsResponse?.base_year || year) }));
+      setProjectionForm((prev) => ({
+        ...prev,
+        id: "",
+        base_year: Number(projectionsResponse?.base_year || year),
+        projection_year: Number(projectionsResponse?.base_year || year) + 1,
+        growth_percent: "0",
+        revenue_amount: "",
+        net_profit_amount: "",
+        net_margin_percent: "",
+        monthly_fixed_cost: "",
+        employee_count: "",
+        notes: "",
+      }));
       setCommercialForm((prev) => ({ ...prev, reference_year: Number(commercialResponse?.year || year) }));
       setCommissionForm({
         reference_year: Number(commissionResponse?.reference_year || year),
@@ -965,6 +1073,13 @@ export default function PlanejamentoPage() {
 
   async function handleSaveProjection() {
     if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    if (projectionForm.projection_year <= projectionForm.base_year) {
+      return setError("O ano projetado deve ser maior que o ano base.");
+    }
+    if (projectionForm.projection_year === selectedYear + 2 && !projectionsByYear.has(selectedYear + 1) && !projectionForm.id) {
+      return setError("Para cadastrar o Ano +2, salve primeiro a projeção do Ano +1.");
+    }
+
     setSavingProjection(true);
     setError("");
     setSuccess("");
@@ -975,10 +1090,10 @@ export default function PlanejamentoPage() {
           id: projectionForm.id || undefined,
           base_year: projectionForm.base_year,
           projection_year: projectionForm.projection_year,
-          revenue_amount: toNumber(projectionForm.revenue_amount),
-          net_profit_amount: toNumber(projectionForm.net_profit_amount),
-          net_margin_percent: toNumber(projectionForm.net_margin_percent),
-          monthly_fixed_cost: toNumber(projectionForm.monthly_fixed_cost),
+          revenue_amount: projectionAutoValues.revenue,
+          net_profit_amount: projectionAutoValues.netProfit,
+          net_margin_percent: projectionAutoValues.netMargin,
+          monthly_fixed_cost: projectionAutoValues.monthlyFixedCost,
           employee_count: Number(projectionForm.employee_count || 0),
           notes: projectionForm.notes,
         }),
@@ -989,6 +1104,7 @@ export default function PlanejamentoPage() {
         id: "",
         base_year: selectedYear,
         projection_year: selectedYear + 1,
+        growth_percent: "0",
         revenue_amount: "",
         net_profit_amount: "",
         net_margin_percent: "",
@@ -1017,10 +1133,14 @@ export default function PlanejamentoPage() {
   }
 
   function handleEditProjection(item: ProjectionItem) {
+    const reference = item.projection_year === selectedYear + 1 ? currentYearProjection : projectionsByYear.get(item.projection_year - 1) || null;
+    const growthPercent = reference && toNumber(reference.revenue_amount) > 0 ? Number((((item.revenue_amount / reference.revenue_amount) - 1) * 100).toFixed(2)) : 0;
+
     setProjectionForm({
       id: item.id || "",
       base_year: item.base_year,
       projection_year: item.projection_year,
+      growth_percent: String(growthPercent),
       revenue_amount: String(item.revenue_amount || ""),
       net_profit_amount: String(item.net_profit_amount || ""),
       net_margin_percent: String(item.net_margin_percent || ""),
@@ -1218,10 +1338,82 @@ export default function PlanejamentoPage() {
     [actionForm.investment_amount, actionForm.expected_impact_amount]
   );
 
-  const projectionWorkingCapitalPreview = useMemo(
-    () => computeWorkingCapital(projectionForm.monthly_fixed_cost),
-    [projectionForm.monthly_fixed_cost]
-  );
+  const projectionsByYear = useMemo(() => new Map(projections.map((item) => [item.projection_year, item])), [projections]);
+
+  const currentYearProjection = useMemo<ProjectionItem>(() => {
+    const fromApi = projections.find((item) => item.projection_year === selectedYear && item.is_auto_current_year) || projections.find((item) => item.projection_year === selectedYear);
+    if (fromApi) return fromApi;
+
+    return {
+      id: null,
+      base_year: selectedYear,
+      projection_year: selectedYear,
+      revenue_amount: summary?.cards.faturamento_anual || 0,
+      net_profit_amount: summary?.cards.lucro_liquido_anual || 0,
+      net_margin_percent: summary?.cards.margem_liquida_percent || 0,
+      monthly_fixed_cost: summary?.cards.custo_fixo_mensal || 0,
+      employee_count: 0,
+      working_capital_amount: computeWorkingCapital(summary?.cards.custo_fixo_mensal || 0),
+      notes: "",
+      is_auto_current_year: true,
+    };
+  }, [projections, selectedYear, summary]);
+
+  const projectionYearOptions = useMemo(() => [selectedYear + 1, selectedYear + 2], [selectedYear]);
+
+  const projectionReferenceItem = useMemo(() => {
+    if (projectionForm.projection_year === selectedYear + 1) return currentYearProjection;
+    if (projectionForm.projection_year === selectedYear + 2) return projectionsByYear.get(selectedYear + 1) || null;
+    return currentYearProjection;
+  }, [currentYearProjection, projectionForm.projection_year, projectionsByYear, selectedYear]);
+
+  const projectionReferenceMissing = projectionForm.projection_year === selectedYear + 2 && !projectionReferenceItem;
+
+  const projectionAutoValues = useMemo(() => {
+    if (!projectionReferenceItem) {
+      return {
+        revenue: 0,
+        netProfit: 0,
+        netMargin: 0,
+        monthlyFixedCost: 0,
+        workingCapital: 0,
+      };
+    }
+
+    const factor = 1 + toNumber(projectionForm.growth_percent) / 100;
+    const revenue = Number((projectionReferenceItem.revenue_amount * factor).toFixed(2));
+    const netProfit = Number((projectionReferenceItem.net_profit_amount * factor).toFixed(2));
+    const monthlyFixedCost = Number((projectionReferenceItem.monthly_fixed_cost * factor).toFixed(2));
+    const netMargin = revenue !== 0 ? Number(((netProfit / revenue) * 100).toFixed(2)) : 0;
+    const workingCapital = computeWorkingCapital(monthlyFixedCost);
+
+    return {
+      revenue,
+      netProfit,
+      netMargin,
+      monthlyFixedCost,
+      workingCapital,
+    };
+  }, [projectionForm.growth_percent, projectionReferenceItem]);
+
+  const projectionDisplayItems = useMemo(() => {
+    const map = new Map<number, ProjectionItem>();
+    map.set(currentYearProjection.projection_year, currentYearProjection);
+    projections.forEach((item) => map.set(item.projection_year, item));
+    return Array.from(map.values()).sort((a, b) => a.projection_year - b.projection_year);
+  }, [currentYearProjection, projections]);
+
+  const getProjectionBaseItem = (item: ProjectionItem) => {
+    if (item.projection_year === selectedYear) return null;
+    if (item.projection_year === selectedYear + 1) return currentYearProjection;
+    return projectionsByYear.get(item.projection_year - 1) || null;
+  };
+
+  const getProjectionGrowthPercent = (item: ProjectionItem) => {
+    const base = getProjectionBaseItem(item);
+    if (!base || toNumber(base.revenue_amount) === 0) return null;
+    return Number((((item.revenue_amount / base.revenue_amount) - 1) * 100).toFixed(2));
+  };
 
   const commercialRecurringTotals = commercialTotals?.by_type?.["Contrato Recorrente"] || {
     goal_amount: 0,
@@ -1244,6 +1436,26 @@ export default function PlanejamentoPage() {
       { label: "Custo Fixo Mensal", value: formatMoney(summary.cards.custo_fixo_mensal), hint: "Origem automática: API Custos > categoria Fixo" },
     ];
   }, [summary]);
+
+  const projectionRevenueChartItems = useMemo(
+    () => projectionDisplayItems.map((item) => ({ label: String(item.projection_year), value: item.revenue_amount, note: item.projection_year === selectedYear ? "Ano base automático" : `Crescimento ${formatPercent(getProjectionGrowthPercent(item) || 0)}` })),
+    [projectionDisplayItems, selectedYear]
+  );
+
+  const projectionProfitChartItems = useMemo(
+    () => projectionDisplayItems.map((item) => ({ label: String(item.projection_year), value: item.net_profit_amount, note: item.projection_year === selectedYear ? "Resultado atual" : `Margem ${formatPercent(item.net_margin_percent)}` })),
+    [projectionDisplayItems, selectedYear]
+  );
+
+  const commercialChartItems = useMemo(
+    () => Object.entries(commercialTotals?.by_type || {}).map(([label, values]) => ({ label, value: values.goal_amount || 0, secondaryValue: values.actual_amount || 0, note: `Performance ${formatPercent(values.performance_percent || 0)}` })),
+    [commercialTotals]
+  );
+
+  const actionStatusChartItems = useMemo(
+    () => Object.entries(actionSummary?.status_breakdown || {}).map(([label, value]) => ({ label, value: Number(value) || 0, note: "Quantidade de iniciativas" })),
+    [actionSummary]
+  );
 
   const fourteenthRule = useMemo(
     () => computeFourteenthEligibility(fourteenth?.achievement_percent || 0),
@@ -1328,13 +1540,13 @@ export default function PlanejamentoPage() {
                   onClick={() => setShowPlaceholders((prev) => !prev)}
                   className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-slate-100 dark:text-slate-900"
                 >
-                  {showPlaceholders ? "Ocultar futuras" : "Expandir futuras"}
+                  {showPlaceholders ? "Ocultar gráficos" : "Exibir gráficos"}
                 </button>
               </div>
             }
           >
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Patch 4.2: UX ajustada, seletor de ano, recuo por seção, impressão A4, exportação CSV e regra automática do 14º salário.
+              Patch 4.3: projeção plurianual com crescimento automático, capital de giro corrigido, gráficos avançados reais e regra automática do 14º salário.
             </p>
 
             {error ? (
@@ -1603,19 +1815,28 @@ export default function PlanejamentoPage() {
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:items-start">
             <SectionCard sectionKey="projecoes_form" kicker="Projeção Plurianual" title="Cadastrar / atualizar projeção" collapsed={collapsedSections.projecoes_form} onToggle={toggleSection}>
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2"><span className="text-sm font-medium">Ano base</span><input value={projectionForm.base_year} onChange={(e) => setProjectionForm((prev) => ({ ...prev, base_year: Number(e.target.value || selectedYear) }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="numeric" /></label>
-                <label className="space-y-2"><span className="text-sm font-medium">Ano projetado</span><input value={projectionForm.projection_year} onChange={(e) => setProjectionForm((prev) => ({ ...prev, projection_year: Number(e.target.value || selectedYear + 1) }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="numeric" /></label>
-                <label className="space-y-2"><span className="text-sm font-medium">Faturamento (R$)</span><input value={projectionForm.revenue_amount} onChange={(e) => setProjectionForm((prev) => ({ ...prev, revenue_amount: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" /></label>
-                <label className="space-y-2"><span className="text-sm font-medium">Lucro líquido (R$)</span><input value={projectionForm.net_profit_amount} onChange={(e) => setProjectionForm((prev) => ({ ...prev, net_profit_amount: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" /></label>
-                <label className="space-y-2"><span className="text-sm font-medium">Margem líquida (%)</span><input value={projectionForm.net_margin_percent} onChange={(e) => setProjectionForm((prev) => ({ ...prev, net_margin_percent: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" /></label>
-                <label className="space-y-2"><span className="text-sm font-medium">Custo fixo mensal (R$)</span><input value={projectionForm.monthly_fixed_cost} onChange={(e) => setProjectionForm((prev) => ({ ...prev, monthly_fixed_cost: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" /></label>
+                <label className="space-y-2"><span className="text-sm font-medium">Ano base</span><input value={projectionForm.base_year} readOnly className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600" inputMode="numeric" /></label>
+                <label className="space-y-2"><span className="text-sm font-medium">Ano projetado</span><select value={projectionForm.projection_year} onChange={(e) => setProjectionForm((prev) => ({ ...prev, projection_year: Number(e.target.value) }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm">{projectionYearOptions.map((year) => <option key={year} value={year}>{year} {year === selectedYear + 1 ? "(Ano +1)" : "(Ano +2)"}</option>)}</select></label>
+                <label className="space-y-2"><span className="text-sm font-medium">% de crescimento</span><input value={projectionForm.growth_percent} onChange={(e) => setProjectionForm((prev) => ({ ...prev, growth_percent: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="decimal" /></label>
+                <div className="space-y-2"><span className="text-sm font-medium">Base de cálculo</span><div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">{projectionReferenceItem ? `Ano ${projectionReferenceItem.projection_year}` : "Indisponível"}</div></div>
+                <label className="space-y-2"><span className="text-sm font-medium">Faturamento (R$)</span><input value={projectionAutoValues.revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} readOnly className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700" /></label>
+                <label className="space-y-2"><span className="text-sm font-medium">Lucro líquido (R$)</span><input value={projectionAutoValues.netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} readOnly className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700" /></label>
+                <label className="space-y-2"><span className="text-sm font-medium">Margem líquida (%)</span><input value={projectionAutoValues.netMargin.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} readOnly className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700" /></label>
+                <label className="space-y-2"><span className="text-sm font-medium">Custo fixo mensal (R$)</span><input value={projectionAutoValues.monthlyFixedCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} readOnly className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700" /></label>
                 <label className="space-y-2"><span className="text-sm font-medium">Funcionários</span><input value={projectionForm.employee_count} onChange={(e) => setProjectionForm((prev) => ({ ...prev, employee_count: e.target.value }))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" inputMode="numeric" /></label>
-                <div className="space-y-2"><span className="text-sm font-medium">Capital de giro (auto)</span><div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold">{formatMoney(projectionWorkingCapitalPreview)}</div></div>
+                <div className="space-y-2"><span className="text-sm font-medium">Capital de giro (auto)</span><div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold">{formatMoney(projectionAutoValues.workingCapital)}</div></div>
                 <label className="space-y-2 md:col-span-2"><span className="text-sm font-medium">Observações</span><textarea value={projectionForm.notes} onChange={(e) => setProjectionForm((prev) => ({ ...prev, notes: e.target.value }))} className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" /></label>
               </div>
-              <div className="mt-5 flex gap-3 no-print">
-                <button onClick={handleSaveProjection} disabled={savingProjection} className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingProjection ? "Salvando..." : "Salvar projeção"}</button>
-                <button onClick={() => setProjectionForm({ id: "", base_year: selectedYear, projection_year: selectedYear + 1, revenue_amount: "", net_profit_amount: "", net_margin_percent: "", monthly_fixed_cost: "", employee_count: "", notes: "" })} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold">Limpar</button>
+              <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                {projectionForm.projection_year === selectedYear + 1
+                  ? "Ano +1: cálculo automático com base nos indicadores consolidados do ano base."
+                  : projectionReferenceMissing
+                    ? "Ano +2: para calcular corretamente, salve primeiro a projeção do Ano +1."
+                    : "Ano +2: cálculo automático usando a projeção salva do Ano +1 como referência."}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3 no-print">
+                <button onClick={handleSaveProjection} disabled={savingProjection || projectionReferenceMissing} className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingProjection ? "Salvando..." : "Salvar projeção"}</button>
+                <button onClick={() => setProjectionForm({ id: "", base_year: selectedYear, projection_year: selectedYear + 1, growth_percent: "0", revenue_amount: "", net_profit_amount: "", net_margin_percent: "", monthly_fixed_cost: "", employee_count: "", notes: "" })} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold">Limpar</button>
               </div>
             </SectionCard>
 
@@ -1638,23 +1859,30 @@ export default function PlanejamentoPage() {
 
           <SectionCard sectionKey="projecoes_tabela" kicker="Projeção Plurianual" title="Ano atual, Ano +1 e Ano +2" collapsed={collapsedSections.projecoes_tabela} onToggle={toggleSection}>
             <div className="overflow-x-auto">
-              <table className="min-w-[1200px] divide-y divide-slate-200 text-sm">
-                <thead><tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400"><th className="px-3 py-3">Ano</th><th className="px-3 py-3">Faturamento</th><th className="px-3 py-3">Lucro Líquido</th><th className="px-3 py-3">Margem</th><th className="px-3 py-3">Custo Fixo Mensal</th><th className="px-3 py-3">Funcionários</th><th className="px-3 py-3">Capital de Giro</th><th className="px-3 py-3">Δ Faturamento</th><th className="px-3 py-3">Δ Lucro</th><th className="px-3 py-3 no-print">Ações</th></tr></thead>
+              <table className="min-w-[1280px] divide-y divide-slate-200 text-sm">
+                <thead><tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400"><th className="px-3 py-3">Ano</th><th className="px-3 py-3">Base cálculo</th><th className="px-3 py-3">% Crescimento</th><th className="px-3 py-3">Faturamento</th><th className="px-3 py-3">Lucro Líquido</th><th className="px-3 py-3">Margem</th><th className="px-3 py-3">Custo Fixo Mensal</th><th className="px-3 py-3">Funcionários</th><th className="px-3 py-3">Capital de Giro</th><th className="px-3 py-3">Δ Faturamento</th><th className="px-3 py-3">Δ Lucro</th><th className="px-3 py-3 no-print">Ações</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
-                  {projections.map((item) => (
-                    <tr key={`${item.base_year}-${item.projection_year}`}>
-                      <td className="px-3 py-3 font-semibold">{item.projection_year}{item.is_auto_current_year ? <div className="mt-1 text-[11px] text-sky-600">Automático</div> : null}</td>
-                      <td className="px-3 py-3">{formatMoney(item.revenue_amount)}</td>
-                      <td className="px-3 py-3">{formatMoney(item.net_profit_amount)}</td>
-                      <td className="px-3 py-3">{formatPercent(item.net_margin_percent)}</td>
-                      <td className="px-3 py-3">{formatMoney(item.monthly_fixed_cost)}</td>
-                      <td className="px-3 py-3">{item.employee_count}</td>
-                      <td className="px-3 py-3">{formatMoney(item.working_capital_amount)}</td>
-                      <td className="px-3 py-3">{item.revenue_delta_amount != null ? <><div>{formatMoney(item.revenue_delta_amount)}</div><div className="text-xs text-slate-500">{formatPercent(item.revenue_delta_percent || 0)}</div></> : "—"}</td>
-                      <td className="px-3 py-3">{item.net_profit_delta_amount != null ? <><div>{formatMoney(item.net_profit_delta_amount)}</div><div className="text-xs text-slate-500">{formatPercent(item.net_profit_delta_percent || 0)}</div></> : "—"}</td>
-                      <td className="px-3 py-3 no-print"><div className="flex gap-2"><button onClick={() => handleEditProjection(item)} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold">Editar</button>{!item.is_auto_current_year && item.id ? <button onClick={() => handleDeleteProjection(item)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700">Excluir</button> : null}</div></td>
-                    </tr>
-                  ))}
+                  {projectionDisplayItems.map((item) => {
+                    const baseItem = getProjectionBaseItem(item);
+                    const growthPercent = getProjectionGrowthPercent(item);
+
+                    return (
+                      <tr key={`${item.base_year}-${item.projection_year}`}>
+                        <td className="px-3 py-3 font-semibold">{item.projection_year}{item.is_auto_current_year || item.projection_year === selectedYear ? <div className="mt-1 text-[11px] text-sky-600">Base automática</div> : null}</td>
+                        <td className="px-3 py-3">{baseItem ? `Ano ${baseItem.projection_year}` : "Ano base"}</td>
+                        <td className="px-3 py-3">{growthPercent != null ? formatPercent(growthPercent) : "—"}</td>
+                        <td className="px-3 py-3">{formatMoney(item.revenue_amount)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.net_profit_amount)}</td>
+                        <td className="px-3 py-3">{formatPercent(item.net_margin_percent)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.monthly_fixed_cost)}</td>
+                        <td className="px-3 py-3">{item.employee_count}</td>
+                        <td className="px-3 py-3">{formatMoney(item.working_capital_amount)}</td>
+                        <td className="px-3 py-3">{item.revenue_delta_amount != null ? <><div>{formatMoney(item.revenue_delta_amount)}</div><div className="text-xs text-slate-500">{formatPercent(item.revenue_delta_percent || 0)}</div></> : "—"}</td>
+                        <td className="px-3 py-3">{item.net_profit_delta_amount != null ? <><div>{formatMoney(item.net_profit_delta_amount)}</div><div className="text-xs text-slate-500">{formatPercent(item.net_profit_delta_percent || 0)}</div></> : "—"}</td>
+                        <td className="px-3 py-3 no-print"><div className="flex gap-2">{item.projection_year > selectedYear ? <button onClick={() => handleEditProjection(item)} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold">Editar</button> : null}{!item.is_auto_current_year && item.id ? <button onClick={() => handleDeleteProjection(item)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700">Excluir</button> : null}</div></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1703,12 +1931,35 @@ export default function PlanejamentoPage() {
 
           {showPlaceholders ? (
             <section className="grid gap-4 lg:grid-cols-2 no-print">
-              {["Gráficos avançados", "Relatórios / PDF / CSV adicionais", "Modo impressão A4 final", "Polimento responsivo final"].map((title) => (
-                <div key={title} className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 shadow-sm">
-                  <div className="text-base font-black text-slate-900">{title}</div>
-                  <p className="mt-2">Estrutura reservada para os próximos patches do módulo Planejamento.</p>
-                </div>
-              ))}
+              <MetricBarsChart
+                title="Gráfico avançado · Faturamento projetado"
+                subtitle="Comparativo do ano base com Ano +1 e Ano +2 calculados automaticamente."
+                items={projectionRevenueChartItems}
+                formatter={formatMoney}
+                primaryLabel="Receita"
+              />
+              <MetricBarsChart
+                title="Gráfico avançado · Lucro líquido projetado"
+                subtitle="Acompanhamento do resultado líquido por ano da projeção plurianual."
+                items={projectionProfitChartItems}
+                formatter={formatMoney}
+                primaryLabel="Lucro"
+              />
+              <MetricBarsChart
+                title="Gráfico avançado · Meta comercial por tipo"
+                subtitle="Comparação entre meta financeira e realizado consolidado por categoria comercial."
+                items={commercialChartItems}
+                formatter={formatMoney}
+                primaryLabel="Meta"
+                secondaryLabel="Realizado"
+              />
+              <MetricBarsChart
+                title="Gráfico avançado · Plano de ação por status"
+                subtitle="Distribuição das iniciativas cadastradas no plano de ação do ano selecionado."
+                items={actionStatusChartItems}
+                formatter={(value) => `${value.toLocaleString("pt-BR")} item(ns)`}
+                primaryLabel="Itens"
+              />
             </section>
           ) : null}
         </div>
