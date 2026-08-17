@@ -429,6 +429,13 @@ function summarizeContract(contract, schedule) {
     0
   );
 
+  const overdueInstallmentsPreview = overdueItems.slice(0, 5).map((item) => ({
+    installment_number: Number(item.installment_number || 0),
+    due_date: item.due_date || null,
+    installment_amount: Number(item.installment_amount || 0),
+    status: String(item.status || "overdue"),
+  }));
+
   const remainingScheduled = Math.max(totalScheduled - totalPaid, 0);
 
   const monthlyCost =
@@ -453,6 +460,7 @@ function summarizeContract(contract, schedule) {
     installments_due_7_count: dueWithin(7),
     installments_due_15_count: dueWithin(15),
     installments_due_30_count: dueWithin(30),
+    overdue_installments_preview: overdueInstallmentsPreview,
     total_overdue_amount: totalOverdueAmount,
     first_overdue_date: firstOverdue?.due_date || null,
     next_future_due_date: nextFuture?.due_date || null,

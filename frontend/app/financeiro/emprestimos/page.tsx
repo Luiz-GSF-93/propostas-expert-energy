@@ -41,6 +41,12 @@ type LoanContract = {
   installments_due_7_count?: number | string;
   installments_due_15_count?: number | string;
   installments_due_30_count?: number | string;
+  overdue_installments_preview?: Array<{
+    installment_number?: number | string;
+    due_date?: string | null;
+    installment_amount?: number | string;
+    status?: string;
+  }>;
   balance_outstanding?: number | string;
   remaining_scheduled_amount?: number | string;
   total_scheduled_amount?: number | string;
@@ -544,6 +550,40 @@ export default function EmprestimosPage() {
 
   const overdueInstallmentsCount = overdueContracts;
   const overdueInstallmentsAmount = overdueAmount;
+
+  const overdueCardHint = useMemo(() => {
+    const overdueContractsList = filteredContracts.filter(
+      (item) => toNumber(item.installments_overdue_count) > 0
+    );
+
+    if (!overdueContractsList.length) {
+      return `Em atraso consolidado: ${formatMoney(overdueInstallmentsAmount)}`;
+    }
+
+    const previewLines = overdueContractsList
+      .flatMap((item) => {
+        const contractLabel = describeContractShort(item);
+        const preview = Array.isArray(item.overdue_installments_preview)
+          ? item.overdue_installments_preview
+          : [];
+
+        if (!preview.length) {
+          return [
+            `${contractLabel} • ${toNumber(item.installments_overdue_count)} parcela(s) em atraso • ${formatMoney(item.total_overdue_amount)}`,
+          ];
+        }
+
+        return preview.map((inst) =>
+          `${contractLabel} • parcela ${toNumber(inst.installment_number)} • venc. ${formatDateBr(inst.due_date)} • ${formatMoney(inst.installment_amount)}`
+        );
+      })
+      .slice(0, 6);
+
+    return [
+      `Em atraso consolidado: ${formatMoney(overdueInstallmentsAmount)}`,
+      ...previewLines,
+    ].join("\n");
+  }, [filteredContracts, overdueInstallmentsAmount]);
   const totalLoanCost = filteredContracts.reduce((acc, item) => acc + toNumber(item.total_loan_cost), 0);
   const firstOverdueContract = [...filteredContracts]
     .filter((item) => item.first_overdue_date && toNumber(item.installments_overdue_count) > 0)
@@ -1149,7 +1189,7 @@ export default function EmprestimosPage() {
           <DashboardCard
             label="Parcelas atrasadas"
             value={String(overdueInstallmentsCount)}
-            hint={`Em atraso consolidado: ${formatMoney(overdueInstallmentsAmount)}`}
+            hint={overdueCardHint}
           />
           <div className="rounded-[18px] border border-slate-200 bg-white p-3 sm:p-3.5 shadow-sm min-w-0 overflow-hidden md:col-span-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 break-words">Nível de endividamento</p>
