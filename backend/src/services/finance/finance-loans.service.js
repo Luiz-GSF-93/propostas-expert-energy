@@ -368,16 +368,6 @@ function summarizeContract(contract, schedule) {
   });
 
   const paid = historicalPaidItems.length;
-  const overdueItems = activeSchedule
-    .filter((item) => String(item.status || "").toLowerCase() === "overdue")
-    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
-
-  const openItems = activeSchedule
-    .filter((item) => String(item.status || "").toLowerCase() === "open")
-    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
-
-  const overdue = overdueItems.length;
-  const open = openItems.length;
 
   const startOfDay = (date) => {
     const d = new Date(date);
@@ -394,6 +384,26 @@ function summarizeContract(contract, schedule) {
   };
 
   const today = startOfDay(new Date());
+
+  const isTerminalStatus = (status) =>
+    ["paid", "settled", "cancelled"].includes(String(status || "").toLowerCase());
+
+  const overdueItems = activeSchedule
+    .filter((item) => {
+      const due = parseDateOnly(item.due_date);
+      return due && due < today && !isTerminalStatus(item.status);
+    })
+    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+
+  const openItems = activeSchedule
+    .filter((item) => {
+      const due = parseDateOnly(item.due_date);
+      return due && due >= today && !isTerminalStatus(item.status);
+    })
+    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+
+  const overdue = overdueItems.length;
+  const open = openItems.length;
 
   const futureOpenItems = openItems.filter((item) => {
     const due = parseDateOnly(item.due_date);
