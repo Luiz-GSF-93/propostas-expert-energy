@@ -113,11 +113,11 @@ function DashboardCard({
       <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
         {label}
       </div>
-      <div className="mt-3 break-words text-[clamp(1.2rem,2vw,2rem)] font-extrabold text-slate-900 dark:text-slate-50">
+      <div className="mt-3 text-[clamp(1rem,1.45vw,1.65rem)] font-extrabold leading-[1.08] tracking-tight text-slate-900 [overflow-wrap:anywhere] dark:text-slate-50">
         {value}
       </div>
       {hint ? (
-        <div className="mt-2 whitespace-pre-line text-xs leading-5 text-slate-500 dark:text-slate-400">
+        <div className="mt-2 whitespace-pre-line text-[11px] leading-5 text-slate-500 dark:text-slate-400">
           {hint}
         </div>
       ) : null}
