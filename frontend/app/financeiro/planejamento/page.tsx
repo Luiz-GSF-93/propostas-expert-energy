@@ -12,6 +12,7 @@ const ACTION_IMPACT_TYPES = [
   { value: "financeiro", label: "Financeiro" },
   { value: "reducao_custos", label: "Redução de custos" },
 ];
+const COMMERCIAL_GOAL_TYPES = ["Contrato Recorrente", "Contrato Avulso"];
 
 type PlanningSummary = {
   year: number;
@@ -101,6 +102,81 @@ type PlanningActionPlansResponse = {
   };
 };
 
+type ProjectionItem = {
+  id: string | null;
+  base_year: number;
+  projection_year: number;
+  revenue_amount: number;
+  net_profit_amount: number;
+  net_margin_percent: number;
+  monthly_fixed_cost: number;
+  employee_count: number;
+  working_capital_amount: number;
+  notes: string;
+  is_auto_current_year?: boolean;
+  revenue_delta_amount?: number | null;
+  revenue_delta_percent?: number | null;
+  net_profit_delta_amount?: number | null;
+  net_profit_delta_percent?: number | null;
+};
+
+type ProjectionsResponse = {
+  base_year: number;
+  items: ProjectionItem[];
+};
+
+type CommercialGoalItem = {
+  id: string | null;
+  reference_year: number;
+  reference_month: number;
+  month_label: string;
+  goal_type: string;
+  goal_amount: number;
+  actual_amount: number;
+  performance_percent: number;
+  notes: string;
+};
+
+type CommercialGoalsResponse = {
+  year: number;
+  items: CommercialGoalItem[];
+  totals: {
+    goal_amount: number;
+    actual_amount: number;
+    performance_percent: number;
+    by_type: Record<string, {
+      goal_amount: number;
+      actual_amount: number;
+      performance_percent: number;
+    }>;
+  };
+  goal_types: string[];
+};
+
+type CommissionResponse = {
+  id: string | null;
+  reference_year: number;
+  commission_percent: number;
+  recurrent_goal_required_percent: number;
+  notes: string;
+  recurring_goal_amount: number;
+  recurring_actual_amount: number;
+  recurring_performance_percent: number;
+  eligible: boolean;
+  commission_amount: number;
+};
+
+type FourteenthResponse = {
+  id: string | null;
+  reference_year: number;
+  achievement_percent: number;
+  salary_base_amount: number;
+  factor: number;
+  projected_payment_amount: number;
+  notes: string;
+  rule_label: string;
+};
+
 type ManualIndicatorsForm = {
   reference_year: number;
   recurring_clients: string;
@@ -130,6 +206,41 @@ type ActionPlanForm = {
   expected_impact_amount: string;
   impact_type: string;
   status: string;
+  notes: string;
+};
+
+type ProjectionForm = {
+  id: string;
+  base_year: number;
+  projection_year: number;
+  revenue_amount: string;
+  net_profit_amount: string;
+  net_margin_percent: string;
+  monthly_fixed_cost: string;
+  employee_count: string;
+  notes: string;
+};
+
+type CommercialForm = {
+  id: string;
+  reference_year: number;
+  reference_month: number;
+  goal_type: string;
+  goal_amount: string;
+  actual_amount: string;
+  notes: string;
+};
+
+type CommissionForm = {
+  reference_year: number;
+  commission_percent: string;
+  recurrent_goal_required_percent: string;
+  notes: string;
+};
+
+type FourteenthForm = {
+  reference_year: number;
+  salary_base_amount: string;
   notes: string;
 };
 
@@ -186,6 +297,10 @@ function computePaybackMonths(investmentAmount: unknown, expectedImpactAmount: u
   const impact = toNumber(expectedImpactAmount);
   if (investment <= 0 || impact <= 0) return null;
   return Number((investment / impact).toFixed(2));
+}
+
+function computeWorkingCapital(monthlyFixedCost: unknown): number {
+  return Number((toNumber(monthlyFixedCost) * 3).toFixed(2));
 }
 
 async function authJson(path: string, token: string, init?: RequestInit) {
@@ -281,10 +396,14 @@ export default function PlanejamentoPage() {
   const [savingIndicators, setSavingIndicators] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [savingAction, setSavingAction] = useState(false);
+  const [savingProjection, setSavingProjection] = useState(false);
+  const [savingCommercial, setSavingCommercial] = useState(false);
+  const [savingCommission, setSavingCommission] = useState(false);
+  const [savingFourteenth, setSavingFourteenth] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [summary, setSummary] = useState<PlanningSummary | null>(null);
   const [showPlaceholders, setShowPlaceholders] = useState(false);
+  const [summary, setSummary] = useState<PlanningSummary | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [accessToken, setAccessToken] = useState("");
   const requestIdRef = useRef(0);
@@ -305,6 +424,17 @@ export default function PlanejamentoPage() {
     average_payback_months: null,
     status_breakdown: {},
   });
+
+  const [projections, setProjections] = useState<ProjectionItem[]>([]);
+  const [commercialGoals, setCommercialGoals] = useState<CommercialGoalItem[]>([]);
+  const [commercialTotals, setCommercialTotals] = useState<CommercialGoalsResponse["totals"]>({
+    goal_amount: 0,
+    actual_amount: 0,
+    performance_percent: 0,
+    by_type: {},
+  });
+  const [commission, setCommission] = useState<CommissionResponse | null>(null);
+  const [fourteenth, setFourteenth] = useState<FourteenthResponse | null>(null);
 
   const [form, setForm] = useState<ManualIndicatorsForm>({
     reference_year: currentYear,
@@ -338,6 +468,40 @@ export default function PlanejamentoPage() {
     notes: "",
   });
 
+  const [projectionForm, setProjectionForm] = useState<ProjectionForm>({
+    id: "",
+    base_year: currentYear,
+    projection_year: currentYear + 1,
+    revenue_amount: "",
+    net_profit_amount: "",
+    net_margin_percent: "",
+    monthly_fixed_cost: "",
+    employee_count: "",
+    notes: "",
+  });
+
+  const [commercialForm, setCommercialForm] = useState<CommercialForm>({
+    id: "",
+    reference_year: currentYear,
+    reference_month: new Date().getMonth() + 1,
+    goal_type: "Contrato Recorrente",
+    goal_amount: "",
+    actual_amount: "",
+    notes: "",
+  });
+
+  const [commissionForm, setCommissionForm] = useState<CommissionForm>({
+    reference_year: currentYear,
+    commission_percent: "2",
+    recurrent_goal_required_percent: "100",
+    notes: "",
+  });
+
+  const [fourteenthForm, setFourteenthForm] = useState<FourteenthForm>({
+    reference_year: currentYear,
+    salary_base_amount: "",
+    notes: "",
+  });
   async function loadData(token: string) {
     const requestId = ++requestIdRef.current;
     const year = Number(goalForm.reference_year || currentYear);
@@ -347,15 +511,28 @@ export default function PlanejamentoPage() {
     setSuccess("");
 
     try {
-      const [summaryResponse, goalsResponse, actionsResponse] = await Promise.all([
+      const [
+        summaryResponse,
+        goalsResponse,
+        actionsResponse,
+        projectionsResponse,
+        commercialResponse,
+        commissionResponse,
+        fourteenthResponse,
+      ] = await Promise.all([
         authJson(`/api/finance/planejamento/resumo?year=${year}`, token),
         authJson(`/api/finance/planejamento/metas?year=${year}`, token),
         authJson(`/api/finance/planejamento/plano-acao?year=${year}`, token),
+        authJson(`/api/finance/planejamento/projecoes?year=${year}`, token),
+        authJson(`/api/finance/planejamento/meta-comercial?year=${year}`, token),
+        authJson(`/api/finance/planejamento/comissao?year=${year}`, token),
+        authJson(`/api/finance/planejamento/decimo-quarto?year=${year}`, token),
       ]);
 
       if (requestId !== requestIdRef.current) return;
 
       setSummary(summaryResponse);
+
       setForm({
         reference_year: Number(summaryResponse?.manual_indicators?.reference_year || year),
         recurring_clients: String(summaryResponse?.manual_indicators?.recurring_clients ?? 0),
@@ -365,37 +542,50 @@ export default function PlanejamentoPage() {
         notes: String(summaryResponse?.manual_indicators?.notes || ""),
       });
 
-      setGoalForm((prev) => ({
-        ...prev,
-        reference_year: Number(goalsResponse?.year || year),
-      }));
-
-      setActionForm((prev) => ({
-        ...prev,
-        reference_year: Number(actionsResponse?.year || year),
-      }));
+      setGoalForm((prev) => ({ ...prev, reference_year: Number(goalsResponse?.year || year) }));
+      setActionForm((prev) => ({ ...prev, reference_year: Number(actionsResponse?.year || year) }));
+      setProjectionForm((prev) => ({ ...prev, base_year: Number(projectionsResponse?.base_year || year) }));
+      setCommercialForm((prev) => ({ ...prev, reference_year: Number(commercialResponse?.year || year) }));
+      setCommissionForm({
+        reference_year: Number(commissionResponse?.reference_year || year),
+        commission_percent: String(commissionResponse?.commission_percent ?? 0),
+        recurrent_goal_required_percent: String(commissionResponse?.recurrent_goal_required_percent ?? 100),
+        notes: String(commissionResponse?.notes || ""),
+      });
+      setFourteenthForm({
+        reference_year: Number(fourteenthResponse?.reference_year || year),
+        salary_base_amount: String(fourteenthResponse?.salary_base_amount ?? ""),
+        notes: String(fourteenthResponse?.notes || ""),
+      });
 
       setMonthlyGoals(Array.isArray(goalsResponse?.months) ? goalsResponse.months : []);
-      setMonthlyTotals(
-        goalsResponse?.totals || {
-          meta_amount: 0,
-          actual_amount: 0,
-          difference_amount: 0,
-          achieved_percent: 0,
-        }
-      );
+      setMonthlyTotals(goalsResponse?.totals || {
+        meta_amount: 0,
+        actual_amount: 0,
+        difference_amount: 0,
+        achieved_percent: 0,
+      });
 
       setActionPlans(Array.isArray(actionsResponse?.items) ? actionsResponse.items : []);
-      setActionSummary(
-        actionsResponse?.summary || {
-          total_items: 0,
-          total_investment_amount: 0,
-          total_expected_impact_amount: 0,
-          average_payback_months: null,
-          status_breakdown: {},
-        }
-      );
+      setActionSummary(actionsResponse?.summary || {
+        total_items: 0,
+        total_investment_amount: 0,
+        total_expected_impact_amount: 0,
+        average_payback_months: null,
+        status_breakdown: {},
+      });
 
+      setProjections(Array.isArray(projectionsResponse?.items) ? projectionsResponse.items : []);
+      setCommercialGoals(Array.isArray(commercialResponse?.items) ? commercialResponse.items : []);
+      setCommercialTotals(commercialResponse?.totals || {
+        goal_amount: 0,
+        actual_amount: 0,
+        performance_percent: 0,
+        by_type: {},
+      });
+
+      setCommission(commissionResponse || null);
+      setFourteenth(fourteenthResponse || null);
       setShowPlaceholders(false);
       setError("");
     } catch (err) {
@@ -415,7 +605,6 @@ export default function PlanejamentoPage() {
     async function syncSession() {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-
       setAccessToken(data?.session?.access_token || "");
       setAuthReady(true);
     }
@@ -438,27 +627,20 @@ export default function PlanejamentoPage() {
 
   useEffect(() => {
     if (!authReady) return;
-
     if (!accessToken) {
       setLoading(false);
       setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
       return;
     }
-
     loadData(accessToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, accessToken]);
 
   async function handleSaveIndicators() {
-    if (!accessToken) {
-      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
-      return;
-    }
-
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
     setSavingIndicators(true);
     setError("");
     setSuccess("");
-
     try {
       await authJson("/api/finance/planejamento/indicadores", accessToken, {
         method: "PUT",
@@ -471,7 +653,6 @@ export default function PlanejamentoPage() {
           notes: form.notes,
         }),
       });
-
       setSuccess("Indicadores do Planejamento salvos com sucesso.");
       await loadData(accessToken);
     } catch (err) {
@@ -482,15 +663,10 @@ export default function PlanejamentoPage() {
   }
 
   async function handleSaveMonthlyGoal() {
-    if (!accessToken) {
-      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
-      return;
-    }
-
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
     setSavingGoal(true);
     setError("");
     setSuccess("");
-
     try {
       const response = await authJson("/api/finance/planejamento/metas", accessToken, {
         method: "PUT",
@@ -502,17 +678,10 @@ export default function PlanejamentoPage() {
           notes: goalForm.notes,
         }),
       });
-
       setMonthlyGoals(Array.isArray(response?.months) ? response.months : []);
       setMonthlyTotals(response?.totals || monthlyTotals);
       setSuccess("Meta mensal salva com sucesso.");
-
-      setGoalForm((prev) => ({
-        ...prev,
-        meta_amount: "",
-        actual_amount: "",
-        notes: "",
-      }));
+      setGoalForm((prev) => ({ ...prev, meta_amount: "", actual_amount: "", notes: "" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar meta mensal.");
     } finally {
@@ -521,23 +690,14 @@ export default function PlanejamentoPage() {
   }
 
   async function handleDeleteMonthlyGoal(item: PlanningMonthlyGoal) {
-    if (!accessToken) {
-      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
-      return;
-    }
-
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
     if (!window.confirm(`Remover meta mensal de ${item.month_label}/${item.reference_year}?`)) return;
-
-    setError("");
-    setSuccess("");
-
     try {
       const response = await authJson(
         `/api/finance/planejamento/metas/${item.reference_year}/${item.reference_month}`,
         accessToken,
         { method: "DELETE" }
       );
-
       setMonthlyGoals(Array.isArray(response?.months) ? response.months : []);
       setMonthlyTotals(response?.totals || monthlyTotals);
       setSuccess("Meta mensal removida com sucesso.");
@@ -558,15 +718,10 @@ export default function PlanejamentoPage() {
   }
 
   async function handleSaveActionPlan() {
-    if (!accessToken) {
-      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
-      return;
-    }
-
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
     setSavingAction(true);
     setError("");
     setSuccess("");
-
     try {
       const response = await authJson("/api/finance/planejamento/plano-acao", accessToken, {
         method: "PUT",
@@ -585,20 +740,9 @@ export default function PlanejamentoPage() {
           notes: actionForm.notes,
         }),
       });
-
       setActionPlans(Array.isArray(response?.items) ? response.items : []);
-      setActionSummary(
-        response?.summary || {
-          total_items: 0,
-          total_investment_amount: 0,
-          total_expected_impact_amount: 0,
-          average_payback_months: null,
-          status_breakdown: {},
-        }
-      );
-
+      setActionSummary(response?.summary || actionSummary);
       setSuccess(actionForm.id ? "Item do plano de ação atualizado com sucesso." : "Item do plano de ação criado com sucesso.");
-
       setActionForm({
         id: "",
         reference_year: actionForm.reference_year,
@@ -621,33 +765,14 @@ export default function PlanejamentoPage() {
   }
 
   async function handleDeleteActionPlan(item: PlanningActionItem) {
-    if (!accessToken) {
-      setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
-      return;
-    }
-
-    if (!item.id) return;
-    if (!window.confirm(`Remover a iniciativa "${item.initiative}"?`)) return;
-
-    setError("");
-    setSuccess("");
-
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    if (!item.id || !window.confirm(`Remover a iniciativa "${item.initiative}"?`)) return;
     try {
       const response = await authJson(`/api/finance/planejamento/plano-acao/${item.id}`, accessToken, {
         method: "DELETE",
       });
-
       setActionPlans(Array.isArray(response?.items) ? response.items : []);
-      setActionSummary(
-        response?.summary || {
-          total_items: 0,
-          total_investment_amount: 0,
-          total_expected_impact_amount: 0,
-          average_payback_months: null,
-          status_breakdown: {},
-        }
-      );
-
+      setActionSummary(response?.summary || actionSummary);
       setSuccess("Item do plano de ação removido com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao remover item do plano de ação.");
@@ -669,8 +794,179 @@ export default function PlanejamentoPage() {
       status: item.status || "Planejado",
       notes: item.notes || "",
     });
-
     window.scrollTo({ top: document.body.scrollHeight * 0.35, behavior: "smooth" });
+  }
+
+  async function handleSaveProjection() {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    setSavingProjection(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authJson("/api/finance/planejamento/projecoes", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          id: projectionForm.id || undefined,
+          base_year: projectionForm.base_year,
+          projection_year: projectionForm.projection_year,
+          revenue_amount: toNumber(projectionForm.revenue_amount),
+          net_profit_amount: toNumber(projectionForm.net_profit_amount),
+          net_margin_percent: toNumber(projectionForm.net_margin_percent),
+          monthly_fixed_cost: toNumber(projectionForm.monthly_fixed_cost),
+          employee_count: Number(projectionForm.employee_count || 0),
+          notes: projectionForm.notes,
+        }),
+      });
+      setProjections(Array.isArray(response?.items) ? response.items : []);
+      setSuccess("Projeção plurianual salva com sucesso.");
+      setProjectionForm({
+        id: "",
+        base_year: projectionForm.base_year,
+        projection_year: currentYear + 1,
+        revenue_amount: "",
+        net_profit_amount: "",
+        net_margin_percent: "",
+        monthly_fixed_cost: "",
+        employee_count: "",
+        notes: "",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar projeção.");
+    } finally {
+      setSavingProjection(false);
+    }
+  }
+
+  async function handleDeleteProjection(item: ProjectionItem) {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    if (!item.id || item.is_auto_current_year) return;
+    if (!window.confirm(`Remover projeção do ano ${item.projection_year}?`)) return;
+    try {
+      const response = await authJson(`/api/finance/planejamento/projecoes/${item.id}`, accessToken, {
+        method: "DELETE",
+      });
+      setProjections(Array.isArray(response?.items) ? response.items : []);
+      setSuccess("Projeção removida com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao remover projeção.");
+    }
+  }
+
+  function handleEditProjection(item: ProjectionItem) {
+    setProjectionForm({
+      id: item.id || "",
+      base_year: item.base_year,
+      projection_year: item.projection_year,
+      revenue_amount: String(item.revenue_amount || ""),
+      net_profit_amount: String(item.net_profit_amount || ""),
+      net_margin_percent: String(item.net_margin_percent || ""),
+      monthly_fixed_cost: String(item.monthly_fixed_cost || ""),
+      employee_count: String(item.employee_count || 0),
+      notes: item.notes || "",
+    });
+  }
+  async function handleSaveCommercialGoal() {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    setSavingCommercial(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authJson("/api/finance/planejamento/meta-comercial", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          reference_year: commercialForm.reference_year,
+          reference_month: commercialForm.reference_month,
+          goal_type: commercialForm.goal_type,
+          goal_amount: toNumber(commercialForm.goal_amount),
+          actual_amount: toNumber(commercialForm.actual_amount),
+          notes: commercialForm.notes,
+        }),
+      });
+      setCommercialGoals(Array.isArray(response?.items) ? response.items : []);
+      setCommercialTotals(response?.totals || commercialTotals);
+      setSuccess("Meta comercial salva com sucesso.");
+      setCommercialForm((prev) => ({ ...prev, id: "", goal_amount: "", actual_amount: "", notes: "" }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar meta comercial.");
+    } finally {
+      setSavingCommercial(false);
+    }
+  }
+
+  async function handleDeleteCommercialGoal(item: CommercialGoalItem) {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    if (!item.id || !window.confirm(`Remover meta comercial ${item.goal_type} de ${item.month_label}/${item.reference_year}?`)) return;
+    try {
+      const response = await authJson(
+        `/api/finance/planejamento/meta-comercial/${item.id}?year=${item.reference_year}`,
+        accessToken,
+        { method: "DELETE" }
+      );
+      setCommercialGoals(Array.isArray(response?.items) ? response.items : []);
+      setCommercialTotals(response?.totals || commercialTotals);
+      setSuccess("Meta comercial removida com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao remover meta comercial.");
+    }
+  }
+
+  function handleEditCommercialGoal(item: CommercialGoalItem) {
+    setCommercialForm({
+      id: item.id || "",
+      reference_year: item.reference_year,
+      reference_month: item.reference_month,
+      goal_type: item.goal_type,
+      goal_amount: String(item.goal_amount || ""),
+      actual_amount: String(item.actual_amount || ""),
+      notes: item.notes || "",
+    });
+  }
+
+  async function handleSaveCommission() {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    setSavingCommission(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authJson("/api/finance/planejamento/comissao", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          reference_year: commissionForm.reference_year,
+          commission_percent: toNumber(commissionForm.commission_percent),
+          recurrent_goal_required_percent: toNumber(commissionForm.recurrent_goal_required_percent),
+          notes: commissionForm.notes,
+        }),
+      });
+      setCommission(response || null);
+      setSuccess("Configuração de comissão salva com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar comissão.");
+    } finally {
+      setSavingCommission(false);
+    }
+  }
+
+  async function handleSaveFourteenth() {
+    if (!accessToken) return setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.");
+    setSavingFourteenth(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authJson("/api/finance/planejamento/decimo-quarto", accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          reference_year: fourteenthForm.reference_year,
+          salary_base_amount: toNumber(fourteenthForm.salary_base_amount),
+          notes: fourteenthForm.notes,
+        }),
+      });
+      setFourteenth(response || null);
+      setSuccess("14º salário salvo com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar 14º salário.");
+    } finally {
+      setSavingFourteenth(false);
+    }
   }
 
   const actionPaybackPreview = useMemo(
@@ -678,49 +974,28 @@ export default function PlanejamentoPage() {
     [actionForm.investment_amount, actionForm.expected_impact_amount]
   );
 
+  const projectionWorkingCapitalPreview = useMemo(
+    () => computeWorkingCapital(projectionForm.monthly_fixed_cost),
+    [projectionForm.monthly_fixed_cost]
+  );
+
+  const commercialRecurringTotals = commercialTotals?.by_type?.["Contrato Recorrente"] || {
+    goal_amount: 0,
+    actual_amount: 0,
+    performance_percent: 0,
+  };
+
   const cards = useMemo(() => {
     if (!summary) return [];
     return [
-      {
-        label: "Faturamento Anual (R$)",
-        value: formatMoney(summary.cards.faturamento_anual),
-        hint: "Origem automática: API DRE > Receita Bruta",
-      },
-      {
-        label: "Lucro Líquido Anual (R$)",
-        value: formatMoney(summary.cards.lucro_liquido_anual),
-        hint: "Origem automática: API DRE > Lucro Líquido",
-      },
-      {
-        label: "Margem Líquida (%)",
-        value: formatPercent(summary.cards.margem_liquida_percent),
-        hint: "Origem automática: API DRE > Margem Líquida",
-      },
-      {
-        label: "Reserva de Caixa",
-        value: formatMoney(summary.cards.reserva_caixa),
-        hint: "Origem automática: Fluxo de Caixa / snapshot financeiro",
-      },
-      {
-        label: "ROI sobre o Capital (%)",
-        value: formatPercent(summary.cards.roi_percent),
-        hint: "Origem automática: API DRE > ROI",
-      },
-      {
-        label: "Clientes Recorrentes",
-        value: String(summary.cards.clientes_recorrentes || 0),
-        hint: "Campo manual configurável",
-      },
-      {
-        label: "Ticket Médio (R$)",
-        value: formatMoney(summary.cards.ticket_medio),
-        hint: "Campo manual configurável",
-      },
-      {
-        label: "Custo Fixo Mensal",
-        value: formatMoney(summary.cards.custo_fixo_mensal),
-        hint: "Origem automática: API Custos > categoria Fixo",
-      },
+      { label: "Faturamento Anual (R$)", value: formatMoney(summary.cards.faturamento_anual), hint: "Origem automática: API DRE > Receita Bruta" },
+      { label: "Lucro Líquido Anual (R$)", value: formatMoney(summary.cards.lucro_liquido_anual), hint: "Origem automática: API DRE > Lucro Líquido" },
+      { label: "Margem Líquida (%)", value: formatPercent(summary.cards.margem_liquida_percent), hint: "Origem automática: API DRE > Margem Líquida" },
+      { label: "Reserva de Caixa", value: formatMoney(summary.cards.reserva_caixa), hint: "Origem automática: Fluxo de Caixa / snapshot financeiro" },
+      { label: "ROI sobre o Capital (%)", value: formatPercent(summary.cards.roi_percent), hint: "Origem automática: API DRE > ROI" },
+      { label: "Clientes Recorrentes", value: String(summary.cards.clientes_recorrentes || 0), hint: "Campo manual configurável" },
+      { label: "Ticket Médio (R$)", value: formatMoney(summary.cards.ticket_medio), hint: "Campo manual configurável" },
+      { label: "Custo Fixo Mensal", value: formatMoney(summary.cards.custo_fixo_mensal), hint: "Origem automática: API Custos > categoria Fixo" },
     ];
   }, [summary]);
 
@@ -746,700 +1021,7 @@ export default function PlanejamentoPage() {
     >
       <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div className="mx-auto max-w-7xl space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600 dark:text-sky-400">
-                  Planejamento
-                </p>
-                <h1 className="mt-2 text-3xl font-black tracking-tight">
-                  Dashboard Executivo
-                </h1>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Patch 3: Metas Mensais + Plano de Ação com payback automático.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() =>
-                    accessToken
-                      ? loadData(accessToken)
-                      : setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.")
-                  }
-                  className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  Atualizar painel
-                </button>
-                <button
-                  onClick={() => setShowPlaceholders((prev) => !prev)}
-                  className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-slate-100 dark:text-slate-900"
-                >
-                  {showPlaceholders ? "Ocultar seções futuras" : "Expandir seções futuras"}
-                </button>
-              </div>
-            </div>
-
-            {error ? (
-              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
-                {error}
-              </div>
-            ) : null}
-
-            {success ? (
-              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
-                {success}
-              </div>
-            ) : null}
-
-            {summary?.notices?.length ? (
-              <div className="mt-4 space-y-2">
-                {summary.notices.map((notice, index) => (
-                  <div
-                    key={`${notice}-${index}`}
-                    className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
-                  >
-                    {notice}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {cards.map((card) => (
-              <DashboardCard key={card.label} label={card.label} value={card.value} hint={card.hint} />
-            ))}
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                  Indicadores manuais
-                </p>
-                <h2 className="mt-2 text-xl font-black">Configuração inicial</h2>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Clientes recorrentes</span>
-                  <input
-                    value={form.recurring_clients}
-                    onChange={(e) => setForm((prev) => ({ ...prev, recurring_clients: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="numeric"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Ticket médio (R$)</span>
-                  <input
-                    value={form.average_ticket}
-                    onChange={(e) => setForm((prev) => ({ ...prev, average_ticket: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="decimal"
-                  />
-                </label>
-
-                <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={form.dark_mode}
-                    onChange={(e) => setForm((prev) => ({ ...prev, dark_mode: e.target.checked }))}
-                  />
-                  <span className="text-sm">Habilitar preferência Dark Mode</span>
-                </label>
-
-                <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={form.starts_collapsed}
-                    onChange={(e) => setForm((prev) => ({ ...prev, starts_collapsed: e.target.checked }))}
-                  />
-                  <span className="text-sm">Tela deve iniciar recolhida</span>
-                </label>
-
-                <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-medium">Observações</span>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="min-h-[120px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  onClick={handleSaveIndicators}
-                  disabled={savingIndicators}
-                  className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingIndicators ? "Salvando..." : "Salvar indicadores"}
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                Integrações
-              </p>
-              <h2 className="mt-2 text-xl font-black">Status da integração</h2>
-
-              <div className="mt-5 space-y-3 text-sm">
-                <div className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <strong>DRE:</strong> {summary?.integration_status?.dre_ok ? "✅ conectado" : "⚠️ fallback/indisponível"}
-                </div>
-                <div className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <strong>Snapshot financeiro / Fluxo:</strong> {summary?.integration_status?.snapshot_ok ? "✅ conectado" : "⚠️ indisponível"}
-                </div>
-                <div className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <strong>Custos:</strong> {summary?.integration_status?.costs_ok ? "✅ conectado" : "⚠️ fallback/indisponível"}
-                </div>
-                <div className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <strong>Ano base:</strong> {summary?.year || currentYear}
-                </div>
-                <div className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <strong>Snapshot:</strong> {summary?.latest_batch?.created_at || "não disponível"}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                    Metas Mensais
-                  </p>
-                  <h2 className="mt-2 text-xl font-black">Cadastrar / atualizar meta do mês</h2>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                  Ano {goalForm.reference_year}
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Mês</span>
-                  <select
-                    value={goalForm.reference_month}
-                    onChange={(e) => setGoalForm((prev) => ({ ...prev, reference_month: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    {MONTH_LABELS.map((label, index) => (
-                      <option key={label} value={index + 1}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Ano</span>
-                  <input
-                    value={goalForm.reference_year}
-                    onChange={(e) => setGoalForm((prev) => ({ ...prev, reference_year: Number(e.target.value || currentYear) }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="numeric"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Meta (R$)</span>
-                  <input
-                    value={goalForm.meta_amount}
-                    onChange={(e) => setGoalForm((prev) => ({ ...prev, meta_amount: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="decimal"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Realizado (R$)</span>
-                  <input
-                    value={goalForm.actual_amount}
-                    onChange={(e) => setGoalForm((prev) => ({ ...prev, actual_amount: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="decimal"
-                  />
-                </label>
-
-                <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-medium">Observações</span>
-                  <textarea
-                    value={goalForm.notes}
-                    onChange={(e) => setGoalForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  onClick={handleSaveMonthlyGoal}
-                  disabled={savingGoal}
-                  className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingGoal ? "Salvando..." : "Salvar meta mensal"}
-                </button>
-
-                <button
-                  onClick={() =>
-                    setGoalForm({
-                      reference_year: currentYear,
-                      reference_month: new Date().getMonth() + 1,
-                      meta_amount: "",
-                      actual_amount: "",
-                      notes: "",
-                    })
-                  }
-                  className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Limpar formulário
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                Performance
-              </p>
-              <h2 className="mt-2 text-xl font-black">Meta x Realizado</h2>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meta anual</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(monthlyTotals.meta_amount)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Realizado anual</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(monthlyTotals.actual_amount)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Diferença</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(monthlyTotals.difference_amount)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% atingido</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatPercent(monthlyTotals.achieved_percent)}</div>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <MiniBarsChart items={monthlyGoals} />
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                  Metas Mensais
-                </p>
-                <h2 className="mt-2 text-xl font-black">Tabela consolidada Jan–Dez</h2>
-              </div>
-
-              <button
-                onClick={() =>
-                  accessToken
-                    ? loadData(accessToken)
-                    : setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.")
-                }
-                className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Recarregar metas
-              </button>
-            </div>
-
-            <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
-                    <th className="px-3 py-3">Mês</th>
-                    <th className="px-3 py-3">Meta</th>
-                    <th className="px-3 py-3">Realizado</th>
-                    <th className="px-3 py-3">Diferença</th>
-                    <th className="px-3 py-3">% Atingido</th>
-                    <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {monthlyGoals.map((item) => (
-                    <tr key={`${item.reference_year}-${item.reference_month}`} className="align-top">
-                      <td className="px-3 py-3 font-semibold text-slate-700 dark:text-slate-200">{item.month_label}</td>
-                      <td className="px-3 py-3">{formatMoney(item.meta_amount)}</td>
-                      <td className="px-3 py-3">{formatMoney(item.actual_amount)}</td>
-                      <td className="px-3 py-3">{formatMoney(item.difference_amount)}</td>
-                      <td className="px-3 py-3">{formatPercent(item.achieved_percent)}</td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(item.status_code)}`}>
-                          {item.status_icon} {item.status_label}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleEditMonthlyGoal(item)}
-                            className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMonthlyGoal(item)}
-                            className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
-                          >
-                            Limpar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-slate-300 font-bold dark:border-slate-700">
-                    <td className="px-3 py-4">Total</td>
-                    <td className="px-3 py-4">{formatMoney(monthlyTotals.meta_amount)}</td>
-                    <td className="px-3 py-4">{formatMoney(monthlyTotals.actual_amount)}</td>
-                    <td className="px-3 py-4">{formatMoney(monthlyTotals.difference_amount)}</td>
-                    <td className="px-3 py-4">{formatPercent(monthlyTotals.achieved_percent)}</td>
-                    <td className="px-3 py-4" colSpan={2}>Consolidado anual</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                    Plano de Ação
-                  </p>
-                  <h2 className="mt-2 text-xl font-black">
-                    {actionForm.id ? "Editar iniciativa" : "Nova iniciativa"}
-                  </h2>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                  Payback: {actionPaybackPreview != null ? `${actionPaybackPreview.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} meses` : "—"}
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-medium">Iniciativa</span>
-                  <input
-                    value={actionForm.initiative}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, initiative: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Categoria</span>
-                  <select
-                    value={actionForm.category}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, category: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    {ACTION_CATEGORIES.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Responsável</span>
-                  <input
-                    value={actionForm.owner_name}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, owner_name: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Data início</span>
-                  <input
-                    type="date"
-                    value={actionForm.start_date}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, start_date: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Data fim</span>
-                  <input
-                    type="date"
-                    value={actionForm.end_date}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, end_date: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Investimento (R$)</span>
-                  <input
-                    value={actionForm.investment_amount}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, investment_amount: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="decimal"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Impacto esperado (R$)</span>
-                  <input
-                    value={actionForm.expected_impact_amount}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, expected_impact_amount: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                    inputMode="decimal"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Tipo de impacto</span>
-                  <select
-                    value={actionForm.impact_type}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, impact_type: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    {ACTION_IMPACT_TYPES.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-sm font-medium">Status</span>
-                  <select
-                    value={actionForm.status}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, status: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    {ACTION_STATUSES.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-2 md:col-span-2">
-                  <span className="text-sm font-medium">Observações</span>
-                  <textarea
-                    value={actionForm.notes}
-                    onChange={(e) => setActionForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="min-h-[110px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  onClick={handleSaveActionPlan}
-                  disabled={savingAction}
-                  className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingAction ? "Salvando..." : actionForm.id ? "Atualizar iniciativa" : "Salvar iniciativa"}
-                </button>
-
-                <button
-                  onClick={() =>
-                    setActionForm({
-                      id: "",
-                      reference_year: currentYear,
-                      initiative: "",
-                      category: "Marketing",
-                      owner_name: "",
-                      start_date: "",
-                      end_date: "",
-                      investment_amount: "",
-                      expected_impact_amount: "",
-                      impact_type: "financeiro",
-                      status: "Planejado",
-                      notes: "",
-                    })
-                  }
-                  className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Limpar formulário
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                Resumo do Plano de Ação
-              </p>
-              <h2 className="mt-2 text-xl font-black">Visão executiva</h2>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Iniciativas</div>
-                  <div className="mt-2 text-xl font-extrabold">{actionSummary.total_items}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Investimento total</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(actionSummary.total_investment_amount)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Impacto esperado total</div>
-                  <div className="mt-2 text-xl font-extrabold">{formatMoney(actionSummary.total_expected_impact_amount)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Payback médio</div>
-                  <div className="mt-2 text-xl font-extrabold">
-                    {actionSummary.average_payback_months != null
-                      ? `${actionSummary.average_payback_months.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })} meses`
-                      : "—"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-2">
-                {ACTION_STATUSES.map((status) => (
-                  <div key={status} className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
-                    <span>{status}</span>
-                    <strong>{actionSummary.status_breakdown?.[status] || 0}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                  Plano de Ação
-                </p>
-                <h2 className="mt-2 text-xl font-black">Tabela consolidada</h2>
-              </div>
-
-              <button
-                onClick={() =>
-                  accessToken
-                    ? loadData(accessToken)
-                    : setError("Sessão expirada ou token de autenticação indisponível. Faça login novamente.")
-                }
-                className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Recarregar plano
-              </button>
-            </div>
-
-            <div className="mt-5 overflow-x-auto">
-              <table className="min-w-[1200px] divide-y divide-slate-200 text-sm dark:divide-slate-800">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
-                    <th className="px-3 py-3">Iniciativa</th>
-                    <th className="px-3 py-3">Categoria</th>
-                    <th className="px-3 py-3">Responsável</th>
-                    <th className="px-3 py-3">Início</th>
-                    <th className="px-3 py-3">Fim</th>
-                    <th className="px-3 py-3">Investimento</th>
-                    <th className="px-3 py-3">Impacto esperado</th>
-                    <th className="px-3 py-3">Tipo</th>
-                    <th className="px-3 py-3">Payback</th>
-                    <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {actionPlans.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="px-3 py-6 text-center text-sm text-slate-500">
-                        Nenhuma iniciativa cadastrada para este ano.
-                      </td>
-                    </tr>
-                  ) : (
-                    actionPlans.map((item) => (
-                      <tr key={item.id || `${item.reference_year}-${item.initiative}`} className="align-top">
-                        <td className="px-3 py-3">
-                          <div className="font-semibold text-slate-800">{item.initiative}</div>
-                          {item.notes ? <div className="mt-1 max-w-[280px] text-xs text-slate-500">{item.notes}</div> : null}
-                        </td>
-                        <td className="px-3 py-3">{item.category}</td>
-                        <td className="px-3 py-3">{item.owner_name || "—"}</td>
-                        <td className="px-3 py-3">{formatDateBr(item.start_date)}</td>
-                        <td className="px-3 py-3">{formatDateBr(item.end_date)}</td>
-                        <td className="px-3 py-3">{formatMoney(item.investment_amount)}</td>
-                        <td className="px-3 py-3">{formatMoney(item.expected_impact_amount)}</td>
-                        <td className="px-3 py-3">{item.impact_type === "reducao_custos" ? "Redução de custos" : "Financeiro"}</td>
-                        <td className="px-3 py-3">
-                          {item.payback_months != null
-                            ? `${item.payback_months.toLocaleString("pt-BR", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })} meses`
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${actionStatusTone(item.status)}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              onClick={() => handleEditActionPlan(item)}
-                              className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDeleteActionPlan(item)}
-                              className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
-                            >
-                              Excluir
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {showPlaceholders ? (
-            <section className="grid gap-4 lg:grid-cols-2">
-              {[
-                "Projeção Plurianual",
-                "Meta Comercial",
-                "Comissionamento",
-                "14º Salário",
-                "Gráficos avançados",
-                "Relatórios / PDF / CSV",
-              ].map((title) => (
-                <div
-                  key={title}
-                  className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                >
-                  <div className="text-base font-black text-slate-900 dark:text-slate-100">{title}</div>
-                  <p className="mt-2">
-                    Estrutura reservada para os próximos patches do módulo Planejamento.
-                  </p>
-                </div>
-              ))}
-            </section>
-          ) : null}
+          {/* COLE AQUI O RESTANTE DO JSX FINAL DO PATCH 4 */}
         </div>
       </main>
     </FinanceModuleShell>
