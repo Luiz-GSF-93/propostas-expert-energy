@@ -1870,7 +1870,7 @@ export default function PlanejamentoPage() {
             </div>
           </SectionCard>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] xl:items-start">
+          <div className="space-y-6">
             <SectionCard sectionKey="indicadores" kicker="Indicadores manuais" title="Configuração inicial" collapsed={collapsedSections.indicadores} onToggle={toggleSection}>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
@@ -1950,19 +1950,19 @@ export default function PlanejamentoPage() {
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meses atingidos</div>
-                  <div className="mt-2 text-lg font-extrabold text-slate-900">{recurringCommissionSummary.achievedMonths}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.88rem,1vw,1rem)] font-extrabold text-slate-900">{recurringCommissionSummary.achievedMonths}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meses não atingidos</div>
-                  <div className="mt-2 text-lg font-extrabold text-slate-900">{recurringCommissionSummary.notAchievedMonths}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.88rem,1vw,1rem)] font-extrabold text-slate-900">{recurringCommissionSummary.notAchievedMonths}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% mínimo configurado</div>
-                  <div className="mt-2 text-lg font-extrabold text-slate-900">{formatPercent(activeRequiredPercent)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.88rem,1vw,1rem)] font-extrabold text-slate-900">{formatPercent(activeRequiredPercent)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Variação consolidada</div>
-                  <div className={`mt-2 text-lg font-extrabold ${recurringCommissionSummary.consolidatedVariationPercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatPercent(recurringCommissionSummary.consolidatedVariationPercent)}</div>
+                  <div className={`mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.88rem,1vw,1rem)] font-extrabold ${recurringCommissionSummary.consolidatedVariationPercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatPercent(recurringCommissionSummary.consolidatedVariationPercent)}</div>
                 </div>
               </div>
 
