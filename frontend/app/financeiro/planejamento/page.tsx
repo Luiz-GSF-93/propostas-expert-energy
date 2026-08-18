@@ -259,6 +259,24 @@ type SectionKey =
   | "comissao"
   | "decimo_quarto";
 
+const DEFAULT_COLLAPSED_SECTIONS: Record<SectionKey, boolean> = {
+  hero: true,
+  cards: true,
+  indicadores: true,
+  metas_form: true,
+  performance: true,
+  metas_tabela: true,
+  plano_form: true,
+  plano_resumo: true,
+  plano_tabela: true,
+  projecoes_form: true,
+  projecoes_tabela: true,
+  meta_comercial_form: true,
+  meta_comercial_tabela: true,
+  comissao: true,
+  decimo_quarto: true,
+};
+
 function toNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") {
@@ -764,23 +782,7 @@ export default function PlanejamentoPage() {
   const [softWarnings, setSoftWarnings] = useState<string[]>([]);
   const requestIdRef = useRef(0);
 
-  const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
-    hero: false,
-    cards: false,
-    indicadores: false,
-    metas_form: false,
-    performance: false,
-    metas_tabela: false,
-    plano_form: false,
-    plano_resumo: false,
-    plano_tabela: false,
-    projecoes_form: false,
-    projecoes_tabela: false,
-    meta_comercial_form: false,
-    meta_comercial_tabela: false,
-    comissao: false,
-    decimo_quarto: false,
-  });
+  const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>(DEFAULT_COLLAPSED_SECTIONS);
 
   const [monthlyGoals, setMonthlyGoals] = useState<PlanningMonthlyGoal[]>([]);
   const [monthlyTotals, setMonthlyTotals] = useState<PlanningMonthlyGoalsResponse["totals"]>({
