@@ -242,6 +242,19 @@ type CommissionForm = {
   notes: string;
 };
 
+type RecurringCommissionRow = {
+  reference_month: number;
+  month_label: string;
+  goal_amount: number;
+  actual_amount: number;
+  performance_percent: number;
+  required_percent: number;
+  variation_percent: number;
+  commission_amount: number;
+  achieved: boolean;
+  notes: string;
+};
+
 type SectionKey =
   | "hero"
   | "cards"
@@ -336,6 +349,10 @@ function computePaybackMonths(investmentAmount: unknown, expectedImpactAmount: u
 
 function computeWorkingCapital(monthlyFixedCost: unknown): number {
   return Number((toNumber(monthlyFixedCost) * 3).toFixed(2));
+}
+
+function isRecurringGoalType(goalType: unknown): boolean {
+  return String(goalType || "").trim().toLowerCase() === "contrato recorrente";
 }
 
 function computeFourteenthEligibility(achievementPercent: unknown) {
@@ -1474,17 +1491,33 @@ export default function PlanejamentoPage() {
     });
     rows.push([]);
     rows.push(["Comissão"]);
-    rows.push(["% Comissão", "% mínimo meta recorrente", "Meta recorrente", "Realizado recorrente", "Performance %", "Elegível", "Comissão projetada", "Observações"]);
+    rows.push(["% Comissão", "% mínimo meta recorrente", "Meta recorrente", "Realizado recorrente", "Performance %", "Elegível consolidado", "Comissão projetada", "Observações"]);
     rows.push([
-      String(commission?.commission_percent ?? 0),
-      String(commission?.recurrent_goal_required_percent ?? 0),
-      String(commission?.recurring_goal_amount ?? 0),
-      String(commission?.recurring_actual_amount ?? 0),
-      String(commission?.recurring_performance_percent ?? 0),
-      commission?.eligible ? "Sim" : "Não",
-      String(commission?.commission_amount ?? 0),
-      commission?.notes || "",
+      String(activeCommissionPercent),
+      String(activeRequiredPercent),
+      String(recurringCommissionSummary.totalGoalAmount),
+      String(recurringCommissionSummary.totalActualAmount),
+      String(recurringCommissionSummary.consolidatedPerformancePercent),
+      recurringCommissionSummary.eligible ? "Sim" : "Não",
+      String(recurringCommissionSummary.totalCommissionAmount),
+      commissionForm.notes || commission?.notes || "",
     ]);
+    rows.push([]);
+    rows.push(["Comissão por mês · contratos recorrentes"]);
+    rows.push(["Mês", "Meta recorrente", "Realizado recorrente", "Performance %", "% mínimo", "Variação %", "Comissão aplicada", "Status", "Observações"]);
+    recurringCommissionRows.forEach((item) => {
+      rows.push([
+        item.month_label,
+        String(item.goal_amount),
+        String(item.actual_amount),
+        String(item.performance_percent),
+        String(item.required_percent),
+        String(item.variation_percent),
+        String(item.commission_amount),
+        item.achieved ? "Atingida" : "Não atingida",
+        item.notes || "",
+      ]);
+    });
     rows.push([]);
     rows.push(["14º Salário"]);
     rows.push(["% atingimento anual", "Fator", "Haverá pagamento", "Regra aplicada"]);
@@ -1581,10 +1614,77 @@ export default function PlanejamentoPage() {
     return Number((((item.revenue_amount / base.revenue_amount) - 1) * 100).toFixed(2));
   };
 
-  const commercialRecurringTotals = commercialTotals?.by_type?.["Contrato Recorrente"] || {
-    goal_amount: 0,
-    actual_amount: 0,
-    performance_percent: 0,
+  const activeCommissionPercent = useMemo(() => toNumber(commissionForm.commission_percent), [commissionForm.commission_percent]);
+  const activeRequiredPercent = useMemo(() => toNumber(commissionForm.recurrent_goal_required_percent), [commissionForm.recurrent_goal_required_percent]);
+
+  const recurringCommissionRows = useMemo<RecurringCommissionRow[]>(() => {
+    const baseRows = MONTH_LABELS.map((monthLabel, index) => ({
+      reference_month: index + 1,
+      month_label: monthLabel,
+      goal_amount: 0,
+      actual_amount: 0,
+      notes: [] as string[],
+    }));
+
+    commercialGoals
+      .filter((item) => isRecurringGoalType(item.goal_type))
+      .forEach((item) => {
+        const target = baseRows[item.reference_month - 1];
+        if (!target) return;
+        target.goal_amount += Number(item.goal_amount || 0);
+        target.actual_amount += Number(item.actual_amount || 0);
+        if (item.notes) target.notes.push(item.notes);
+      });
+
+    return baseRows.map((item) => {
+      const goalAmount = Number(item.goal_amount.toFixed(2));
+      const actualAmount = Number(item.actual_amount.toFixed(2));
+      const performancePercent = goalAmount > 0 ? Number(((actualAmount / goalAmount) * 100).toFixed(2)) : 0;
+      const achieved = goalAmount > 0 && performancePercent >= activeRequiredPercent;
+      const commissionAmount = achieved ? Number(((actualAmount * activeCommissionPercent) / 100).toFixed(2)) : 0;
+      const variationPercent = Number((performancePercent - activeRequiredPercent).toFixed(2));
+
+      return {
+        reference_month: item.reference_month,
+        month_label: item.month_label,
+        goal_amount: goalAmount,
+        actual_amount: actualAmount,
+        performance_percent: performancePercent,
+        required_percent: activeRequiredPercent,
+        variation_percent: variationPercent,
+        commission_amount: commissionAmount,
+        achieved,
+        notes: item.notes.join(' | '),
+      };
+    });
+  }, [commercialGoals, activeCommissionPercent, activeRequiredPercent]);
+
+  const recurringCommissionSummary = useMemo(() => {
+    const totalGoalAmount = recurringCommissionRows.reduce((acc, item) => acc + item.goal_amount, 0);
+    const totalActualAmount = recurringCommissionRows.reduce((acc, item) => acc + item.actual_amount, 0);
+    const totalCommissionAmount = recurringCommissionRows.reduce((acc, item) => acc + item.commission_amount, 0);
+    const achievedMonths = recurringCommissionRows.filter((item) => item.achieved).length;
+    const monthsWithGoal = recurringCommissionRows.filter((item) => item.goal_amount > 0).length;
+    const consolidatedPerformancePercent = totalGoalAmount > 0 ? Number(((totalActualAmount / totalGoalAmount) * 100).toFixed(2)) : 0;
+    const consolidatedVariationPercent = Number((consolidatedPerformancePercent - activeRequiredPercent).toFixed(2));
+
+    return {
+      totalGoalAmount: Number(totalGoalAmount.toFixed(2)),
+      totalActualAmount: Number(totalActualAmount.toFixed(2)),
+      totalCommissionAmount: Number(totalCommissionAmount.toFixed(2)),
+      achievedMonths,
+      notAchievedMonths: Math.max(0, monthsWithGoal - achievedMonths),
+      monthsWithGoal,
+      consolidatedPerformancePercent,
+      consolidatedVariationPercent,
+      eligible: monthsWithGoal > 0 && consolidatedPerformancePercent >= activeRequiredPercent,
+    };
+  }, [activeRequiredPercent, recurringCommissionRows]);
+
+  const commercialRecurringTotals = {
+    goal_amount: recurringCommissionSummary.totalGoalAmount,
+    actual_amount: recurringCommissionSummary.totalActualAmount,
+    performance_percent: recurringCommissionSummary.consolidatedPerformancePercent,
   };
 
   const yearOptions = useMemo(() => Array.from({ length: 7 }, (_, index) => currentYear - 2 + index), [currentYear]);
@@ -1833,13 +1933,68 @@ export default function PlanejamentoPage() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Performance recorrente</div>
-                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatPercent(commission?.recurring_performance_percent || 0)}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatPercent(recurringCommissionSummary.consolidatedPerformancePercent)}</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Comissão projetada</div>
-                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(commission?.commission_amount || 0)}</div>
-                  <div className="mt-2 text-xs text-slate-500">{commission?.eligible ? "Elegível para comissão" : "Ainda não elegível"}</div>
+                  <div className="mt-2 overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(0.52rem,0.68vw,0.68rem)] font-extrabold leading-tight tracking-tight text-slate-900">{formatMoney(recurringCommissionSummary.totalCommissionAmount)}</div>
+                  <div className="mt-2 text-xs text-slate-500">{recurringCommissionSummary.eligible ? "Elegível no consolidado recorrente" : "Aguardando atingimento mínimo no consolidado recorrente"}</div>
                 </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                <div className="font-semibold text-slate-700">Aplicação automática da comissão</div>
+                <div className="mt-2">A comissão abaixo considera somente registros da tabela Meta Comercial com o tipo <strong>Contrato Recorrente</strong>. O cálculo é feito mês a mês comparando meta x realizado. Quando a performance do mês atinge ou supera o mínimo configurado, a linha recebe status <strong>Atingida</strong> e a comissão aplicada é calculada sobre o valor realizado do mês.</div>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meses atingidos</div>
+                  <div className="mt-2 text-lg font-extrabold text-slate-900">{recurringCommissionSummary.achievedMonths}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Meses não atingidos</div>
+                  <div className="mt-2 text-lg font-extrabold text-slate-900">{recurringCommissionSummary.notAchievedMonths}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">% mínimo configurado</div>
+                  <div className="mt-2 text-lg font-extrabold text-slate-900">{formatPercent(activeRequiredPercent)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Variação consolidada</div>
+                  <div className={`mt-2 text-lg font-extrabold ${recurringCommissionSummary.consolidatedVariationPercent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatPercent(recurringCommissionSummary.consolidatedVariationPercent)}</div>
+                </div>
+              </div>
+
+              <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="min-w-[1080px] divide-y divide-slate-200 text-sm">
+                  <thead className="bg-slate-50">
+                    <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
+                      <th className="px-3 py-3">Mês</th>
+                      <th className="px-3 py-3">Meta recorrente</th>
+                      <th className="px-3 py-3">Realizado recorrente</th>
+                      <th className="px-3 py-3">Performance</th>
+                      <th className="px-3 py-3">% mínimo</th>
+                      <th className="px-3 py-3">Variação %</th>
+                      <th className="px-3 py-3">Comissão aplicada</th>
+                      <th className="px-3 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {recurringCommissionRows.map((item) => (
+                      <tr key={`commission-row-${item.reference_month}`}>
+                        <td className="px-3 py-3 font-semibold">{item.month_label}</td>
+                        <td className="px-3 py-3">{formatMoney(item.goal_amount)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.actual_amount)}</td>
+                        <td className="px-3 py-3">{formatPercent(item.performance_percent)}</td>
+                        <td className="px-3 py-3">{formatPercent(item.required_percent)}</td>
+                        <td className={`px-3 py-3 font-semibold ${item.variation_percent >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{formatPercent(item.variation_percent)}</td>
+                        <td className="px-3 py-3">{formatMoney(item.commission_amount)}</td>
+                        <td className="px-3 py-3"><span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${item.achieved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{item.achieved ? "Atingida" : "Não atingida"}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               <div className="mt-5 no-print">
@@ -2084,18 +2239,23 @@ export default function PlanejamentoPage() {
             <SectionCard sectionKey="meta_comercial_tabela" kicker="Meta Comercial" title="Tabela consolidada" collapsed={collapsedSections.meta_comercial_tabela} onToggle={toggleSection}>
               <div className="overflow-x-auto">
                 <table className="min-w-[860px] divide-y divide-slate-200 text-sm">
-                  <thead><tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400"><th className="px-3 py-3">Mês</th><th className="px-3 py-3">Tipo</th><th className="px-3 py-3">Meta</th><th className="px-3 py-3">Realizado</th><th className="px-3 py-3">Performance</th><th className="px-3 py-3 no-print">Ações</th></tr></thead>
+                  <thead><tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-400"><th className="px-3 py-3">Mês</th><th className="px-3 py-3">Tipo</th><th className="px-3 py-3">Meta</th><th className="px-3 py-3">Realizado</th><th className="px-3 py-3">Performance</th><th className="px-3 py-3">Comissão recorrente</th><th className="px-3 py-3">Status recorrente</th><th className="px-3 py-3 no-print">Ações</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
-                    {commercialGoals.map((item) => (
-                      <tr key={`${item.reference_year}-${item.reference_month}-${item.goal_type}`}>
-                        <td className="px-3 py-3 font-semibold">{item.month_label}</td>
-                        <td className="px-3 py-3">{item.goal_type}</td>
-                        <td className="px-3 py-3">{formatMoney(item.goal_amount)}</td>
-                        <td className="px-3 py-3">{formatMoney(item.actual_amount)}</td>
-                        <td className="px-3 py-3">{formatPercent(item.performance_percent)}</td>
-                        <td className="px-3 py-3 no-print"><div className="flex gap-2"><button onClick={() => handleEditCommercialGoal(item)} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold">Editar</button>{item.id ? <button onClick={() => handleDeleteCommercialGoal(item)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700">Excluir</button> : null}</div></td>
-                      </tr>
-                    ))}
+                    {commercialGoals.map((item) => {
+                      const recurringRow = isRecurringGoalType(item.goal_type) ? recurringCommissionRows.find((row) => row.reference_month === item.reference_month) : null;
+                      return (
+                        <tr key={`${item.reference_year}-${item.reference_month}-${item.goal_type}`}>
+                          <td className="px-3 py-3 font-semibold">{item.month_label}</td>
+                          <td className="px-3 py-3">{item.goal_type}</td>
+                          <td className="px-3 py-3">{formatMoney(item.goal_amount)}</td>
+                          <td className="px-3 py-3">{formatMoney(item.actual_amount)}</td>
+                          <td className="px-3 py-3">{formatPercent(item.performance_percent)}</td>
+                          <td className="px-3 py-3">{recurringRow ? formatMoney(recurringRow.commission_amount) : "—"}</td>
+                          <td className="px-3 py-3">{recurringRow ? <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${recurringRow.achieved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{recurringRow.achieved ? "Atingida" : "Não atingida"}</span> : "—"}</td>
+                          <td className="px-3 py-3 no-print"><div className="flex gap-2"><button onClick={() => handleEditCommercialGoal(item)} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold">Editar</button>{item.id ? <button onClick={() => handleDeleteCommercialGoal(item)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700">Excluir</button> : null}</div></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2159,6 +2319,14 @@ export default function PlanejamentoPage() {
                 formatter={formatMoney}
                 primaryLabel="Meta"
                 secondaryLabel="Realizado"
+              />
+              <LineTrendChart
+                title="Gráfico avançado · Comissão recorrente mês a mês"
+                subtitle="Evolução mensal da meta recorrente e do realizado recorrente que compõem a apuração automática da comissão."
+                items={recurringCommissionRows.map((item) => ({ label: item.month_label, value: item.goal_amount, secondaryValue: item.actual_amount, note: `${item.achieved ? "Atingida" : "Não atingida"} · Comissão ${formatMoney(item.commission_amount)}` }))}
+                formatter={formatMoney}
+                primaryLabel="Meta recorrente"
+                secondaryLabel="Realizado recorrente"
               />
               <MetricBarsChart
                 title="Gráfico avançado · Plano de ação por status"
