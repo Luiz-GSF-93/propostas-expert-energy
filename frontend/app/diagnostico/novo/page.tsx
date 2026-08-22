@@ -1,10 +1,12 @@
 'use client';
 
+import type { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { requestEnergiaExport } from '@/lib/diagnostico-bridge';
 import { createDiagnosticApi } from '@/lib/diagnostico-api';
+import { supabase } from '@/lib/supabase';
 
 type DbStatus =
   | 'rascunho'
@@ -38,19 +40,135 @@ const STATUS_OPTIONS: Array<{ value: DbStatus; label: string }> = [
   { value: 'arquivado', label: 'Arquivado' },
 ];
 
+async function waitForBrowserSession(timeoutMs = 2500): Promise<Session | null> {
+  const first = await supabase.auth.getSession();
+
+  if (first.data.session?.access_token) {
+    return first.data.session;
+  }
+
+  return new Promise<Session | null>((resolve) => {
+    let settled = false;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const finish = (session: Session | null) => {
+      if (settled) return;
+      settled = true;
+
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+
+      resolve(session);
+    };
+
+    const timer = window.setTimeout(async () => {
+      const second = await supabase.auth.getSession();
+      finish(second.data.session ?? null);
+    }, timeoutMs);
+
+    const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) return;
+      window.clearTimeout(timer);
+      finish(session);
+    });
+
+    subscription = authListener.data.subscription;
+  });
+}
+
 export default function NovoDiagnosticoPage() {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(
-    'HTML real do EnergiaPro carregado.'
-  );
+  const [iframeReady, setIframeReady] = useState(false);
+  const [message, setMessage] = useState('Preparando autenticação do HTML privado...');
   const [status, setStatus] = useState<DbStatus>('rascunho');
+
+  async function sendAuthTokenToIframe() {
+    const iframe = iframeRef.current;
+    const targetWindow = iframe?.contentWindow;
+
+    if (!iframe || !targetWindow) {
+      setMessage('Iframe do EnergiaPro ainda não está disponível.');
+      return false;
+    }
+
+    const session = await waitForBrowserSession();
+
+    if (!session?.access_token) {
+      setIframeReady(false);
+      setMessage('Sessão do usuário não disponível. Faça login novamente.');
+      return false;
+    }
+
+    targetWindow.postMessage(
+      { type: 'ENERGIAPRO_AUTH_TOKEN', token: session.access_token },
+      window.location.origin
+    );
+
+    setIframeReady(true);
+    setMessage('Autenticação enviada ao HTML privado.');
+    return true;
+  }
+
+  async function handleFrameLoad() {
+    setIframeReady(false);
+    setMessage('Autenticando HTML privado...');
+
+    try {
+      const ok = await sendAuthTokenToIframe();
+
+      if (!ok) return;
+
+      window.setTimeout(() => {
+        setMessage('HTML privado autenticado. Pronto para salvar o diagnóstico.');
+      }, 300);
+    } catch (error) {
+      console.error(error);
+      setIframeReady(false);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Falha ao autenticar o HTML privado.'
+      );
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function ensureSession() {
+      const session = await waitForBrowserSession();
+
+      if (cancelled) return;
+
+      if (!session?.access_token) {
+        setIframeReady(false);
+        setMessage('Sessão do usuário não disponível. Faça login novamente.');
+      }
+    }
+
+    void ensureSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSave(nextStatus: DbStatus) {
     try {
       setSaving(true);
+
+      if (!iframeReady) {
+        setMessage('Aguardando autenticação do HTML privado...');
+        const ok = await sendAuthTokenToIframe();
+        if (!ok) {
+          throw new Error('O HTML privado ainda não foi autenticado.');
+        }
+      }
+
       setMessage('Exportando dados do EnergiaPro...');
 
       const payload = await requestEnergiaExport(iframeRef.current);
@@ -183,6 +301,7 @@ export default function NovoDiagnosticoPage() {
             ref={iframeRef}
             src="/energiapro/index.html"
             title="EnergiaPro"
+            onLoad={handleFrameLoad}
             className="h-[85vh] w-full"
           />
         </div>
