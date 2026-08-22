@@ -1,10 +1,13 @@
 'use client';
 
+import type { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { requestEnergiaExport, sendEnergiaImport } from '@/lib/diagnostico-bridge';
 import {
+  DiagnosticApiError,
   getDiagnosticApi,
   getDiagnosticHistoryApi,
   updateDiagnosticApi,
@@ -51,7 +54,6 @@ function statusLabel(status?: string | null) {
     '—': '—',
   }[status || '—'] || status || '—';
 }
-
 
 function getBrowserAccessTokenFromStorage(): string | null {
   if (typeof window === 'undefined') return null;
@@ -166,7 +168,6 @@ function getEnergiaUiApi(iframe: HTMLIFrameElement | null): EnergiaUiApi | null 
 
   return energiaWindow?.__ENERGIAPRO_UI__ ?? null;
 }
-
 
 function asObject(value: unknown): Record<string, any> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -300,6 +301,43 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   } as unknown as DiagnosticApiRecord;
 }
 
+async function waitForDetailSession(timeoutMs = 2500): Promise<Session | null> {
+  const first = await supabase.auth.getSession();
+
+  if (first.data.session?.access_token) {
+    return first.data.session;
+  }
+
+  return new Promise<Session | null>((resolve) => {
+    let settled = false;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const finish = (session: Session | null) => {
+      if (settled) return;
+      settled = true;
+
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+
+      resolve(session);
+    };
+
+    const timer = window.setTimeout(async () => {
+      const second = await supabase.auth.getSession();
+      finish(second.data.session ?? null);
+    }, timeoutMs);
+
+    const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) return;
+      window.clearTimeout(timer);
+      finish(session);
+    });
+
+    subscription = authListener.data.subscription;
+  });
+}
+
 export default function DiagnosticoDetalhePage() {
   const params = useParams<{ id: string }>();
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -317,24 +355,61 @@ export default function DiagnosticoDetalhePage() {
   async function reload() {
     if (!id) return;
 
-    try {
-      setLoading(true);
-      setHistoryLoading(true);
-
+    const loadData = async () => {
       const [apiItem, historyResponse] = await Promise.all([
         getDiagnosticApi(id),
         getDiagnosticHistoryApi(id),
       ]);
 
-      const item = normalizeRecord(apiItem);
+      return { apiItem, historyResponse };
+    };
+
+    try {
+      setLoading(true);
+      setHistoryLoading(true);
+      setMessage('Restaurando sessão...');
+
+      const session = await waitForDetailSession();
+
+      if (!session?.access_token) {
+        setRecord(null);
+        setHistory(null);
+        setMessage('Sua sessão expirou. Faça login novamente.');
+        return;
+      }
+
+      let result: Awaited<ReturnType<typeof loadData>>;
+
+      try {
+        result = await loadData();
+      } catch (error) {
+        if (error instanceof DiagnosticApiError && error.status === 401) {
+          const restoredSession = await waitForDetailSession(1500);
+
+          if (!restoredSession?.access_token) {
+            throw error;
+          }
+
+          result = await loadData();
+        } else {
+          throw error;
+        }
+      }
+
+      const item = normalizeRecord(result.apiItem);
       setRecord(item);
-      setHistory(historyResponse);
+      setHistory(result.historyResponse);
       setMessage(`Diagnóstico ${item.code || item.id} carregado.`);
     } catch (error) {
       console.error(error);
       setRecord(null);
       setHistory(null);
-      setMessage(error instanceof Error ? error.message : 'Diagnóstico não encontrado.');
+
+      if (error instanceof DiagnosticApiError && error.status === 401) {
+        setMessage('Sua sessão expirou. Faça login novamente.');
+      } else {
+        setMessage(error instanceof Error ? error.message : 'Diagnóstico não encontrado.');
+      }
     } finally {
       setLoading(false);
       setHistoryLoading(false);
@@ -342,11 +417,12 @@ export default function DiagnosticoDetalhePage() {
   }
 
   useEffect(() => {
-    reload();
+    void reload();
   }, [id]);
 
-    async function handleFrameLoad() {
+  async function handleFrameLoad() {
     if (!record) return;
+
     try {
       const token = getBrowserAccessTokenFromStorage();
 
@@ -376,7 +452,7 @@ export default function DiagnosticoDetalhePage() {
     }
   }
 
-    async function handleSaveCurrent() {
+  async function handleSaveCurrent() {
     if (!record) return;
 
     try {
@@ -454,17 +530,21 @@ export default function DiagnosticoDetalhePage() {
     return (
       <main className="min-h-screen bg-slate-50 p-6">
         <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-sm text-slate-500">Carregando diagnóstico...</p>
+          <p className="text-sm text-slate-500">{message || 'Carregando diagnóstico...'}</p>
         </div>
       </main>
     );
   }
 
   if (!record) {
+    const expiredSession = message === 'Sua sessão expirou. Faça login novamente.';
+
     return (
       <main className="min-h-screen bg-slate-50 p-6">
         <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Diagnóstico não encontrado</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {expiredSession ? 'Sessão expirada' : 'Diagnóstico não encontrado'}
+          </h1>
           <p className="mt-3 text-sm text-slate-600">
             {message || 'O ID informado não existe no Supabase ou você está abrindo um teste antigo que não foi migrado.'}
           </p>
