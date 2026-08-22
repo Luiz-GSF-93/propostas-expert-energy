@@ -52,6 +52,51 @@ function statusLabel(status?: string | null) {
   }[status || '—'] || status || '—';
 }
 
+
+function getBrowserAccessTokenFromStorage(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (
+        key.includes('auth-token') ||
+        key.includes('access-token') ||
+        key.includes('supabase')
+      ) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        try {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed?.access_token === 'string') return parsed.access_token;
+          if (typeof parsed?.currentSession?.access_token === 'string') {
+            return parsed.currentSession.access_token;
+          }
+
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (typeof item === 'string' && item.split('.').length === 3) return item;
+              if (typeof item?.access_token === 'string') return item.access_token;
+              if (typeof item?.currentSession?.access_token === 'string') {
+                return item.currentSession.access_token;
+              }
+            }
+          }
+        } catch (_) {
+          const match = raw.match(/"access_token":"([^"]+)"/);
+          if (match?.[1]) return match[1];
+          if (raw.split('.').length === 3) return raw;
+        }
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 function actionLabel(action?: string | null) {
   switch (action) {
     case 'visualizou_html_privado':
@@ -303,6 +348,15 @@ export default function DiagnosticoDetalhePage() {
     async function handleFrameLoad() {
     if (!record) return;
     try {
+      const token = getBrowserAccessTokenFromStorage();
+
+      if (token && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: 'ENERGIAPRO_AUTH_TOKEN', token },
+          window.location.origin
+        );
+      }
+
       await sendEnergiaImport(iframeRef.current, record.payload);
 
       const energiaUiApi = getEnergiaUiApi(iframeRef.current);

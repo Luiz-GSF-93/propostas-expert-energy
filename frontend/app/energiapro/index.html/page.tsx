@@ -1,80 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-
-let energiaProSupabaseClient: SupabaseClient | null = null;
-
-function getEnergiaProSupabaseClient() {
-  if (typeof window === 'undefined') return null;
-
-  if (energiaProSupabaseClient) {
-    return energiaProSupabaseClient;
-  }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anon) {
-    return null;
-  }
-
-  energiaProSupabaseClient = createClient(url, anon, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
-
-  return energiaProSupabaseClient;
-}
-
-async function waitForRestoredSession(
-  client: SupabaseClient,
-  timeoutMs = 1500
-): Promise<Session | null> {
-  return await new Promise((resolve) => {
-    let settled = false;
-
-    const timer = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      subscription.unsubscribe();
-      resolve(null);
-    }, timeoutMs);
-
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
-      if (settled) return;
-      if (!session?.access_token) return;
-
-      settled = true;
-      window.clearTimeout(timer);
-      subscription.unsubscribe();
-      resolve(session);
-    });
-  });
-}
-
-async function getSupabaseAccessToken(): Promise<string | null> {
-  const client = getEnergiaProSupabaseClient();
-  if (!client) return null;
-
-  const first = await client.auth.getSession();
-  if (first.data.session?.access_token) {
-    return first.data.session.access_token;
-  }
-
-  const restored = await waitForRestoredSession(client);
-  if (restored?.access_token) {
-    return restored.access_token;
-  }
-
-  const second = await client.auth.getSession();
-  return second.data.session?.access_token ?? null;
-}
 
 function buildAuditBootstrap(token: string) {
   const safeToken = JSON.stringify(token);
@@ -176,7 +102,6 @@ function buildAuditBootstrap(token: string) {
 
   window.addEventListener('pagehide', function () {
     if (shouldSend('tentativa_salvar_html', 2500)) {
-      // não conclui "salvou", registra apenas indício no fechamento/navegação
       sendAudit('tentativa_salvar_html', 'pagehide');
     }
   });
@@ -186,19 +111,18 @@ function buildAuditBootstrap(token: string) {
 }
 
 export default function EnergiaProPrivatePage() {
-  const [message, setMessage] = useState('Carregando EnergiaPro privado...');
+  const [message, setMessage] = useState('Aguardando autenticação do diagnóstico...');
 
   useEffect(() => {
     let cancelled = false;
+    let booted = false;
 
-    async function boot() {
+    async function bootWithToken(token: string) {
+      if (booted || !token) return;
+      booted = true;
+
       try {
-        const token = await getSupabaseAccessToken();
-
-        if (!token) {
-          setMessage('Sessão não encontrada. Faça login novamente.');
-          return;
-        }
+        setMessage('Carregando EnergiaPro privado...');
 
         const response = await fetch('/api/energiapro-html', {
           method: 'GET',
@@ -239,9 +163,29 @@ export default function EnergiaProPrivatePage() {
       }
     }
 
-    boot();
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'ENERGIAPRO_AUTH_TOKEN') return;
+      if (typeof data.token !== 'string' || !data.token.trim()) return;
+
+      void bootWithToken(data.token);
+    }
+
+    window.addEventListener('message', onMessage);
+
+    const timeout = window.setTimeout(() => {
+      if (!booted && !cancelled) {
+        setMessage('Sessão do diagnóstico não recebida. Recarregue a tela principal.');
+      }
+    }, 4000);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      window.removeEventListener('message', onMessage);
     };
   }, []);
 
