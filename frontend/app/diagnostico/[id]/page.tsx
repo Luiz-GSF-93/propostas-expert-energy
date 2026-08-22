@@ -730,7 +730,7 @@ export default function DiagnosticoDetalhePage() {
                     </div>
                     <p className="mt-2 text-sm text-slate-600">{item.note || 'Sem observação.'}</p>
                     <p className="mt-2 text-xs text-slate-500">
-                      Alterado por: {item.actor_email || item.actor_user_id || '—'}
+                      Alterado por: {item.actor_email || item.changed_by || item.actor_user_id || '—'}
                     </p>
                   </div>
                 ))
