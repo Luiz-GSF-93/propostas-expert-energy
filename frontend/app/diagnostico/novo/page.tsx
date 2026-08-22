@@ -77,6 +77,42 @@ async function waitForBrowserSession(timeoutMs = 2500): Promise<Session | null> 
   });
 }
 
+
+type EnergiaUiState = {
+  fields?: Array<Record<string, unknown>>;
+  globals?: Record<string, unknown>;
+  tables?: Array<Record<string, unknown>>;
+  storage?: {
+    local?: Record<string, string>;
+    session?: Record<string, string>;
+  };
+  metricChips?: string[];
+  loadLineMetrics?: string;
+  capturedAt?: string;
+};
+
+type EnergiaUiApi = {
+  exportState?: () => EnergiaUiState;
+  importState?: (state: EnergiaUiState) => void;
+  refresh?: () => void;
+};
+
+function getEnergiaUiApi(iframe: HTMLIFrameElement | null): EnergiaUiApi | null {
+  const energiaWindow = iframe?.contentWindow as (Window & {
+    __ENERGIAPRO_UI__?: EnergiaUiApi;
+  }) | null;
+
+  return energiaWindow?.__ENERGIAPRO_UI__ ?? null;
+}
+
+function asObject(value: unknown): Record<string, any> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+
+  return {};
+}
+
 export default function NovoDiagnosticoPage() {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -171,7 +207,29 @@ export default function NovoDiagnosticoPage() {
 
       setMessage('Exportando dados do EnergiaPro...');
 
-      const payload = await requestEnergiaExport(iframeRef.current);
+      const rawPayload = await requestEnergiaExport(iframeRef.current);
+      const energiaUiApi = getEnergiaUiApi(iframeRef.current);
+      const uiState = energiaUiApi?.exportState?.();
+
+      const rawPayloadObject = asObject(rawPayload);
+      const rawMeta = asObject(rawPayloadObject.meta);
+
+      const payload = {
+        ...rawPayloadObject,
+        meta: {
+          ...rawMeta,
+          energiapro_ui_state: uiState ?? rawMeta.energiapro_ui_state ?? null,
+          loadLineMetrics:
+            (uiState && typeof uiState.loadLineMetrics === 'string' && uiState.loadLineMetrics.trim()) ||
+            (typeof rawMeta.loadLineMetrics === 'string' && rawMeta.loadLineMetrics.trim()) ||
+            (typeof rawMeta.recGain === 'string' && rawMeta.recGain.trim()) ||
+            '',
+          recGain:
+            (uiState && typeof uiState.loadLineMetrics === 'string' && uiState.loadLineMetrics.trim()) ||
+            (typeof rawMeta.recGain === 'string' && rawMeta.recGain.trim()) ||
+            '',
+        },
+      };
 
       setMessage('Salvando diagnóstico no Supabase...');
 
