@@ -290,8 +290,8 @@ Qualidade da Energia — THD de Tensão e Corrente</h2>
 </section>
 
 <section class="card"><h2><span class="num">13</span>Curva Sazonal (se aplicável) + Linha de Carga Agregada (Flattening elétrico+térmico)</h2>
-<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;background:#fafcfe"><button class="epc-fullscreen-btn" data-target="sezChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="sezChart" viewBox="0 0 600 260" width="100%" height="260" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
-<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;margin-top:6px"><button class="epc-fullscreen-btn" data-target="loadLineChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="loadLineChart" viewBox="0 0 600 280" width="100%" height="280" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
+<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;background:#fafcfe"><button type="button" class="epc-fullscreen-btn" data-target="sezChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="sezChart" viewBox="0 0 600 260" width="100%" height="260" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
+<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;margin-top:6px"><button type="button" class="epc-fullscreen-btn" data-target="loadLineChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="loadLineChart" viewBox="0 0 600 280" width="100%" height="280" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
 <div id="loadLineMetrics" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px"></div>
 <div id="sezChartLegend" style="margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#f8fafc;font-size:11px;color:#475569;line-height:1.55">
   <b style="color:#0b1f3a">13A · Como ler o gráfico de Linha de Carga Agregada (Flattening).</b>
@@ -400,7 +400,8 @@ function renderCList(){var h=$("cList");h.innerHTML="";CARGAS.forEach(function(c
 
 function renderTList(){var h=$("tList");h.innerHTML="";TERMICAS.forEach(function(t,i){var custo_h_v=(+t.custo_h!==undefined)?+t.custo_h:((+t.cons||0)*(+t.custo||0));t.custo_h=custo_h_v;if((+t.cons||0)>0)t.custo=custo_h_v/((+t.cons)||1);var d=document.createElement("div");d.className="list-row th";d.innerHTML='<label>Nome<input value="'+(t.nome||"")+'" data-i="'+i+'" data-f="nome"></label><label>Tipo + Comb<select data-i="'+i+'" data-f="tipo"><option '+(t.tipo==="compressor_ar"?"selected":"")+'>compressor_ar</option><option '+(t.tipo==="refrig_agua"?"selected":"")+'>refrig_agua</option><option '+(t.tipo==="secador_ar"?"selected":"")+'>secador_ar</option><option '+(t.tipo==="forno"?"selected":"")+'>forno</option><option '+(t.tipo==="vapor"?"selected":"")+'>vapor</option><option '+(t.tipo==="agua"?"selected":"")+'>agua</option><option '+(t.tipo==="ar"?"selected":"")+'>ar</option><option '+(t.tipo==="oleo"?"selected":"")+'>oleo</option></select> · <input style="margin-top:2px" value="'+(t.comb||"")+'" data-i="'+i+'" data-f="comb"></label><label>Demanda (kg/h ou L/h)<input type="number" value="'+(+t.dem||0)+'" data-i="'+i+'" data-f="dem"></label><label>Rendimento (η)<input type="number" step="0.01" value="'+(t.rend||0.86)+'" data-i="'+i+'" data-f="rend"></label><label>Consumo (un/h)<input type="number" step="0.1" value="'+(+t.cons||0)+'" data-i="'+i+'" data-f="cons"></label><label class="field-inline">Custo/h (R$) <input class="kpi-edit" type="number" step="0.01" value="'+custo_h_v.toFixed(2)+'" data-i="'+i+'" data-f="custo_h"></label><button class="icon-btn" data-i="'+i+'">✕</button>';h.appendChild(d)});h.querySelectorAll("input[data-f=custo_h]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;TERMICAS[i].custo_h=+this.value||0;if((TERMICAS[i].cons||0)>0)TERMICAS[i].custo=TERMICAS[i].custo_h/TERMICAS[i].cons;recalc()})});["dem","rend","nome","tipo","comb","cons","custo"].forEach(function(k){h.querySelectorAll("input[data-f="+k+"],select[data-f="+k+"]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;var v=this.tagName==="SELECT"?this.value:(+this.value||this.value);TERMICAS[i][k]=v;TERMICAS[i].custo_h=(+TERMICAS[i].custo||0)*(+TERMICAS[i].cons||0);recalc()})});});h.querySelectorAll("input[data-f=cons]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;TERMICAS[i].cons=+this.value||0;TERMICAS[i].custo_h=(+TERMICAS[i].custo||0)*(+TERMICAS[i].cons||0);recalc()})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){TERMICAS.splice(+b.dataset.i,1);SEZ_T.splice(+b.dataset.i,1);renderTList();renderSezT();recalc()})})}
 
-function renderDemHist(){var h=$("demHist");h.innerHTML="";var mod=$("modalidade")&&$("modalidade").value||"Verde";var azul=mod==="Azul";var cols=azul?'<div>Mês</div><div>DC Ponta</div><div>DC FP</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>':'<div>Mês</div><div>DC</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>';var hd=document.createElement("div");hd.className="hist-row";hd.style.background="#eef1f6";hd.style.fontWeight="600";hd.innerHTML=cols;h.appendChild(hd);var dcP_v=+(($("dcP")&&($("dcP").value))||1050);var dcFP_v=+(($("dcFP")&&($("dcFP").value))||900);var dc_v=+(($("dc")&&($("dc").value))||320);var ultP_t=+(($("ultR_p")&&($("ultR_p").value))||25);var ultFP_t=+(($("ultR_fp")&&($("ultR_fp").value))||17);DEM_HIST.forEach(function(r,i){var d=document.createElement("div");d.className="hist-row";var ultP=0,ultFP=0;if(azul){var dcpr=+r.dcP||dcP_v,dcfpr=+r.dcFP||dcFP_v;if((+r.dr_p||0)>dcpr*1.05)ultP=Math.max((+r.dr_p||0)-dcpr,0);if((+r.dr_fp||0)>dcfpr*1.05)ultFP=Math.max((+r.dr_fp||0)-dcfpr,0)}else{var dcv=+r.dc||dc_v;var drMaxv=Math.max(+r.dr_p||0,+r.dr_fp||0);if(drMaxv>dcv*1.05)ultP=Math.max(drMaxv-dcv,0)}var rsUlt=ultP*ultP_t+ultFP*ultFP_t;r.ultP=ultP;r.ultFP=ultFP;r.rsUlt=rsUlt;if(azul){d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dcP||dcP_v)+'" data-i="'+i+'" data-f="dcP"></div><div><input type="number" value="'+(r.dcFP||dcFP_v)+'" data-i="'+i+'" data-f="dcFP"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultP.toFixed(0))+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultFP.toFixed(0))+'</div><div style="text-align:right;color:#c62828">R$ '+(Math.round(rsUlt)).toLocaleString("pt-BR")+'</div><div><button class="icon-btn" data-i="'+i+'">✕</button></div>'}else{d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dc||dc_v)+'" data-i="'+i+'" data-f="dc"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultP.toFixed(0))+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultFP.toFixed(0))+'</div><div style="text-align:right;color:#c62828">R$ '+(Math.round(rsUlt)).toLocaleString("pt-BR")+'</div><div><button class="icon-btn" data-i="'+i+'">✕</button></div>'};h.appendChild(d)});h.querySelectorAll("input").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i,f=inp.dataset.f;if(DEM_HIST[i]){DEM_HIST[i][f]=+this.value;recalc()}})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){DEM_HIST.splice(+b.dataset.i,1);renderDemHist();recalc()})})}
+function hydrateDemandaContratadaRow(row, modalidade, defaults){if(!row||typeof row!=="object")return row;if(modalidade==="Azul"){if(!(Number(row.dcP)>0))row.dcP=defaults.dcP;if(!(Number(row.dcFP)>0))row.dcFP=defaults.dcFP}else{if(!(Number(row.dc)>0))row.dc=defaults.dc}return row}
+function renderDemHist(){var h=$("demHist");h.innerHTML="";var mod=$("modalidade")&&$("modalidade").value||"Verde";var azul=mod==="Azul";var cols=azul?'<div>Mês</div><div>DC Ponta</div><div>DC FP</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>':'<div>Mês</div><div>DC</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>';var hd=document.createElement("div");hd.className="hist-row";hd.style.background="#eef1f6";hd.style.fontWeight="600";hd.innerHTML=cols;h.appendChild(hd);var dcP_v=+(($("dcP")&&$("dcP").value)||1050);var dcFP_v=+(($("dcFP")&&$("dcFP").value)||900);var dc_v=+(($("dc")&&$("dc").value)||320);var ultP_t=+(($("ultR_p")&&$("ultR_p").value)||25);var ultFP_t=+(($("ultR_fp")&&$("ultR_fp").value)||17);DEM_HIST.forEach(function(r,i){hydrateDemandaContratadaRow(r,mod,{dcP:dcP_v,dcFP:dcFP_v,dc:dc_v});var d=document.createElement("div");d.className="hist-row";var ultP=0,ultFP=0;if(azul){var dcpr=+r.dcP||dcP_v,dcfpr=+r.dcFP||dcFP_v;if((+r.dr_p||0)>dcpr*1.05)ultP=Math.max((+r.dr_p||0)-dcpr,0);if((+r.dr_fp||0)>dcfpr*1.05)ultFP=Math.max((+r.dr_fp||0)-dcfpr,0)}else{var dcv=+r.dc||dc_v;var drMaxv=Math.max(+r.dr_p||0,+r.dr_fp||0);if(drMaxv>dcv*1.05)ultP=Math.max(drMaxv-dcv,0)}var rsUlt=ultP*ultP_t+ultFP*ultFP_t;r.ultP=ultP;r.ultFP=ultFP;r.rsUlt=rsUlt;if(azul){d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dcP||dcP_v)+'" data-i="'+i+'" data-f="dcP"></div><div><input type="number" value="'+(r.dcFP||dcFP_v)+'" data-i="'+i+'" data-f="dcFP"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+ultP.toFixed(0)+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+ultFP.toFixed(0)+'</div><div style="text-align:right;color:#c62828">R$ '+Math.round(rsUlt).toLocaleString("pt-BR")+'</div><div><button type="button" class="icon-btn" data-i="'+i+'">✕</button></div>'}else{d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dc||dc_v)+'" data-i="'+i+'" data-f="dc"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+ultP.toFixed(0)+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+ultFP.toFixed(0)+'</div><div style="text-align:right;color:#c62828">R$ '+Math.round(rsUlt).toLocaleString("pt-BR")+'</div><div><button type="button" class="icon-btn" data-i="'+i+'">✕</button></div>'};h.appendChild(d)});h.querySelectorAll("input").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i,f=inp.dataset.f;if(DEM_HIST[i]){DEM_HIST[i][f]=+this.value;recalc()}})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){DEM_HIST.splice(+b.dataset.i,1);renderDemHist();recalc()})})}
 
 function aplicaModalidade(){var mod=$("modalidade")&&$("modalidade").value||"Verde";var azul=mod==="Azul";if($("dcAzulBox"))$("dcAzulBox").style.display=azul?"grid":"none";if($("dc"))$("dc").style.display=azul?"none":"block";if($("reativoBox"))$("reativoBox").style.display=(azul||((+($("fp")&&$("fp").value)||0.92)<0.92))?"grid":"none";renderDemHist();recalc()}
 
@@ -1117,7 +1118,7 @@ function recalc(){var d;try{d=calc()}catch(e){console.error("calc_fail",e&&e.mes
 function bindAll(){
   $("btnAddCarga").addEventListener("click",function(){CARGAS.push({nome:"Carga "+(CARGAS.length+1),kW:50,fd:0.80,fp:0.92,horas:12,cat:"Geral"});SEZ_E.push(defaultSeasonal());renderCList();renderSezE();recalc()});
   $("btnAddTerm").addEventListener("click",function(){var nova={nome:"Carga térmica "+(TERMICAS.length+1),tipo:"vapor",dem:200,rend:0.86,comb:"gás natural",cons:50,custo:0.85};nova.custo_h=nova.cons*nova.custo;TERMICAS.push(nova);SEZ_T.push(defaultSeasonal());renderTList();renderSezT();recalc()});
-  $("btnAddDem").addEventListener("click",function(){DEM_HIST.push({mes:"M"+(DEM_HIST.length+1),dc:320,dr_p:280,dr_fp:280});renderDemHist();recalc()});
+  $("btnAddDem").addEventListener("click",function(){var mod=$("modalidade")&&$("modalidade").value||"Verde";if(mod==="Azul"){DEM_HIST.push({mes:"M"+(DEM_HIST.length+1),dcP:+(($("dcP")&&$("dcP").value)||1050),dcFP:+(($("dcFP")&&$("dcFP").value)||900),dr_p:280,dr_fp:280})}else{DEM_HIST.push({mes:"M"+(DEM_HIST.length+1),dc:+(($("dc")&&$("dc").value)||320),dr_p:280,dr_fp:280})}renderDemHist();recalc()});
   $("btnAddThd").addEventListener("click",function(){THD_CIRCS.push({circ:"QGF-"+(THD_CIRCS.length+1),T:30,I_op:100,I_nom:120,ths_v:5,ths_i:10});renderThdRows();recalc()});
   $("btnCalc").addEventListener("click",function(){recalc()});
   $("btnExport").addEventListener("click",function(){var d=calc();var blob=new Blob([JSON.stringify({schemaVersion:"1.6.1",geradoEm:new Date().toISOString(),cargas:CARGAS.slice(),termicas:TERMICAS.slice(),sezE:SEZ_E.slice(),sezT:SEZ_T.slice(),demandHist:DEM_HIST.slice(),thdCirc:THD_CIRCS.slice(),equipCatalog:EQUIP_CATALOG,kpis:d},null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="energiaPro_v164.json";a.click()});
@@ -1239,8 +1240,8 @@ try{if(typeof calcSSE==='function'&&typeof renderSSERes==='function'){renderSSER
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#0b1f3a;color:#fff">
       <b id="epcModalTitle">Curva</b>
       <div style="display:flex;gap:8px">
-        <button id="epcModalPrint" style="background:#0d6a42;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Imprimir / PDF</button>
-        <button id="epcModalClose" style="background:#c62828;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Fechar (Esc)</button>
+        <button type="button" id="epcModalPrint" style="background:#0d6a42;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Imprimir / PDF</button>
+        <button type="button" id="epcModalClose" style="background:#c62828;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Fechar (Esc)</button>
       </div>
     </div>
     <div style="flex:1;overflow:auto;padding:10px;background:#fafcfe">
@@ -1251,204 +1252,26 @@ try{if(typeof calcSSE==='function'&&typeof renderSSERes==='function'){renderSSER
 <script>
 (function(){
 var tip=document.getElementById("epcTip");
-function place(ev){var x=ev.clientX+14,y=ev.clientY+14,r=tip.getBoundingClientRect();if(x+r.width>window.innerWidth)x=ev.clientX-r.width-14;if(y+r.height>window.innerHeight)y=ev.clientY-r.height-14;tip.style.left=x+"px";tip.style.top=y+"px"}
-function show(mes,serie,val,unid,ev){if(!isFinite(val))return;tip.innerHTML=(mes?"<b>"+mes+"</b>":"")+(serie?" &middot; "+serie:"")+"<br>Valor: <b style=\"color:#67e8f9\">"+val.toLocaleString("pt-BR",{maximumFractionDigits:2})+"</b> "+(unid||"");tip.style.opacity="1";place(ev)}
-function bind(svg){if(!svg)return;svg.__epc=true;svg.addEventListener("mouseenter",function(ev){var t=ev.target;if(!t||t.tagName!=="circle")return;show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)},true);svg.addEventListener("mouseover",function(ev){var t=ev.target;if(!t||t.tagName!=="circle")return;show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)});svg.addEventListener("mousemove",function(ev){var t=ev.target;if(t&&t.tagName==="circle"){show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev);place(ev)}else if(tip.style.opacity==="1"){place(ev)}});svg.addEventListener("mouseout",function(ev){if(ev.target&&ev.target.tagName==="circle")tip.style.opacity="0"})}
+function place(ev){if(!tip||!ev)return;var x=ev.clientX+14,y=ev.clientY+14,r=tip.getBoundingClientRect();if(x+r.width>window.innerWidth)x=ev.clientX-r.width-14;if(y+r.height>window.innerHeight)y=ev.clientY-r.height-14;tip.style.left=x+"px";tip.style.top=y+"px"}
+function hideTip(){if(tip)tip.style.opacity="0"}
+function showTip(mes,serie,val,unid,ev){if(!tip||!isFinite(val))return;tip.innerHTML=(mes?"<b>"+mes+"</b>":"")+(serie?" &middot; "+serie:"")+"<br>Valor: <b style="color:#67e8f9">"+Number(val).toLocaleString("pt-BR",{maximumFractionDigits:3})+"</b> "+(unid||"");tip.style.opacity="1";place(ev)}
+function bind(svg){if(!svg||svg.__epcBound)return;svg.__epcBound=true;svg.addEventListener("mouseover",function(ev){var t=ev.target;if(!t||t.tagName!=="circle")return;showTip(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)},true);svg.addEventListener("mousemove",function(ev){var t=ev.target;if(t&&t.tagName==="circle"){showTip(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)}else{place(ev)}});svg.addEventListener("mouseout",function(ev){if(ev.target&&ev.target.tagName==="circle")hideTip()},true)}
+function fillAttrs(){try{var mes=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];var flat=window.__EPC_FLAT||{};var llc=document.getElementById("loadLineChart");if(llc){var raw=Array.isArray(flat.raw)?flat.raw:[];var sm=Array.isArray(flat.smooth)?flat.smooth:[];var mn=+flat.mean||0;llc.querySelectorAll("circle").forEach(function(c,i){var fill=(c.getAttribute("fill")||"#0b6bcb").toLowerCase();var serie="Agregado (raw)",val=+raw[i]||0,unid="kWh/mês";if(fill==="#0d6a42"){serie="Suavizado MA-3 (wrap)";val=+sm[i]||0}else if(fill==="#7c3aed"){serie="Linha alvo (= média)";val=+mn||0}c.setAttribute("data-mes",mes[i%12]);c.setAttribute("data-serie",serie);c.setAttribute("data-val",String(val));c.setAttribute("data-unid",unid);try{c.style.cursor="pointer"}catch(_){}})}var sc=document.getElementById("sezChart");if(sc){sc.querySelectorAll("circle").forEach(function(c,i){var fill=(c.getAttribute("fill")||"#0ea5e9").toLowerCase();c.setAttribute("data-mes",mes[i%12]);c.setAttribute("data-serie",fill==="#fb923c"?"Cargas T (fator)":"Cargas E (fator)");c.setAttribute("data-unid","fator");try{c.style.cursor="pointer"}catch(_){}})}}catch(e){}}
+window.__epcFillAttrs=fillAttrs;
 function bindAll(){["sezChart","loadLineChart"].forEach(function(id){var s=document.getElementById(id);if(s)bind(s)})}
-bindAll();
-try{new MutationObserver(function(){__epcFillAttrs(); (window.__EP_BIND||function(){})();}).observe(document.body,{childList:true,subtree:true})}catch(_){}
-var bc=document.getElementById("btnCalc");if(bc)bc.addEventListener("click",function(){setTimeout(function(){(window.__EP_BIND||bindAll)(); __epcFillAttrs()},120)});
-function openModal(target){var src=document.getElementById(target);if(!src)return;var clone=src.cloneNode(true);clone.removeAttribute("id");clone.setAttribute("width","100%");clone.setAttribute("height","100%");clone.setAttribute("preserveAspectRatio","xMidYMid meet");clone.querySelectorAll("circle").forEach(function(c){try{c.style.cursor="pointer"}catch(_){}});var wrap=document.createElement("div");wrap.style.cssText="width:100%;height:100%;background:#fafcfe;border-radius:6px;padding:6px;display:flex;align-items:center;justify-content:center";wrap.appendChild(clone);var host=document.getElementById("epcModalHost");host.innerHTML="";host.appendChild(wrap);document.getElementById("epcModalTitle").textContent=target==="sezChart"?"Curva Sazonal · Fatores Mensais":target==="loadLineChart"?"Linha de Carga Agregada · Flattening (elétrico + térmico)":"Gráfico";bind(clone);document.getElementById("epcModal").style.display="flex"}
-function closeModal(){var m=document.getElementById("epcModal");m.style.display="none";document.getElementById("epcModalHost").innerHTML=""}
-document.addEventListener("click",function(ev){var t=ev.target;if(!t)return;if(t.classList&&t.classList.contains("epc-fullscreen-btn"))openModal(t.getAttribute("data-target"));if(t.id==="epcModalClose"||t.id==="epcModal")closeModal()});
-document.getElementById("epcModalClose").addEventListener("click",closeModal);
-document.getElementById("epcModalPrint").addEventListener("click",function(){var svg=document.querySelector("#epcModalHost svg");if(!svg){window.print();return}var xml=new XMLSerializer().serializeToString(svg);var w=window.open("","_blank","width=1100,height=750");if(!w){window.print();return}w.document.write("<!doctype html><html><head><title>Grafico EnergiaPro</title></head><body style=\"margin:0;background:#fff;display:flex;align-items:center;justify-content:center;height:100vh\">"+xml+"<script>
-window.__epcFillAttrs=function(){
-  try{
-    var mes=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    var flat=window.__EPC_FLAT;
-    var llc=document.getElementById("loadLineChart");
-    if(llc){
-      var raw=(flat&&flat.raw)||[],sm=(flat&&flat.smooth)||[],mn=(flat&&flat.mean)||0;
-      llc.querySelectorAll("circle").forEach(function(c,i){
-        var fill=c.getAttribute("fill")||"#0b6bcb";
-        var serie="Agregado (raw)",val=+raw[i]||0,unid="kWh/m\u00eas";
-        if(fill==="#0d6a42"){serie="Suavizado MA-3 (wrap)";val=+sm[i]||0}
-        else if(fill==="#7c3aed"){serie="Linha alvo (= m\u00e9dia)";val=+mn||0}
-        c.setAttribute("data-mes",mes[i%12]);
-        c.setAttribute("data-serie",serie);
-        c.setAttribute("data-val", nf((+val||0), 2));
-        c.setAttribute("data-unid",unid);
-        try{c.style.cursor="pointer"}catch(_){}
-      });
-    }
-    var sc=document.getElementById("sezChart");
-    if(sc){
-      sc.querySelectorAll("circle").forEach(function(c,i){
-        var fill=c.getAttribute("fill")||"#0ea5e9";
-        c.setAttribute("data-mes",mes[i%12]);
-        c.setAttribute("data-serie",fill==="#fb923c"?"Cargas T (fator)":"Cargas E (fator)");
-        c.setAttribute("data-unid","fator");
-        try{c.style.cursor="pointer"}catch(_){}
-      });
-    }
-  }catch(e){}
-};
-window.__epcRec=function(){
-  try{
-    var flat=window.__EPC_FLAT;
-    if(!flat||!document.getElementById("recPeak"))return;
-    var M=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    document.getElementById("recPeak").textContent=
-      Math.round(flat.raw[flat.peakIdx]).toLocaleString("pt-BR")+" kWh \u00b7 "+M[flat.peakIdx];
-    document.getElementById("recValley").textContent=
-      Math.round(flat.raw[flat.valleyIdx]).toLocaleString("pt-BR")+" kWh \u00b7 "+M[flat.valleyIdx];
-    document.getElementById("recGain").textContent=
-      "+"+nf(((flat.LF_smooth-flat.LF_raw)*100),1)+" pp (de "+
-      (flat.LF_raw*100).toFixed(1)+"% \u2192 "+(flat.LF_smooth*100).toFixed(1)+"%)";
-  }catch(e){}
-};
-function __epcBindTip(svg){
-  if(!svg||svg.__epcT)return;svg.__epcT=true;
-  var tip=document.getElementById("epcTip");
-  function onOver(ev){
-    var t=ev.target;
-    if(!t||t.tagName!=="circle"||!tip)return;
-    var v=parseFloat(t.getAttribute("data-val"));
-    if(!isFinite(v))return;
-    var mes=t.getAttribute("data-mes")||"";
-    var serie=t.getAttribute("data-serie")||"";
-    var unid=t.getAttribute("data-unid")||"";
-    tip.innerHTML=(mes?"<b>"+mes+"</b>":"")+(serie?" &middot; "+serie:"")+
-      "<br>Valor: <b style=\"color:#67e8f9\">"+v.toLocaleString("pt-BR",{maximumFractionDigits:2})+"</b> "+(unid||"");
-    tip.style.opacity="1";
-  }
-  function onMove(ev){if(tip&&tip.style.opacity==="1"){
-    var x=ev.clientX+14,y=ev.clientY+14;
-    var r=tip.getBoundingClientRect();
-    if(x+r.width>window.innerWidth)x=ev.clientX-r.width-14;
-    if(y+r.height>window.innerHeight)y=ev.clientY-r.height-14;
-    tip.style.left=x+"px";tip.style.top=y+"px";
-  }}
-  function onOut(ev){if(ev.target&&ev.target.tagName==="circle"&&tip)tip.style.opacity="0"}
-  svg.addEventListener("mouseover",onOver);
-  svg.addEventListener("mousemove",onMove);
-  svg.addEventListener("mouseout",onOut);
-}
-window.__epcBindTip=__epcBindTip;
-function __epcBoot(){
-  try{
-    if(document.getElementById("loadLineChart")) __epcBindTip(document.getElementById("loadLineChart"));
-    if(document.getElementById("sezChart"))    __epcBindTip(document.getElementById("sezChart"));
-    window.__epcFillAttrs();
-    window.__epcRec();
-  }catch(e){}
-}
-window.__epcBoot=__epcBoot;
-try{new MutationObserver(function(){__epcBoot()}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["d","fill","cx","cy"]})}catch(_){}
-if(window.MutationObserver){
-  setTimeout(__epcBoot,400); setTimeout(__epcBoot,1000);
-}
-var __bc=document.getElementById("btnCalc");
-if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoot()},120);setTimeout(function(){__epcBoot()},400)})}
-</script>
-
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
-
-<script>
-(function () {
-  if (window.__ENERGIAPRO_V7_BRIDGE__) return;
-  window.__ENERGIAPRO_V7_BRIDGE__ = true;
-
-  function safeClone(value) {
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch (error) {
-      return value ?? {};
-    }
-  }
-
-  function readState() {
-    try {
-      if (window.EnergiaPro && typeof window.EnergiaPro.export === 'function') {
-        return safeClone(window.EnergiaPro.export());
-      }
-      if (window.EnergiaPro && typeof window.EnergiaPro.getState === 'function') {
-        return safeClone(window.EnergiaPro.getState());
-      }
-      if (typeof window.exportData === 'function') {
-        return safeClone(window.exportData());
-      }
-      if (typeof window.getState === 'function') {
-        return safeClone(window.getState());
-      }
-      if (window.appState) {
-        return safeClone(window.appState);
-      }
-      if (window.state) {
-        return safeClone(window.state);
-      }
-    } catch (error) {
-      console.error('EnergiaPro bridge export error:', error);
-    }
-    return {};
-  }
-
-  function writeState(payload) {
-    try {
-      if (window.EnergiaPro && typeof window.EnergiaPro.import === 'function') {
-        window.EnergiaPro.import(payload);
-        return true;
-      }
-      if (window.EnergiaPro && typeof window.EnergiaPro.setState === 'function') {
-        window.EnergiaPro.setState(payload);
-        return true;
-      }
-      if (typeof window.importData === 'function') {
-        window.importData(payload);
-        return true;
-      }
-      if (typeof window.setState === 'function') {
-        window.setState(payload);
-        return true;
-      }
-
-      window.__ENERGIAPRO_PREFILL__ = payload;
-      return true;
-    } catch (error) {
-      console.error('EnergiaPro bridge import error:', error);
-      return false;
-    }
-  }
-
-  window.EnergiaProBridge = {
-    export: readState,
-    import: writeState,
-  };
-
-  window.addEventListener('message', function (event) {
-    var data = event.data || {};
-
-    if (data.type === 'ENERGIAPRO_EXPORT_REQUEST') {
-      var payload = readState();
-      event.source && event.source.postMessage({
-        type: 'ENERGIAPRO_EXPORT_RESPONSE',
-        requestId: data.requestId,
-        payload: payload
-      }, '*');
-      return;
-    }
-
-    if (data.type === 'ENERGIAPRO_IMPORT_DATA') {
-      var ok = writeState(data.payload || {});
-      event.source && event.source.postMessage({
-        type: 'ENERGIAPRO_IMPORT_ACK',
-        requestId: data.requestId,
-        ok: ok
-      }, '*');
-      return;
-    }
-  });
+window.__epcBoot=function(){try{fillAttrs();bindAll();if(typeof window.__EP_BIND==="function")window.__EP_BIND()}catch(e){}};
+try{new MutationObserver(function(){window.__epcBoot()}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["d","fill","cx","cy"]})}catch(_){ }
+var bc=document.getElementById("btnCalc");if(bc)bc.addEventListener("click",function(){setTimeout(function(){window.__epcBoot()},120);setTimeout(function(){window.__epcBoot()},400)});
+function modalTitle(target){return target==="sezChart"?"Curva Sazonal · Fatores Mensais":target==="loadLineChart"?"Linha de Carga Agregada · Flattening (elétrico + térmico)":"Gráfico"}
+function openModal(target){window.__epcBoot();var src=document.getElementById(target);if(!src)return;var clone=src.cloneNode(true);clone.removeAttribute("id");clone.setAttribute("width","100%");clone.setAttribute("height","100%");clone.setAttribute("preserveAspectRatio","xMidYMid meet");clone.style.maxWidth="100%";clone.style.maxHeight="100%";clone.querySelectorAll("circle").forEach(function(c){try{c.style.cursor="pointer"}catch(_){}});var wrap=document.createElement("div");wrap.style.cssText="width:100%;height:100%;background:#fafcfe;border-radius:6px;padding:6px;display:flex;align-items:center;justify-content:center";wrap.appendChild(clone);var host=document.getElementById("epcModalHost");if(!host)return;host.innerHTML="";host.appendChild(wrap);var titleEl=document.getElementById("epcModalTitle");if(titleEl)titleEl.textContent=modalTitle(target);bind(clone);var modal=document.getElementById("epcModal");if(modal)modal.style.display="flex"}
+function closeModal(){var m=document.getElementById("epcModal");if(m)m.style.display="none";var host=document.getElementById("epcModalHost");if(host)host.innerHTML="";hideTip()}
+function printModalSvg(){var svg=document.querySelector("#epcModalHost svg");if(!svg){window.print();return}var w=window.open("","_blank","width=1100,height=750");if(!w){window.print();return}var title=(document.getElementById("epcModalTitle")&&document.getElementById("epcModalTitle").textContent)||"Gráfico EnergiaPro";var svgMarkup=svg.outerHTML;w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>html,body{margin:0;height:100%;background:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif}body{display:flex;align-items:center;justify-content:center;padding:16px}svg{width:100%;height:auto;max-width:1400px;border:1px solid #d6deea;border-radius:8px;background:#fafcfe}</style></head><body>'+svgMarkup+'</body></html>');w.document.close();w.focus();setTimeout(function(){try{w.print()}catch(_){ }},200)}
+document.addEventListener("click",function(ev){var btn=ev.target&&ev.target.closest?ev.target.closest(".epc-fullscreen-btn"):null;if(btn){ev.preventDefault();ev.stopPropagation();openModal(btn.getAttribute("data-target"));return}var t=ev.target;if(t&&(t.id==="epcModalClose"||t.id==="epcModal")){ev.preventDefault();closeModal()}},true);
+var closeBtn=document.getElementById("epcModalClose");if(closeBtn)closeBtn.addEventListener("click",function(ev){ev.preventDefault();ev.stopPropagation();closeModal()});
+var printBtn=document.getElementById("epcModalPrint");if(printBtn)printBtn.addEventListener("click",function(ev){ev.preventDefault();ev.stopPropagation();printModalSvg()});
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeModal()});
+setTimeout(function(){window.__epcBoot()},120);
+setTimeout(function(){window.__epcBoot()},500);
 })();
 </script>
 
@@ -1724,6 +1547,7 @@ if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoo
 
   function runRenderHooks() {
     const fnNames = [
+      'renderDemHist','renderSezChart','renderLoadLineChart','aplicaModalidade','recalc',
       'renderCenarios','renderCurvaSazonal','renderLinhaCargaAgregada','renderLinhaCarga',
       'renderLoadLine','renderLoadLineMetrics','renderScenario','renderCharts',
       'updateScenario','updateCharts','updateAll','refreshAll','recalculateAll',
@@ -1776,6 +1600,7 @@ if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoo
 })();
 </script>
 
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body></html>");w.document.close();setTimeout(function(){w.print()},260)});
