@@ -1,70 +1,79 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
-function getSupabaseAccessToken(): string | null {
+let energiaProSupabaseClient: SupabaseClient | null = null;
+
+function getEnergiaProSupabaseClient() {
   if (typeof window === 'undefined') return null;
 
-  const directKeys = [
-    'supabase.access_token',
-    'access_token',
-    'sb-access-token',
-  ];
+  if (energiaProSupabaseClient) {
+    return energiaProSupabaseClient;
+  }
 
-  try {
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      if (
-        key.includes('auth-token') ||
-        key.includes('access-token') ||
-        key.includes('supabase')
-      ) {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
+  if (!url || !anon) {
+    return null;
+  }
 
-        try {
-          const parsed = JSON.parse(raw);
-          if (typeof parsed?.access_token === 'string') return parsed.access_token;
-          if (typeof parsed?.currentSession?.access_token === 'string') {
-            return parsed.currentSession.access_token;
-          }
+  energiaProSupabaseClient = createClient(url, anon, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 
-          if (Array.isArray(parsed)) {
-            for (const item of parsed) {
-              if (typeof item === 'string' && item.split('.').length === 3) return item;
-              if (typeof item?.access_token === 'string') return item.access_token;
-              if (typeof item?.currentSession?.access_token === 'string') {
-                return item.currentSession.access_token;
-              }
-            }
-          }
-        } catch (_) {
-          const match = raw.match(/"access_token":"([^"]+)"/);
-          if (match?.[1]) return match[1];
-          if (raw.split('.').length === 3) return raw;
-        }
-      }
-    }
+  return energiaProSupabaseClient;
+}
 
-    for (const key of directKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
+async function waitForRestoredSession(
+  client: SupabaseClient,
+  timeoutMs = 1500
+): Promise<Session | null> {
+  return await new Promise((resolve) => {
+    let settled = false;
 
-      try {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed?.access_token === 'string') return parsed.access_token;
-        if (typeof parsed?.currentSession?.access_token === 'string') {
-          return parsed.currentSession.access_token;
-        }
-      } catch (_) {
-        if (raw.split('.').length === 3) return raw;
-      }
-    }
-  } catch (_) {}
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      subscription.unsubscribe();
+      resolve(null);
+    }, timeoutMs);
 
-  return null;
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      if (settled) return;
+      if (!session?.access_token) return;
+
+      settled = true;
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+      resolve(session);
+    });
+  });
+}
+
+async function getSupabaseAccessToken(): Promise<string | null> {
+  const client = getEnergiaProSupabaseClient();
+  if (!client) return null;
+
+  const first = await client.auth.getSession();
+  if (first.data.session?.access_token) {
+    return first.data.session.access_token;
+  }
+
+  const restored = await waitForRestoredSession(client);
+  if (restored?.access_token) {
+    return restored.access_token;
+  }
+
+  const second = await client.auth.getSession();
+  return second.data.session?.access_token ?? null;
 }
 
 function buildAuditBootstrap(token: string) {
@@ -184,7 +193,7 @@ export default function EnergiaProPrivatePage() {
 
     async function boot() {
       try {
-        const token = getSupabaseAccessToken();
+        const token = await getSupabaseAccessToken();
 
         if (!token) {
           setMessage('Sessão não encontrada. Faça login novamente.');
