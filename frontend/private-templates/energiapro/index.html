@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EnergiaPro v1.6.14 — Diagnóstico &amp; Cenário (API embedded · Expert Energy)</title>
+<style>
+:root{--bg:#eef2f7;--card:#fff;--ink:#0b1f3a;--muted:#5b6b82;--line:#d6deea;--brand:#0f7a4d;--brand2:#0b6bcb;--warn:#c77700;--bad:#c62828;--ok:#0d6a42}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+header{background:linear-gradient(120deg,#0b3d2e,#0f7a4d);color:#fff;padding:14px 22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:17px;font-weight:600}
+.badge{background:rgba(255,255,255,.16);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600}
+main{max-width:1500px;margin:0 auto;padding:14px}
+.card{background:var(--card);border-radius:9px;padding:14px;margin-bottom:11px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(20,33,61,.05)}
+.card h2{margin:0 0 9px;font-size:13.5px;color:var(--brand);border-bottom:1px solid var(--line);padding-bottom:5px}
+.card h2 .num{display:inline-block;background:var(--brand);color:#fff;border-radius:50%;width:19px;height:19px;text-align:center;line-height:19px;font-size:10.5px;margin-right:5px;font-weight:700}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.row label{font-size:10.5px;color:var(--muted);display:block}
+.row input,.row select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:12.5px;background:#fff;color:var(--ink);margin-top:2px}
+.btn{border:none;border-radius:4px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-calc{background:var(--brand);color:#fff}.btn-pause{background:#c77700;color:#fff}.btn-resume{background:#0b6bcb;color:#fff}.btn-host{background:#fff;color:var(--brand2);border:1px solid var(--brand2)}
+.icon-btn{padding:4px 8px;font-size:10px;background:#fde6e6;color:#b71c1c;border:none;border-radius:4px;cursor:pointer}
+.list-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:5px;align-items:end;padding:6px;background:#fafcfe;border:1px solid #eef1f6;border-radius:5px;margin-bottom:5px;font-size:11.5px}
+.list-row.th{grid-template-columns:2fr 1.4fr 1fr 1fr 1fr 1fr auto;gap:5px}
+.list-row label{font-size:9.5px;color:var(--muted);display:block}
+.list-row input,.list-row select{width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:3px;font-size:11.5px}
+#diagrama{display:block;width:100%;height:680px;background:#f4f7fb;border-radius:6px;border:1px solid #d6deea}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-top:5px}
+.kpi{background:#fafcfe;border:1px solid var(--line);border-radius:5px;padding:8px}
+.kpi .lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase}
+.kpi .val{font-size:14.5px;color:var(--brand);font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi.bad .val{color:var(--bad)}.kpi.warn .val{color:var(--warn)}.kpi.ok .val{color:var(--ok)}
+.cmps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.cmps .col{background:#fafcfe;border:1px solid var(--line);border-radius:5px;padding:8px}
+.cmps .col h3{margin:0 0 5px;font-size:11px;color:var(--brand)}
+.cmps .col .ln{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px dashed #eef1f6}
+.cmps .col .ln b{font-variant-numeric:tabular-nums}
+.gestion{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:7px}
+.gestion-item{background:#fafcfe;border:1px solid var(--line);border-radius:5px;padding:8px}
+.gestion-item .g-v{font-size:13px;font-weight:700;margin-top:2px}
+.flowAnim{stroke-dasharray:6 5;animation:flow .8s linear infinite}
+.flowAnim.rev{animation:flowRev .8s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-22}}
+@keyframes flowRev{to{stroke-dashoffset:22}}
+.aviso{background:#fff8e6;border:1px solid #f5d089;color:#7a5300;border-radius:4px;padding:6px 8px;font-size:11.5px;margin-bottom:6px}
+.api-block{background:#f6f9fc;border:1px solid #dbe3ee;border-radius:4px;padding:6px 8px;font-family:Menlo,Consolas,monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow:auto}
+.gate{padding:8px;border-radius:5px;margin-top:6px;font-size:12.5px}
+.gate.ok{background:#e8f6ee;border:1px solid #a9d8bd;color:#0d6a42}
+.gate.no{background:#fff0e6;border:1px solid #f0c089;color:#7a4f00}
+.hist-row{grid-template-columns:2fr 1fr 1fr 1fr 1fr;display:grid;gap:5px;align-items:end;padding:5px;background:#fafcfe;border:1px solid #eef1f6;border-radius:4px;margin-bottom:4px;font-size:11px}
+.sez-row{display:grid;grid-template-columns:1.4fr repeat(12,minmax(35px,1fr)) auto;gap:5px;align-items:end;padding:5px;background:#fafcfe;border:1px solid #eef1f6;border-radius:4px;margin-bottom:4px;font-size:11px}
+.diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px}
+.diag-card{background:#fafcfe;border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-size:11px}
+.diag-card .lbl{font-size:9.5px;color:var(--muted)}
+.diag-card .val{font-size:13px;font-weight:700;color:var(--brand);margin-top:1px}
+.brand-row{font-size:9.5px;color:var(--muted);font-style:italic;line-height:1.3}
+.alt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:7px}
+.alt-card{background:#fafcfe;border:1px solid var(--line);border-radius:5px;padding:8px;font-size:11px}
+.alt-card h4{margin:0 0 4px;font-size:11.5px}
+.alt-card .gain{font-size:13px;font-weight:700;color:var(--ok)}
+.alt-card .src{font-size:9px;color:var(--muted);font-style:italic}
+.kpi-edit{background:#fffbe6 !important;border-color:#d9a300 !important}
+.field-inline{display:flex;flex-direction:column}
+
+.printHeader{display:none}
+@media print{
+  body{background:#fff}
+  header{background:#0f7a4d !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .no-print,#section-controles{display:none !important}
+  .printHeader{display:flex !important;align-items:center;gap:14px;padding:10px 22px;background:#fff;border-bottom:2px solid #0f7a4d;margin-bottom:8px}
+  .printHeader img{height:46px;width:auto}
+  .printHeader .ptxt{font-size:13px;line-height:1.3}
+  .printHeader .ptxt b{font-size:14px;color:#0f7a4d}
+  .printHeader .ptxt small{color:#5b6b82}
+  .card{page-break-inside:avoid;box-shadow:none}
+  .kpis,.gestion,.cmps{page-break-inside:avoid}
+.cmps .ln{display:grid;grid-template-columns:1.5fr 1fr 1fr 1.1fr;gap:6px;font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--line);align-items:center}
+.cmps .ln:nth-child(even){background:#fafcfe}
+.cmps .ln b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.cmps .ln span{color:var(--brand);font-weight:600;font-size:10.5px}
+.cmps h3{margin:0 0 6px;padding:6px 8px;font-size:12.5px}
+  .flowAnim{animation:none !important}
+}
+
+</style>
+</head>
+<body>
+<div class="printHeader"><img src="https://www.expertenergy.com.br/images/logo-expert-energy.png" alt="Expert Energy Performance em Energia Ltda" onerror="this.style.display=\'none\'"><div class="ptxt"><b>Expert Energy Performance em Energia Ltda</b><br><small>www.expertenergy.com.br — Proposta técnica EnergiaPro v1.6.14</small></div></div>
+<header><div><h1>⚡ EnergiaPro v1.6.14 — Diagnóstico &amp; Cenário</h1><p class="brand-row" style="color:#dbeafe">Embedded API · operação sazonal · catálogo (Atlas Copco / Ingersoll Rand / Trane CVHE / Carrier 19DV) · demanda ótima · THD PRODIST M8</p></div><div class="badge" id="stateBadge">PRONTO</div></header>
+<main>
+
+<section class="card"><h2><span class="num">1</span>Empresa &amp; Mercado</h2>
+<div class="row">
+<label>Razão Social<input id="razao" value="Indústria Exemplo Ltda"></label>
+<label>CNPJ<input id="cnpj" value="12.345.678/0001-90"></label>
+<label>Segmento<select id="segmento"><option>Alimentos e Bebidas</option><option>Metalurgia</option><option>Química</option><option>Têxtil</option><option>Plásticos</option><option>Serviços</option><option>Hospitalar</option><option>Agronegócio</option><option>Refrigeração Industrial</option><option>Cerâmica</option><option>Outros</option></select></label>
+<label>Tensão (kV)<select id="tensao"><option>0.22/0.38</option><option selected>13.8</option><option>34.5</option><option>69</option><option>138</option></select></label>
+<label>Distribuidora<select id="distribuidora"><option>Enel SP</option><option>Cemig</option><option>CPFL</option><option>Light</option><option>Equatorial</option><option>Celesc</option><option>EDP</option></select></label>
+</div>
+<div class="row" style="margin-top:6px">
+<label>Mercado<select id="mercado"><option value="ACR">ACR — Cativo</option><option value="ACL">ACL — Livre</option></select></label>
+<label>Modalidade<select id="modalidade"><option>Verde</option><option>Azul</option><option>Convencional</option></select></label>
+<label>DC (kW)<input id="dc" type="number" value="320"></label>
+<div id="dcAzulBox" style="display:none">
+<label style="background:#e0f2fe;padding:4px;border-radius:3px">DC Ponta (kW)<input id="dcP" type="number" value="1050"></label>
+<label style="background:#fef3c7;padding:4px;border-radius:3px">DC Fora Ponta (kW)<input id="dcFP" type="number" value="900"></label>
+</div>
+<label>FP<input id="fp" type="number" step="0.01" value="0.92"></label>
+<label>TE Ponta (R$/kWh)<input id="TE_p_" type="number" step="0.01" value="1.85"></label>
+<label>TE FP (R$/kWh)<input id="TE_fp_" type="number" step="0.01" value="0.75"></label>
+<label>TUSD Demanda Ponta (R$/kW)<input id="TUSD_dem_" type="number" step="0.1" value="12.5"></label>
+<label>TUSD Demanda FP (R$/kW)<input id="TUSD_fp_" type="number" step="0.1" value="8.5"></label>
+<div id="reativoBox" style="display:none;background:#fee2e2;border:1px solid #fca5a5;padding:6px;border-radius:4px;margin-top:6px;grid-column:1/-1;font-size:11px">
+<label style="margin:0">R$ ult.kW Ponta (ultrapassagem)<input id="ultR_p" type="number" step="0.5" value="25"></label>
+<label style="margin:0">R$ ult.kW FP (ultrapassagem)<input id="ultR_fp" type="number" step="0.5" value="17"></label>
+<label style="margin:0">% multa reativo (PRODIST M8)<input id="pReativo" type="number" step="1" value="30" /><label style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:#475569;margin-top:4px">Tarifa reativa excedente (R$/kVArh)<input id="tReativa" type="number" step="0.01" value="0.60" min="0"></label>
+</div>
+</div>
+</section>
+
+<section class="card"><h2><span class="num">2</span>Operação — Sazonalidade e Turnos</h2>
+<div class="row">
+<label>Turnos<select id="turnos"><option>1</option><option selected>2</option><option>3</option></select></label>
+<label>Horas/dia<input id="hd" type="number" value="16"></label>
+<label>Dias úteis/mês<input id="dm" type="number" value="25"></label>
+<label>FU<input id="fu" type="number" step="0.05" value="0.85"></label>
+<label>Tipo de Rede<select id="tipo_rede"><option>Aérea urbana</option><option>Aérea rural</option><option>Subterrânea</option></select></label>
+<label>Operação sazonal?<select id="sazonal"><option value="nao">Não — operação contínua</option><option value="sim">Sim — fator de carga varia mês a mês</option></select></label>
+<label>Porte da empresa<select id="porte"><option value="micro">Micro — até 9 (com/serv) ou 19 (ind) func · ≤ R$ 360 mil/ano</option><option value="pequena" selected>Pequena — 10-49 (com/serv) ou 20-99 (ind) func · R$ 360 mil a R$ 4,8 mi/ano</option><option value="media">Média — 100-499 func · até R$ 300 mi/ano</option><option value="grande">Grande — > 500 func · &gt; R$ 300 mi/ano</option></select></label>
+<label>Nº funcionários<input id="nfunc" type="number" value="65"></label>
+</div>
+<!-- IBGE/SEBRAE badge removed per user request (v1.6.3) -->
+<div class="aviso">Se <b>sazonal = sim</b>, cada carga/térmica aceita vetor mensal (Jan…Dez) que reduz/aumenta horas e custo. A economia ajustada considera o índice sazonal agregado.</div>
+</section>
+
+<section class="card"><h2><span class="num">3</span>Cargas Elétricas (dinâmica, com sazonalidade)</h2>
+<div id="cList"></div>
+<button class="btn" id="btnAddCarga" style="background:#e6effa;color:#0b6bcb;margin-top:5px">+ Adicionar carga elétrica</button>
+<div id="sezEList" style="margin-top:8px"></div>
+</section>
+
+<section class="card"><h2><span class="num">4</span>Cargas Térmicas (dinâmica) + Catálogo comparativo + Sazonalidade</h2>
+<div class="aviso"><b>Custo/h agora editável</b> (fundo amarelo) — persiste. Cada carga carrega alternativas por tecnologia com COP/IPLV/kW por origem (datasheet). Se a empresa é sazonal, preencha o vetor mensal.</div>
+<div id="tList"></div>
+<button class="btn" id="btnAddTerm" style="background:#fff0e6;color:#c77700;margin-top:5px">+ Adicionar carga térmica</button>
+<div class="row" style="margin:8px 0 4px;gap:6px"><input id="libSearch" type="text" placeholder="Buscar tecnologia..." style="flex:1;min-width:160px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px"><button class="btn" id="btnLibNew" style="background:#16a34a;color:#fff">+ Criar nova tecnologia</button><button class="btn" id="btnLibExport" style="background:#e2e8f0;color:#0f172a">Exportar .json</button><button class="btn" id="btnLibReset" style="background:#fef3c7;color:#92400e">Restaurar padrao</button></div><div id="libEditor" style="display:none;margin-top:6px"></div><div id="libCustomRes" style="margin-top:6px"></div><div id="termAlts" class="alt-grid" style="margin-top:8px"></div>
+<div id="sezTList" style="margin-top:8px"></div>
+<div class="brand-row">Catálogo: <b>Atlas Copco GA 30+ VSD+</b> IE4 · <b>Ingersoll Rand NG-R 30-37 kW VSD</b> · <b>Trane CenTraVac CVHE</b> 0,4872 kW/TR · <b>Carrier AquaEdge 19DV</b> IPLV 0,295 · <b>Atlas Copco FD</b> 0,5-0,8 kW/100 cfm · <b>MDG 450</b> &lt;0,2 kW · <b>IEA HP industrial</b> COP 3,0-6,0 · <b>biomassa BFB</b> η 88-92%.</div>
+</section>
+
+<section class="card"><h2><span class="num">5</span>Geração Atual Existente</h2>
+<div class="row">
+<label>Possui geração?<select id="ger_atual"><option value="nao">Não</option><option value="sim">Sim</option></select></label>
+<label>Capacidade (kW)<input id="ger_cap" type="number" value="0"></label>
+<label>Tipo<select id="ger_tipo"><option>Diesel</option><option>Gás natural</option><option>Biomassa</option><option>Solar FV</option><option>Eólica</option><option>Híbrido</option></select></label>
+<label>Combustível<input id="comb" value="óleo diesel S-10"></label>
+<label>Consumo espec.<input id="comb_cons" type="number" step="0.01" value="0.30"></label>
+<label>Preço comb.<input id="comb_preco" type="number" step="0.01" value="6.50"></label>
+<label>OPEX geração (R$/mês)<input id="ger_opex" type="number" value="0"></label>
+</div>
+</section>
+
+<section class="card"><h2><span class="num">6</span>Qualidade da Rede e Falhas</h2>
+<div class="row">
+<label>Piscadas/mês<input id="pisc_mes" type="number" value="8"></label>
+<label>Quedas/mês<input id="queda_mes" type="number" value="3"></label>
+<label>Duração queda (min)<input id="queda_dur" type="number" value="45"></label>
+<label>Críticos/ano<input id="crit_ano" type="number" value="4"></label>
+<label>Duração críticos (min)<input id="crit_dur" type="number" value="120"></label>
+<label>Produção afetada (R$/h)<input id="prod_h" type="number" value="8000"></label>
+<label>VOLL (R$/kWh)<input id="voll" type="number" step="0.1" value="14"></label>
+</div>
+</section>
+
+<section class="card"><h2><span class="num">7</span>Histórico 12 meses — Demanda Contratada × Registrada + Ultrapassagem</h2>
+<div id="demHist"></div>
+<button class="btn" id="btnAddDem" style="background:#e6effa;color:#0b6bcb;margin-top:5px">+ Adicionar mês</button>
+<div id="demRes" class="diag-grid" style="margin-top:8px"></div>
+<div class="brand-row">Fundamentação: <b>RN ANEEL nº 1.000/2021</b>, arts. 92-226, demanda contratada ponta/FP · <b>PRODIST Módulo 8 Rev. 8</b>.</div>
+</section>
+
+<section class="card"><h2><span class="num">8</span><div id="thdOverheat"></div>
+Qualidade da Energia — THD de Tensão e Corrente</h2>
+<div id="thdRows"></div>
+<button class="btn" id="btnAddThd" style="background:#e6effa;color:#0b6bcb;margin-top:5px">+ Adicionar circuito</button>
+<div id="thdRes" class="diag-grid" style="margin-top:8px"></div>
+<div class="brand-row"><b>PRODIST M8 Rev. 8</b> THDv &lt; 8% BT / 5% AT · <b>IEEE 519-2014 Tabela 2</b> TDD vs Isc/IL · <b>NBR 5410 Tabela 47</b> derating temperatura.</div>
+</section>
+
+<section class="card"><h2><span class="num">9</span>Diagrama Automático da Planta (com ícones)</h2>
+<svg id="diagrama" viewBox="0 0 1400 680" width="100%" height="680" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#f4f7fb">
+<defs>
+<linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0f4fa"/><stop offset="100%" stop-color="#e1e7f1"/></linearGradient>
+<linearGradient id="redeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e40af"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+<linearGradient id="busGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#15803d"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>
+<linearGradient id="loadGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0369a1"/><stop offset="100%" stop-color="#0ea5e9"/></linearGradient>
+<linearGradient id="termGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#9a3412"/><stop offset="100%" stop-color="#fb923c"/></linearGradient>
+<linearGradient id="fvGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0e7490"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+<linearGradient id="bessGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5b21b6"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+<linearGradient id="gerGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c2d12"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>
+<filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0b1f3a" flood-opacity="0.2"/></filter>
+<symbol id="ico-power" viewBox="0 0 24 24"><path fill="currentColor" d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/></symbol>
+<symbol id="ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/><path stroke="currentColor" stroke-width="2" d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></symbol>
+<symbol id="ico-battery" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2" fill="currentColor"/><rect x="4" y="9" width="6" height="6" fill="#fff"/><rect x="11" y="9" width="6" height="6" fill="#fff"/><path stroke="currentColor" stroke-width="2" d="M22 11v2"/></symbol>
+<symbol id="ico-flame" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C12 2 7 9 7 14a5 5 0 0 0 10 0c0-2-1-3-2-4 1 3 2 4 0 5-1-1-1-3-1-5 0-4-2-8-2-8z"/></symbol>
+<symbol id="ico-motor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor"/><text x="12" y="15" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">M</text></symbol>
+<symbol id="ico-diesel" viewBox="0 0 24 24"><rect x="3" y="6" width="14" height="13" rx="2" fill="currentColor"/><rect x="17" y="10" width="4" height="6" fill="currentColor"/></symbol>
+<symbol id="ico-meter" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+<symbol id="ico-comp" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="1.5" d="M3 12h4M17 12h4"/></symbol>
+<symbol id="ico-chiller" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2" fill="currentColor"/><circle cx="12" cy="10" r="3" fill="#fff"/><path stroke="#fff" stroke-width="1" d="M7 16h10M7 18h10"/></symbol>
+<symbol id="ico-dryer" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="currentColor"/><path stroke="#fff" stroke-width="1" d="M7 9h10M7 13h10M7 17h10"/></symbol>
+</defs>
+<rect x="0" y="0" width="1400" height="680" fill="url(#bgGrad)"/>
+<g id="dg"></g>
+</svg>
+<div class="brand-row">6 zonas hierárquicas (rede → bus → fontes → cargas → QEE) com 11 ícones inline (zero dependência externa). Animação por stroke-dasharray (CSS, zero libs).</div>
+</section>
+
+<section class="card" id="secSSE"><h2><span class="num">9b</span>Sensibilidade à Qualidade de Energia (SSE)</h2><p style="font-size:11px;color:#475569;margin:0 0 8px">Índice IS (0–100) = Σ(Peso × Fator). NC = 100 − IS. Recomenda-se metas por perfil: Comercial / Industrial / Hospital / Data Center / Agronegócio / Automação Crítica.</p><div class="grid4"><label>Perfil da instalação<select id="ssePerfil" style="font-size:12px"><option value="comercial">Comercial</option><option value="industrial" selected>Industrial</option><option value="hospital">Hospital</option><option value="datacenter">Data Center</option><option value="agronegocio">Agronegócio</option><option value="automacao">Automação Crítica</option></select></label><label>Tensão V/V_n<input id="sseV" type="number" step="0.001" value="0.95" min="0.85" max="1.20"></label><label>FP medido<input id="sseFP" type="number" step="0.01" value="0.80" min="0.50" max="1.00"></label><label>THDv (%)<input id="sseTHDv" type="number" step="0.1" value="8.0" min="0" max="20"></label><label>Desequilíbrio (%)<input id="sseDeseq" type="number" step="0.1" value="4.0" min="0" max="10"></label><label>Sags (ev/mês)<input id="sseSags" type="number" step="0.1" value="5" min="0" max="50"></label><label>Interrupções (h/ano)<input id="sseInt" type="number" step="0.1" value="20" min="0" max="200"></label></div><div id="sseRes" style="margin-top:10px"></div></section>
+<section class="card"><h2><span class="num">10</span>Proposta &amp; Premissas</h2>
+<label>Proposta ativa<select id="prop"><option value="sim" selected>Sim — calcular cenário</option><option value="nao">Não — só baseline</option></select></label>
+<div class="row" style="margin-top:5px">
+<label>FV kWp<input id="fv_kwp" type="number" value="600"></label>
+<label>HSP<input id="hsp" type="number" step="0.1" value="4.8"></label>
+<label>PR<input id="pr" type="number" step="0.01" value="0.82"></label>
+<label>CAPEX FV (R$/kWp)<input id="capex_fv_k" type="number" value="3800"></label>
+<label>OPEX FV %CAPEX/ano<input id="opex_fv" type="number" step="0.1" value="1.0"></label>
+<label>BESS kWh<input id="bess_kwh" type="number" value="200"></label>
+<label>CHP?<select id="chp"><option value="nao" selected>Não</option><option value="sim">Sim</option></select></label>
+</div>
+<div class="aviso" style="margin:6px 0"><b>Cenário (multi-select)</b> — vazio = "Não considerar / manter a rede".</div>
+<div class="row" style="margin-top:4px">
+<label><input type="checkbox" id="scFV" checked> ☀ FV (kWp acima)</label>
+<label><input type="checkbox" id="scRede"> 🔌 Manter rede (baseline)</label>
+<label><input type="checkbox" id="scMotor"> ⚙ Cogeração motor (η 35-42%)</label>
+<label><input type="checkbox" id="scMicro"> 🔬 Microturbina Capstone</label>
+<label><input type="checkbox" id="scBESS" checked> 🔋 BESS (kWh acima)</label>
+<label><input type="checkbox" id="scEolica"> 🌬 Eólica on-site</label>
+<label><input type="checkbox" id="scHibrido"> 🔁 Híbrido (≥ 2 fontes)</label>
+</div>
+<div class="row" style="margin-top:4px">
+<label>Modelo Capstone<select id="capModel"><option value="C30" selected>C30 — 30 kW · η elét 26% LHV · HR 13,8 MJ/kWh · CHP 80%</option><option value="C65">C65 — 65 kW · HR 11 800 BTU/kWh · CHP 83%</option><option value="C200">C200 — 200 kW · η elét 33% LHV · HR 10,9 MJ/kWh · CHP até 90%</option></select></label>
+<label>Capacidade Capstone (kW)<input id="capKw" type="number" value="200"></label>
+<label>Custo geração (R$/MWh)<input id="capCost_MWh" type="number" value="5000"></label>
+<label>Motor a gás (kW)<input id="motorKw" type="number" value="180"></label>
+</div>
+<div id="motorFuelPanel" class="row" style="display:none;margin-top:6px;background:#fffaf0;border:1px solid #f5c98a;padding:6px;border-radius:5px">
+  <label style="grid-column:span 2"><b>⚙ Combustível do motor a gás:</b> <select id="motorFuel"><option value="GN" selected>Gás natural (GN)</option><option value="BIO">Biogás (gerado pelo cliente → 100% economia)</option></select></label>
+  <label>R$ m³ do GN<input id="motorGN_Rm3" type="number" step="0.01" value="3.85"></label>
+  <label>Consumo GN (m³/h)<input id="motorConsGN" type="number" step="0.1" value="10.2"></label>
+  <label><small style="color:#7a4f00">η elétrico = 0,36 (GN) | 0,42 (BIO)</small></label>
+</div>
+<div id="microFuelPanel" class="row" style="display:none;margin-top:6px;background:#fffaf0;border:1px solid #f5c98a;padding:6px;border-radius:5px">
+  <label style="grid-column:span 2"><b>🔬 Combustível da microturbina Capstone:</b> <select id="microFuel"><option value="GN" selected>Gás natural (GN)</option><option value="BIO">Biogás (gerado pelo cliente → 100% economia)</option></select></label>
+  <label>R$ m³ do GN<input id="microGN_Rm3" type="number" step="0.01" value="3.85"></label>
+  <label>Consumo GN (m³/h)<input id="microConsGN" type="number" step="0.1" value="12.4"></label>
+  <label><small style="color:#7a4f00">Se BIO, custo combustível = R$ 0/MWh gerado</small></label>
+</div>
+<div id="eolPanel" class="row" style="display:none;margin-top:6px;background:#f0fbff;border:1px solid #93c5fd;padding:6px;border-radius:5px">
+  <label style="grid-column:span 2"><b>🌬 Eólica on-site · FC 30%</b></label>
+  <label>Potência instalada (kW)<input id="eolicaKw" type="number" value="50"></label>
+  <label>CAPEX (R$/kW) ≈ 7 500 <small>somatório entra no CAPEX total</small></label>
+</div>
+<div id="hibridoPanel" class="row" style="display:none;margin-top:6px;background:#f0fff4;border:1px solid #86efac;padding:6px;border-radius:5px">
+  <label style="grid-column:span 2"><b>🔁 Híbrido</b> ≥ 2 fontes marcadas — soma CAPEX, soma MWh local, economia média ponderada.</label>
+</div>
+<div class="row" style="margin-top:5px">
+<label>WACC<select id="wacc"><option>0.10</option><option selected>0.12</option><option>0.14</option></select></label>
+<label>Spread<select id="spread"><option>0.02</option><option selected>0.04</option><option>0.06</option></select></label>
+<label>Horizonte (a)<input id="horiz" type="number" value="20"></label>
+<label>Inflação %/a<input id="infl" type="number" step="0.1" value="4.5"></label>
+<label>f emissão tCO₂/MWh<input id="f_emis" type="number" step="0.001" value="0.081"></label>
+</div>
+</section>
+
+<section class="card"><h2><span class="num">11</span>KPIs e Gate de Viabilidade</h2>
+<div class="kpis" id="kpis"></div>
+<div id="gate"></div>
+</section>
+
+<section class="card"><h2><span class="num">11b</span>Cenários ativos (FV · BESS · Motor · Microturbina Capstone · Eólica · Híbrido)</h2>
+<div id="cenarioRes"></div>
+<div class="brand-row">Valores por fonte: MWh/mês local, CAPEX adicional, etiqueta do combustível, multa reativo e ultrapassagem.</div>
+</section>
+
+<section class="card"><h2><span class="num">12</span>Baseline × Cenário × Ganho (ajustado por sazonalidade)</h2>
+<div class="cmps"><div class="col" id="cmpBefore"><h3>Baseline</h3></div><div class="col" id="cmpAfter"><h3>Cenário</h3></div><div class="col" id="cmpGain" style="background:#e8f6ee"><h3>Ganho</h3></div></div>
+</section>
+
+<section class="card"><h2><span class="num">13</span>Curva Sazonal (se aplicável) + Linha de Carga Agregada (Flattening elétrico+térmico)</h2>
+<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;background:#fafcfe"><button class="epc-fullscreen-btn" data-target="sezChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="sezChart" viewBox="0 0 600 260" width="100%" height="260" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
+<div class="epc-chart-box" style="position:relative;border:1px solid var(--line);border-radius:5px;margin-top:6px"><button class="epc-fullscreen-btn" data-target="loadLineChart" style="position:absolute;top:6px;right:6px;z-index:5;background:#0b6bcb;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Expandir</button><svg id="loadLineChart" viewBox="0 0 600 280" width="100%" height="280" style="background:#fafcfe;border-radius:5px;display:block"></svg></div>
+<div id="loadLineMetrics" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px"></div>
+<div id="sezChartLegend" style="margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#f8fafc;font-size:11px;color:#475569;line-height:1.55">
+  <b style="color:#0b1f3a">13A · Como ler o gráfico de Linha de Carga Agregada (Flattening).</b>
+  &nbsp;<i>Azul</i> = agregado real elétrico + térmico (kWh/mês). &nbsp;<i>Verde</i> = suavização MA-3 (window = 3, wrap) – remove oscilações sazonais.
+  &nbsp;<i>Roxo tracejado</i> = <b>linha alvo</b> (média do agregado; representa o perfil idealmente plano para minimizar ultrapassagem da demanda contratada e picos de BESS).
+  &nbsp;<b>Fator de carga</b> = média ÷ pico; &nbsp;<b>oscilação</b> = (pico − vale)/pico.
+  &nbsp;Quanto maior FC e menor oscilação ⇒ mais estabilidade energética, menor DC excedida, maior economia da demanda ótima ao ano.
+</div>
+<div id="sezChartTips" style="margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff7ed;font-size:11px;color:#7c2d12;line-height:1.55">
+  <b>13B · Recomendações operacionais (geradas por cálculo).</b>
+  &nbsp;<span style="margin-right:8px">📌 Pico agregado:</span> <b id="recPeak">—</b> (mês onde se deve evitar demanda adicional).
+  &nbsp;<span style="margin-right:8px">📌 Vale agregado:</span> <b id="recValley">—</b> (janela ideal para manutenção, carga de BESS ou termostorage).
+  &nbsp;<span style="margin-right:8px">📌 Ganho de FC:</span> <b id="recGain">—</b> (delta entre FC antes e depois da suavização).
+  &nbsp;<span style="margin-right:8px">📌 Ações:</span> deslocar cargas flexíveis para o vale, fazer pré-aquecimento noturno, e considerar armazenamento térmico nos picos.
+</div>
+<div class="gestion" id="gestion"></div>
+</section>
+
+<section class="card no-print" id="section-controles"><h2><span class="num">14</span>Controles &amp; API</h2>
+<button class="btn btn-calc" id="btnCalc">🔄 Recalcular</button>
+<button class="btn btn-pause" id="btnPause">⏸ Pausar animação</button>
+<button class="btn btn-resume" id="btnResume" style="display:none">▶ Retomar animação</button>
+<button class="btn btn-host" id="btnExport">⬇ Exportar JSON</button>
+<button class="btn btn-host" id="btnPrint">🖨 Imprimir/PDF</button>
+<div style="margin-top:8px">
+<div style="font-size:11px;color:var(--muted);margin-bottom:3px">API <b>EnergiaPro v1.6.14</b> (window.EnergiaPro):</div>
+<div class="api-block">// SOFTWARE
+var iframe=document.createElement('iframe');iframe.src='/energiapro/index.html';
+iframe.onload=()=>{
+  const api=iframe.contentWindow.EnergiaPro;
+  api.populate({
+    mercado:'ACL',
+    cargas:[{nome:'Força',kW:220,fd:.92,fp:.94,horas:16}],
+    termicas:[{nome:'Caldeira',tipo:'vapor',dem:800,rend:.86,comb:'gás natural',
+               cons:120,custo:0.85,custo_h:102}],
+    sazonal:'sim'
+  });
+  const k=api.calculate();
+  // {TIR,VPL,F_base,F_cen,CO_avoid,E_mes_sazonal,demRes,thdRes,
+  //  EquipComparativo, indicesazonal}
+};</div>
+</div>
+</section>
+
+<script>
+
+var SVGNS="http://www.w3.org/2000/svg";
+function $(id){return document.getElementById(id)}
+function money(x){return "R$ "+Math.round(x).toLocaleString("pt-BR")}
+function pct(x){return (x*100).toFixed(1)+"%"}
+function nv(v,d){
+  var n = Number(v);
+  return Number.isFinite(n) ? n : (d ?? 0);
+}
+function nf(v,d,fallback){
+  var n = Number(v);
+  if (Number.isFinite(n)) return n.toFixed(d);
+  if (typeof fallback === "string") return fallback;
+  if (d <= 0) return "0";
+  return "0." + "0".repeat(d);
+}
+
+
+var ANEEL={
+  "Enel SP":{"ACR":{"Verde":{TE_p:1.92,TE_fp:0.78,TUSD_dem:14.1},"Azul":{TE_p:2.10,TE_fp:0.72,TUSD_dem:12.4}},"ACL":{"Verde":{TE_p:1.30,TE_fp:0.55,TUSD_dem:10.0}}},
+  "Cemig":{"ACR":{"Verde":{TE_p:1.78,TE_fp:0.71,TUSD_dem:11.8}},"ACL":{"Verde":{TE_p:1.20,TE_fp:0.50,TUSD_dem:8.5}}},
+  "CPFL":{"ACR":{"Verde":{TE_p:1.88,TE_fp:0.76,TUSD_dem:13.5}},"ACL":{"Verde":{TE_p:1.25,TE_fp:0.54,TUSD_dem:9.6}}},
+  "Light":{"ACR":{"Verde":{TE_p:2.10,TE_fp:0.92,TUSD_dem:16.2}},"ACL":{"Azul":{TE_p:1.70,TE_fp:0.58,TUSD_dem:9.8}}},
+  "Equatorial":{"ACR":{"Verde":{TE_p:1.98,TE_fp:0.82,TUSD_dem:14.6}},"ACL":{"Verde":{TE_p:1.35,TE_fp:0.58,TUSD_dem:10.5}}},
+  "Celesc":{"ACR":{"Verde":{TE_p:1.72,TE_fp:0.68,TUSD_dem:10.9}},"ACL":{"Verde":{TE_p:1.15,TE_fp:0.48,TUSD_dem:7.8}}},
+  "EDP":{"ACR":{"Verde":{TE_p:1.84,TE_fp:0.74,TUSD_dem:12.8}},"ACL":{"Verde":{TE_p:1.22,TE_fp:0.52,TUSD_dem:9.2}}}
+};
+
+var EQUIP_CATALOG=[
+{key:"comp_para_VSD_plus",nome:"Compressor parafuso VSD+",fabricante:"Atlas Copco",modelo:"GA 30+-45+ VSD+",capacidade:"30-45 kW · FAD 88-150 l/s · 7,5-13 bar",perf:"IE4 motor · +3,2% FAD · até 50% economia vs rotação fixa",preco:"R$ 35-55 mil",substitui:"compressor_ar",fonte:"Atlas Copco GA 37+/45+ (https://www.atlascopco.com/en-ca/compressors/products/air-compressor/rotary-screw-compressor/ga-37-45-plus) | VSD+ brochure (https://www.scribd.com/document/504910896/ATLAS-COPCO-Air-Compressors-GA30-90-GA37-110VSD)"},
+{key:"comp_ingersoll_R",nome:"Compressor parafuso VSD",fabricante:"Ingersoll Rand",modelo:"NG-R 30-37 kW",capacidade:"30-37 kW · FAD +16% · ar +21%",perf:"VSD com motor HRM (torque baixo)",preco:"R$ 40-65 mil",substitui:"compressor_ar",fonte:"Ingersoll Rand NG-R 30-37 kW VSD (https://www.ingersollrand.com/en-gb/products/air-compressors/oil-flooded-rotary-air-compressors/ng-r-series-30-37-kw-vsd/)"},
+{key:"chiller_trane_CVHE",nome:"Chiller centrífugo água gelada",fabricante:"Trane",modelo:"CenTraVac CVHE",capacidade:"200-500 TR · R-514A/R-1233zd",perf:"0,4872 kW/TR best full load · 3 estágios",preco:"R$ 1.800-2.400/TR",substitui:"refrig_agua",fonte:"Trane CenTraVac CVHE (https://www.tranehk.com/en/Products/WaterCooled_chillers_CTV.aspx)"},
+{key:"chiller_carrier_19DV",nome:"Chiller centrífugo água gelada",fabricante:"Carrier",modelo:"AquaEdge 19DV",capacidade:"350-800 TR · 1 050-3 850 kW · R-1233zd(E)",perf:"IPLV ≥ 0,295 kW/TR",preco:"R$ 2.000-2.600/TR",substitui:"refrig_agua",fonte:"Carrier 19DV Technical Specs (https://www.carrier.com/us/en/commercial/chillers/19dv/technical-specifications/)"},
+{key:"chiller_trane_CVHF",nome:"Chiller centrífugo alta capacidade",fabricante:"Trane",modelo:"CTV CVHF/CVHG",capacidade:"1 220-6 120 kW",perf:"Direct-drive multistage",preco:"R$ 1.900-2.500/TR",substitui:"refrig_agua",fonte:"Trane CVHF/CVHG (https://www.scribd.com/document/983335559/CTV-CenTraVacCVHF-CVHG-Water-Cooled-Chiller)"},
+{key:"secador_FD_VSD",nome:"Secador refrigerado VSD",fabricante:"Atlas Copco",modelo:"FD VSD",capacidade:"dew point +3 °C",perf:"0,5-0,8 kW por 100 cfm",preco:"R$ 8-22 mil",substitui:"secador_ar",fonte:"Atlas Copco FD brochure (https://ipscompressors.com/wp-content/uploads/2020/05/FD_series_brochure_EN_2935058211.pdf)"},
+{key:"secador_MDG_450",nome:"Secador dessecante",fabricante:"Atlas Copco",modelo:"MDG 450",capacidade:"dew point -40/-70 °C",perf:"<0,2 kW em qualquer condição",preco:"R$ 25-55 mil",substitui:"secador_ar",fonte:"Atlas Copco MDG 450 (https://www.atlascopco.com/en-uk/compressors/news-and-stories/compressed-air-dryer-mdg-450-guarantees-low-dewpoint-for-minimal-energy-cost)"},
+{key:"HP_industrial_IEA",nome:"Bomba de calor industrial",fabricante:"IEA benchmark",modelo:"HP 80-150 °C",capacidade:"200 kWth a vários MW",perf:"COP 3,0-6,0 (alta temperatura)",preco:"R$ 3.500-6.500/kWth",substitui:"vapor",fonte:"Industrial Heat Pumps COP (https://eureka.patsnap.com/report-industrial-heat-pumps-performance-cop-temperature-range-and-efficiency-limits)"},
+{key:"caldeira_biomassa_BFB",nome:"Caldeira a biomassa BFB",fabricante:"vários",modelo:"BFB",capacidade:"1-25 t/h vapor",perf:"η 88-92%",preco:"R$ 1.800-3.500/kWth",substitui:"vapor",fonte:"Mercado global biomassa 2024 USD 13,38 bi · CAGR 8,2% (Credence Research)"},
+{key:"caldeira_GN_cond",nome:"Caldeira GN condensação",fabricante:"vários",modelo:"GN cond.",capacidade:"40-1 000 kW",perf:"η 95-98%",preco:"R$ 1.200-2.400/kWth",substitui:"vapor",fonte:"Industrial average 2024"},
+{key:"forno_inducao",nome:"Forno de indução",fabricante:"vários",modelo:"indução média frequência",capacidade:"20-1 000 kW",perf:"η 90% vs 35% lenha",preco:"R$ 2.500-6.500/kW",substitui:"forno",fonte:"EPE/MME"}
+];
+
+var MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+var CARGAS=[{nome:"Linha Produção A",kW:180,fd:0.92,fp:0.94,horas:16,cat:"Força"},{nome:"Refrigeração",kW:120,fd:0.85,fp:0.88,horas:24,cat:"Refrigeração"},{nome:"Iluminação + Ações",kW:80,fd:0.70,fp:0.95,horas:14,cat:"Iluminação"}];
+var TERMICAS=[{nome:"Caldeira principal",tipo:"vapor",dem:500,rend:0.86,comb:"lenha/bagaço",cons:180,custo:0.32,custo_h:180*0.32},{nome:"Aquecimento processo",tipo:"agua",dem:2000,rend:0.95,comb:"gás natural",cons:80,custo:0.85,custo_h:80*0.85}];
+function genDemDefaultLast12(){var a=[];for(var i=0;i<12;i++)a.push({mes:MESES[i],dc:320,dr_p:Math.round(240+Math.sin(i*0.7)*40+Math.random()*20),dr_fp:Math.round(265+Math.cos(i*0.6)*30+Math.random()*15)});return a}
+var DEM_HIST=genDemDefaultLast12();
+var THD_CIRCS=[{circ:"QGF-Linha 1",T:42,I_op:180,I_nom:200,ths_v:7.2,ths_i:18},{circ:"QGF-Refrigeração",T:36,I_op:240,I_nom:280,ths_v:4.1,ths_i:9},{circ:"QGF-Iluminação",T:29,I_op:85,I_nom:100,ths_v:3.4,ths_i:6}];
+
+function defaultSeasonal(){var a=[];for(var i=0;i<12;i++)a.push(+(0.80+Math.sin((i-5)/1.8)*0.20+Math.random()*0.05).toFixed(2));return a.map(function(v){return Math.min(Math.max(v,0.30),1.40)})}
+var SEZ_E=CARGAS.map(function(){return defaultSeasonal()});
+var SEZ_T=TERMICAS.map(function(){return defaultSeasonal()});
+
+function autoTarifa(){try{var dist=$("distribuidora").value,mod=$("modalidade").value,mkt=$("mercado").value;var row=ANEEL[dist];if(!row)return;var col=row[mkt];if(!col)return;var t=col[mod]||col.Verde;if(!t)return;if($("TE_p_"))$("TE_p_").value=nf(t.TE_p,2);if($("TE_fp_"))$("TE_fp_").value=nf(t.TE_fp,2);if($("TUSD_dem_"))$("TUSD_dem_").value=nf(t.TUSD_dem,1)}catch(e){}}
+
+function scnActive(id){var el=$(id);return el&&el.checked}
+function capModelData(){var m=$("capModel").value;return(m==="C30")?{kW:30,eta:0.26,HR:13.8,CHP:0.80}:(m==="C65")?{kW:65,eta:0.27,HR:11.8,CHP:0.83}:{kW:200,eta:0.33,HR:10.9,CHP:0.90}}
+function elPlan(e){if(e>90000)return{nome:"Enterprise",valor:"a configurar",payback:0};if(e>30000)return{nome:"Professional",valor:9900,payback:Math.round(9900/(e||1)*12)};if(e>10000)return{nome:"Starter",valor:3000,payback:Math.round(3000/(e||1)*12)};return{nome:"— sem plano sugerido",valor:0,payback:0}}
+
+function renderCList(){var h=$("cList");h.innerHTML="";CARGAS.forEach(function(c,i){var d=document.createElement("div");d.className="list-row";d.innerHTML='<label>Nome<input value="'+(c.nome||"")+'" data-i="'+i+'" data-f="nome"></label><label>kW<input type="number" value="'+(+c.kW||0)+'" data-i="'+i+'" data-f="kW"></label><label>FD<input type="number" step="0.05" value="'+(c.fd||0.85)+'" data-i="'+i+'" data-f="fd"></label><label>FP<input type="number" step="0.01" value="'+(c.fp||0.92)+'" data-i="'+i+'" data-f="fp"></label><label>h/dia<input type="number" value="'+(c.horas||16)+'" data-i="'+i+'" data-f="horas"></label><label>Categoria<select data-i="'+i+'" data-f="cat"><option '+(c.cat==="Força"?"selected":"")+'>Força</option><option '+(c.cat==="Refrigeração"?"selected":"")+'>Refrigeração</option><option '+(c.cat==="Compressão"?"selected":"")+'>Compressão</option><option '+(c.cat==="Secagem"?"selected":"")+'>Secagem</option><option '+(c.cat==="Iluminação"?"selected":"")+'>Iluminação</option><option '+(c.cat==="Geral"?"selected":"")+'>Geral</option></select></label><button class="icon-btn" data-i="'+i+'">✕</button>';h.appendChild(d)});h.querySelectorAll("input,select").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i,f=inp.dataset.f;if(CARGAS[i]){CARGAS[i][f]=(f==="kW"||f==="fd"||f==="fp"||f==="horas")?+inp.value:inp.value;recalc()}})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){CARGAS.splice(+b.dataset.i,1);SEZ_E.splice(+b.dataset.i,1);renderCList();renderSezE();recalc()})})}
+
+function renderTList(){var h=$("tList");h.innerHTML="";TERMICAS.forEach(function(t,i){var custo_h_v=(+t.custo_h!==undefined)?+t.custo_h:((+t.cons||0)*(+t.custo||0));t.custo_h=custo_h_v;if((+t.cons||0)>0)t.custo=custo_h_v/((+t.cons)||1);var d=document.createElement("div");d.className="list-row th";d.innerHTML='<label>Nome<input value="'+(t.nome||"")+'" data-i="'+i+'" data-f="nome"></label><label>Tipo + Comb<select data-i="'+i+'" data-f="tipo"><option '+(t.tipo==="compressor_ar"?"selected":"")+'>compressor_ar</option><option '+(t.tipo==="refrig_agua"?"selected":"")+'>refrig_agua</option><option '+(t.tipo==="secador_ar"?"selected":"")+'>secador_ar</option><option '+(t.tipo==="forno"?"selected":"")+'>forno</option><option '+(t.tipo==="vapor"?"selected":"")+'>vapor</option><option '+(t.tipo==="agua"?"selected":"")+'>agua</option><option '+(t.tipo==="ar"?"selected":"")+'>ar</option><option '+(t.tipo==="oleo"?"selected":"")+'>oleo</option></select> · <input style="margin-top:2px" value="'+(t.comb||"")+'" data-i="'+i+'" data-f="comb"></label><label>Demanda (kg/h ou L/h)<input type="number" value="'+(+t.dem||0)+'" data-i="'+i+'" data-f="dem"></label><label>Rendimento (η)<input type="number" step="0.01" value="'+(t.rend||0.86)+'" data-i="'+i+'" data-f="rend"></label><label>Consumo (un/h)<input type="number" step="0.1" value="'+(+t.cons||0)+'" data-i="'+i+'" data-f="cons"></label><label class="field-inline">Custo/h (R$) <input class="kpi-edit" type="number" step="0.01" value="'+custo_h_v.toFixed(2)+'" data-i="'+i+'" data-f="custo_h"></label><button class="icon-btn" data-i="'+i+'">✕</button>';h.appendChild(d)});h.querySelectorAll("input[data-f=custo_h]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;TERMICAS[i].custo_h=+this.value||0;if((TERMICAS[i].cons||0)>0)TERMICAS[i].custo=TERMICAS[i].custo_h/TERMICAS[i].cons;recalc()})});["dem","rend","nome","tipo","comb","cons","custo"].forEach(function(k){h.querySelectorAll("input[data-f="+k+"],select[data-f="+k+"]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;var v=this.tagName==="SELECT"?this.value:(+this.value||this.value);TERMICAS[i][k]=v;TERMICAS[i].custo_h=(+TERMICAS[i].custo||0)*(+TERMICAS[i].cons||0);recalc()})});});h.querySelectorAll("input[data-f=cons]").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i;if(!TERMICAS[i])return;TERMICAS[i].cons=+this.value||0;TERMICAS[i].custo_h=(+TERMICAS[i].custo||0)*(+TERMICAS[i].cons||0);recalc()})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){TERMICAS.splice(+b.dataset.i,1);SEZ_T.splice(+b.dataset.i,1);renderTList();renderSezT();recalc()})})}
+
+function renderDemHist(){var h=$("demHist");h.innerHTML="";var mod=$("modalidade")&&$("modalidade").value||"Verde";var azul=mod==="Azul";var cols=azul?'<div>Mês</div><div>DC Ponta</div><div>DC FP</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>':'<div>Mês</div><div>DC</div><div>DR Ponta</div><div>DR FP</div><div>Ultr. Ponta kW</div><div>Ultr. FP kW</div><div>R$ ult. mês</div><div>—</div>';var hd=document.createElement("div");hd.className="hist-row";hd.style.background="#eef1f6";hd.style.fontWeight="600";hd.innerHTML=cols;h.appendChild(hd);var dcP_v=+(($("dcP")&&($("dcP").value))||1050);var dcFP_v=+(($("dcFP")&&($("dcFP").value))||900);var dc_v=+(($("dc")&&($("dc").value))||320);var ultP_t=+(($("ultR_p")&&($("ultR_p").value))||25);var ultFP_t=+(($("ultR_fp")&&($("ultR_fp").value))||17);DEM_HIST.forEach(function(r,i){var d=document.createElement("div");d.className="hist-row";var ultP=0,ultFP=0;if(azul){var dcpr=+r.dcP||dcP_v,dcfpr=+r.dcFP||dcFP_v;if((+r.dr_p||0)>dcpr*1.05)ultP=Math.max((+r.dr_p||0)-dcpr,0);if((+r.dr_fp||0)>dcfpr*1.05)ultFP=Math.max((+r.dr_fp||0)-dcfpr,0)}else{var dcv=+r.dc||dc_v;var drMaxv=Math.max(+r.dr_p||0,+r.dr_fp||0);if(drMaxv>dcv*1.05)ultP=Math.max(drMaxv-dcv,0)}var rsUlt=ultP*ultP_t+ultFP*ultFP_t;r.ultP=ultP;r.ultFP=ultFP;r.rsUlt=rsUlt;if(azul){d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dcP||dcP_v)+'" data-i="'+i+'" data-f="dcP"></div><div><input type="number" value="'+(r.dcFP||dcFP_v)+'" data-i="'+i+'" data-f="dcFP"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultP.toFixed(0))+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultFP.toFixed(0))+'</div><div style="text-align:right;color:#c62828">R$ '+(Math.round(rsUlt)).toLocaleString("pt-BR")+'</div><div><button class="icon-btn" data-i="'+i+'">✕</button></div>'}else{d.innerHTML='<div style="color:var(--brand);font-weight:600">'+r.mes+'</div><div><input type="number" value="'+(r.dc||dc_v)+'" data-i="'+i+'" data-f="dc"></div><div><input type="number" value="'+(+r.dr_p||0)+'" data-i="'+i+'" data-f="dr_p"></div><div><input type="number" value="'+(+r.dr_fp||0)+'" data-i="'+i+'" data-f="dr_fp"></div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultP.toFixed(0))+'</div><div style="text-align:right;color:#c62828;font-weight:600">'+(ultFP.toFixed(0))+'</div><div style="text-align:right;color:#c62828">R$ '+(Math.round(rsUlt)).toLocaleString("pt-BR")+'</div><div><button class="icon-btn" data-i="'+i+'">✕</button></div>'};h.appendChild(d)});h.querySelectorAll("input").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i,f=inp.dataset.f;if(DEM_HIST[i]){DEM_HIST[i][f]=+this.value;recalc()}})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){DEM_HIST.splice(+b.dataset.i,1);renderDemHist();recalc()})})}
+
+function aplicaModalidade(){var mod=$("modalidade")&&$("modalidade").value||"Verde";var azul=mod==="Azul";if($("dcAzulBox"))$("dcAzulBox").style.display=azul?"grid":"none";if($("dc"))$("dc").style.display=azul?"none":"block";if($("reativoBox"))$("reativoBox").style.display=(azul||((+($("fp")&&$("fp").value)||0.92)<0.92))?"grid":"none";renderDemHist();recalc()}
+
+function renderThdRows(){var h=$("thdRows");h.innerHTML="";var hd=document.createElement("div");hd.className="hist-row";hd.style.background="#eef1f6";hd.style.fontWeight="600";hd.innerHTML="<div>Circuito</div><div>T °C</div><div>I_op A</div><div>I_nom A</div><div>—</div>";h.appendChild(hd);THD_CIRCS.forEach(function(r,i){var d=document.createElement("div");d.className="hist-row";d.innerHTML='<div style="color:var(--brand);font-weight:600;font-size:10.5px">'+r.circ+'</div><div><input type="number" value="'+r.T+'" data-i="'+i+'" data-f="T" style="width:55px"></div><div><input type="number" value="'+r.I_op+'" data-i="'+i+'" data-f="I_op" style="width:55px"></div><div><input type="number" value="'+r.I_nom+'" data-i="'+i+'" data-f="I_nom" style="width:55px"></div><div><button class="icon-btn" data-i="'+i+'">✕</button></div>';h.appendChild(d)});h.querySelectorAll("input").forEach(function(inp){inp.addEventListener("input",function(){var i=+inp.dataset.i,f=inp.dataset.f;if(THD_CIRCS[i]){THD_CIRCS[i][f]=+this.value;recalc()}})});h.querySelectorAll(".icon-btn").forEach(function(b){b.addEventListener("click",function(){THD_CIRCS.splice(+b.dataset.i,1);renderThdRows();recalc()})})}
+
+function renderSezE(){var h=$("sezEList");if($("sazonal").value!=="sim"){h.innerHTML='<div class="aviso" style="margin-top:6px">Sazonalidade desativada. Ative em Operação para preencher o vetor mensal por carga elétrica.</div>';return}h.innerHTML="<h3 style='margin:6px 0 4px;font-size:12px;color:var(--brand2)'>Vetor sazonal — cargas elétricas (fator mensal × Demanda)</h3>";CARGAS.forEach(function(c,i){var row=document.createElement("div");row.className="sez-row";if(!SEZ_E[i])SEZ_E[i]=defaultSeasonal();var cells="";MESES.forEach(function(m,mi){cells+='<div class="field-inline"><label style="font-size:8.5px">'+m+'</label><input type="number" step="0.05" value="'+SEZ_E[i][mi].toFixed(2)+'" data-i="'+i+'" data-m="'+mi+'" data-k="E" style="width:54px"></div>'});row.innerHTML='<div style="font-weight:600;color:var(--brand);font-size:10.5px">E'+(i+1)+' '+(c.nome||"")+'</div>'+cells+'<button class="icon-btn" data-i="'+i+'" data-k="E">reset</button>';h.appendChild(row)});h.querySelectorAll("input[data-k=E]").forEach(function(inp){inp.addEventListener("input",function(){SEZ_E[+this.dataset.i][+this.dataset.m]=+this.value||0;recalc()})});h.querySelectorAll("button[data-k=E]").forEach(function(b){b.addEventListener("click",function(){SEZ_E[+b.dataset.i]=defaultSeasonal();renderSezE();recalc()})})}
+
+function renderSezT(){var h=$("sezTList");if($("sazonal").value!=="sim"){h.innerHTML='<div class="aviso" style="margin-top:6px">Sazonalidade desativada. Ative em Operação para preencher o vetor mensal por carga térmica.</div>';return}h.innerHTML="<h3 style='margin:6px 0 4px;font-size:12px;color:#c77700'>Vetor sazonal — cargas térmicas (fator mensal × Demanda e Custo)</h3>";TERMICAS.forEach(function(t,i){var row=document.createElement("div");row.className="sez-row";if(!SEZ_T[i])SEZ_T[i]=defaultSeasonal();var cells="";MESES.forEach(function(m,mi){cells+='<div class="field-inline"><label style="font-size:8.5px">'+m+'</label><input type="number" step="0.05" value="'+SEZ_T[i][mi].toFixed(2)+'" data-i="'+i+'" data-m="'+mi+'" data-k="T" style="width:54px"></div>'});row.innerHTML='<div style="font-weight:600;color:#c77700;font-size:10.5px">T'+(i+1)+' '+(t.nome||"")+'</div>'+cells+'<button class="icon-btn" data-i="'+i+'" data-k="T">reset</button>';h.appendChild(row)});h.querySelectorAll("input[data-k=T]").forEach(function(inp){inp.addEventListener("input",function(){SEZ_T[+this.dataset.i][+this.dataset.m]=+this.value||0;recalc()})});h.querySelectorAll("button[data-k=T]").forEach(function(b){b.addEventListener("click",function(){SEZ_T[+b.dataset.i]=defaultSeasonal();renderSezT();recalc()})})}
+
+function matchCatalog(tipo){return EQUIP_CATALOG.filter(function(e){return e.substitui===tipo||(e.substitui==="vapor"&&(tipo==="vapor"||tipo==="agua"||tipo==="oleo"))||(e.substitui==="refrig_agua"&&tipo==="refrig_agua")||(e.substitui==="compressor_ar"&&tipo==="compressor_ar")||(e.substitui==="secador_ar"&&tipo==="secador_ar")||(e.substitui==="forno"&&tipo==="forno")})}
+
+function renderEquipTable(d){var h=$("termAlts");if(!h)return;h.innerHTML="";
+  var cat=[
+    {key:"comp_para_VSD_plus",nome:"Compressor parafuso VSD+",fab:"Atlas Copco",modelo:"GA 30-45 VSD+",cap:"30-45 kW",perf:"η +12% · acionamento VSD",preco:"R$ 95-180k",fonte:"atlas-copco.com.br/ga30-45-vsd-plus",tipo:"compressor_ar",g:0.32},
+    {key:"chiller_trane_CVHE",nome:"Chiller parafuso",fab:"Trane",modelo:"CenTraVac CVHE",cap:"300-1.700 TR",perf:"COP 6,1-7,0",preco:"R$ 480-1.200k",fonte:"trane.com/cenTraVac-cvhe",tipo:"refrig_agua",g:0.40},
+    {key:"chiller_carrier_19DV",nome:"Chiller centrífugo",fab:"Carrier",modelo:"AquaEdge 19DV",cap:"150-550 TR",perf:"COP 5,8 · VFD",preco:"R$ 380-720k",fonte:"carrier.com/aquaedge-19dv",tipo:"refrig_agua",g:0.38},
+    {key:"caldeira_biomassa_BFB",nome:"Caldeira biomassa BFB",fab:"BFB Energia",modelo:"BFB-15",cap:"8-30 t/h",perf:"η 87-92%",preco:"R$ 1,8-4,5M",fonte:"bfbenergia.com.br",tipo:"vapor",g:0.35},
+    {key:"caldeira_GN_cond",nome:"Caldeira GN condensação",fab:"Bosch",modelo:"UL-1600",cap:"1.000-2.500 kW",perf:"η 105% PCI",preco:"R$ 320-900k",fonte:"bosch-industrial.com",tipo:"vapor",g:0.12},
+    {key:"secador_FD_VSD",nome:"Secador VSD",fab:"Atlas Copco",modelo:"FD 5-13 VSD",cap:"5-13 kW",perf:"−30% consumo",preco:"R$ 22-46k",fonte:"atlas-copco.com.br/fd-vsd",tipo:"secador_ar",g:0.20},
+    {key:"secador_MDG_450",nome:"Secador dessecante",fab:"Atlas Copco",modelo:"MDG 450",cap:"450 m³/h",perf:"PDP −70 °C",preco:"R$ 38-62k",fonte:"atlas-copco.com.br/mdg450",tipo:"secador_ar",g:0.22},
+    {key:"hp_industrial_IEA",nome:"Bomba de calor industrial",fab:"IEA",modelo:"HP-IEA 80-150 °C",cap:"80-150 °C",perf:"COP 3,0-5,0",preco:"R$ 240-720k",fonte:"iea-italia.it",tipo:"agua",g:0.55}
+  ];
+  var mo=function(x){return "R$ "+Math.round(x).toLocaleString("pt-BR")};
+  var hd=+($("hd")&&$("hd").value)||16,dm=+($("dm")&&$("dm").value)||25;
+  function cardHTML(e,t,ti){var custo_h=+((t&&t.custo_h)||((t&&t.cons||0)*(t&&t.custo||0)))||0;var base=custo_h*hd*dm*12;var ganho=(t&&t.custo_h!==undefined)?base*e.g:base*0.30;
+    return "<h4>&#128260; "+e.nome+" &mdash; "+e.fab+" "+e.modelo+"</h4><div><b>Tecnologia:</b> "+e.perf+"</div><div><b>Capacidade:</b> "+e.cap+"</div><div><b>Referência:</b> "+e.preco+"</div><div><b>Substitui:</b> "+((t&&t.nome)||("Equipamento "+(ti+1)))+" ("+(t&&t.tipo||"vapor")+")</div><div><b>Desempenho baseline:</b> "+mo(base)+"/ano</div><div><b>Economia estimada:</b> "+(Math.round(e.g*100))+"% &middot; "+mo(ganho)+"/ano</div><div class='src'>&#128270; Aplicação similar: "+e.fonte+"</div>";}
+  TERMICAS.forEach(function(t,ti){var tipo=(t&&t.tipo)||"vapor";var seenT={};
+    cat.forEach(function(e){if(e.tipo!==tipo)return;if(seenT[e.key])return;seenT[e.key]=1;var c=document.createElement("div");c.className="alt-card";c.innerHTML=cardHTML(e,t,ti);h.appendChild(c)})});
+  var title=document.createElement("div");title.className="eq-title";title.innerHTML="<b>&#128295; Biblioteca de tecnologia</b> — substituição, desempenho e economia (caldeiras, compressores parafuso, chillers, secadores, bombas de calor)";h.appendChild(title);
+  cat.forEach(function(e){var c=document.createElement("div");c.className="alt-card lib";c.innerHTML=cardHTML(e,null,0);h.appendChild(c)});
+}
+
+function svgE(tag,attrs,parent,text){var el=document.createElementNS(SVGNS,tag);for(var k in attrs)el.setAttribute(k,attrs[k]);if(parent)parent.appendChild(el);if(text!==undefined)el.textContent=text;return el}
+function useIco(parent,id,x,y,size,color){return svgE("use",{href:"#"+id,"x":x,"y":y,"width":size,"height":size,color:color||"#fff"},parent)}
+
+function drawDiag(d){
+  d=d||calc();
+  var root=$("dg");root.innerHTML="";
+  if(!root)return;
+  var W=1400,H=680;
+  var gRede=svgE("g",{transform:"translate(20,40)"},root);
+  svgE("rect",{x:0,y:0,width:230,height:100,rx:10,fill:"url(#redeGrad)","stroke-width":2},gRede);
+  useIco(gRede,"ico-power",12,18,36,"#fff");
+  svgE("text",{x:58,y:42,fill:"#fff","font-size":"16","font-weight":"700"},gRede,"⚡ REDE / MEDIÇÃO");
+  svgE("text",{x:12,y:70,fill:"#dbeafe","font-size":"12"},gRede,$("distribuidora").value);
+  svgE("text",{x:12,y:86,fill:"#dbeafe","font-size":"11"},gRede,(+$("tensao").value)+" kV · "+($("mercado").value));
+  svgE("path",{d:"M250 90 L"+(W/2-180)+" 250",stroke:"#1e40af","stroke-width":"3",fill:"none",class:"flowAnim"},root);
+
+  var barraW=360,barraH=100,barraX=(W-barraW)/2;
+  var gBarra=svgE("g",{transform:"translate("+barraX+",200)"},root);
+  svgE("rect",{x:0,y:0,width:barraW,height:barraH,rx:12,fill:"url(#busGrad)",filter:"url(#dropShadow)"},gBarra);
+  useIco(gBarra,"ico-meter",16,22,46,"#fff");
+  svgE("text",{x:74,y:38,fill:"#fff","font-size":"16","font-weight":"700"},gBarra,"BARRAMENTO PRINCIPAL");
+  var epv13_modal=(($("modalidade")&&$("modalidade").value)||"Verde");
+  var epv13_azul=epv13_modal==="Azul";
+  var epv13_dc_p=+(($("dcP")&&$("dcP").value)||((d.demRes&&d.demRes.dc_atual_p)||320));
+  var epv13_dc_fp=+(($("dcFP")&&$("dcFP").value)||((d.demRes&&d.demRes.dc_atual_fp)||epv13_dc_p*0.85));
+  var epv13_dc_u=+(($("dc")&&$("dc").value)||((d.demRes&&d.demRes.dc_atual)||320));
+  var epv13_barFill=epv13_azul?"url(#busGradAzul)":"url(#busGrad)";
+  var epv13_barStroke=epv13_azul?"#1d4ed8":"#0b1f3a";
+  svgE("rect",{x:0,y:0,width:barraW,height:barraH,rx:12,fill:epv13_barFill,stroke:epv13_barStroke,"stroke-width":"2",filter:"url(#dropShadow)"},gBarra);
+  var epv13_dcText=epv13_azul?"DC Ponta "+epv13_dc_p.toFixed(0)+" kW · DC FP "+epv13_dc_fp.toFixed(0)+" kW":"DC "+epv13_dc_u.toFixed(0)+" kW · demanda única";
+  svgE("text",{x:74,y:56,fill:epv13_azul?"#dbeafe":"#dcfce7","font-size":"12","font-weight":"600"},gBarra,"Σ "+(+(d.sum_kW)||0).toFixed(0)+" kW · "+epv13_dcText);
+
+  var fonteY=320,fontes=[];
+  if(scnActive("scFV")&&(+$("fv_kwp").value||0)>0)fontes.push({key:"fv",nome:"USINA FV",kw:(+$("fv_kwp").value)+" kWp",add:nf(d.E_local_fv,2)+" MWh/mês",grad:"url(#fvGrad)",tag:"☀ FV · η 82%"});
+  if(scnActive("scBESS")&&(+$("bess_kwh").value||0)>0)fontes.push({key:"bess",nome:"BESS peak-shaving",kw:(+$("bess_kwh").value)+" kWh",add:"otim. ponta→FP · DC "+(d.demRes.dc_rec_p||0)+" kW",grad:"url(#bessGrad)",tag:"🔋 BESS · η 92%"});
+  if(scnActive("scMotor")){
+    var motFuel = (($("motorFuel")&&$("motorFuel").value)||"GN");
+    var motRm3 = +($("motorGN_Rm3").value||3.85);
+    fontes.push({key:"chp",nome:"COGERAÇÃO MOTOR",kw:(d.cap_kw.motor)+" kW",add:nf(d.E_local_motor,2)+" MWh/mês · "+d.cost_fuel.fuel_motor_label,grad:"url(#gerGrad)",tag:"⚙ Motor · "+(motFuel==="BIO"?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+motRm3.toFixed(2)+"/m³")});
+  }
+  if(scnActive("scMicro")){
+    var micFuel = (($("microFuel")&&$("microFuel").value)||"GN");
+    var micRm3 = +($("microGN_Rm3").value||3.85);
+    fontes.push({key:"micro",nome:"MICRO CAPSTONE "+($("capModel").value),kw:(d.cap_kw.micro)+" kW",add:nf(d.E_local_micro,2)+" MWh/mês · cost "+(d.cap_cost_mwh)+" R$/MWh",grad:"url(#busGrad)",tag:"🔬 Capstone · "+(micFuel==="BIO"?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+micRm3.toFixed(2)+"/m³")});
+  }
+  if(scnActive("scEolica"))fontes.push({key:"eol",nome:"EÓLICA ON-SITE",kw:(+$("eolicaKw").value||50)+" kW",add:nf(d.E_local_eol,2)+" MWh/mês (FC 30%)",grad:"url(#fvGrad)",tag:"🌬 Eólica · vs fio GND"});
+  if($("chp").value==="sim")fontes.push({key:"chp",nome:"CHP / COGERAÇÃO",kw:nf(d.E_local_chp,2)+" MWh/mês",add:"recuperação térmica",grad:"url(#busGrad)",tag:"legacy CHP"});
+
+  fontes.forEach(function(f,i){
+    var yy=fonteY+i*70;
+    var fg=svgE("g",{transform:"translate(20,"+yy+")"},root);
+    svgE("rect",{x:0,y:0,width:280,height:66,rx:9,fill:f.grad,stroke:"#0b1f3a","stroke-width":"1.5",filter:"url(#dropShadow)"},fg);
+    var icoMap={fv:"ico-sun",bess:"ico-battery",chp:"ico-flame",ger:"ico-diesel",micro:"ico-motor",eol:"ico-meter"};
+    useIco(fg,icoMap[f.key]||"ico-motor",8,18,28,"#fff");
+    svgE("text",{x:42,y:22,fill:"#fff","font-size":"12","font-weight":"700"},fg,f.nome);
+    svgE("text",{x:42,y:38,fill:"#fff","font-size":"11","font-weight":"600"},fg,f.kw);
+    svgE("text",{x:42,y:52,fill:"#e0f7fa","font-size":"9","opacity":"0.95"},fg,f.add);
+    svgE("text",{x:42,y:62,fill:"#bbf7d0","font-size":"8"},fg,f.tag);
+    svgE("path",{d:"M300 "+(yy+33)+" L"+barraX+" 250",stroke:"#0ea5e9","stroke-width":"2.5",fill:"none",class:"flowAnim rev",opacity:"0.85"},root);
+  });
+
+  var cgx=W-260;
+  CARGAS.forEach(function(c,i){
+    var yy=200+i*78;
+    var cg=svgE("g",{transform:"translate("+cgx+","+yy+")"},root);
+    var vazio=(+c.kW||0)<=0;
+    var icMap={Refrigeração:"ico-chiller",Compressão:"ico-comp",Secagem:"ico-dryer"};
+    var icKey=icMap[c.cat]||"ico-motor";
+    svgE("rect",{x:0,y:0,width:230,height:64,rx:9,fill:vazio?"#cbd5e1":"url(#loadGrad)",stroke:vazio?"#94a3b8":"#0369a1","stroke-width":"1.5",filter:vazio?"":"url(#dropShadow)"},cg);
+    useIco(cg,icKey,10,16,30,"#fff");
+    svgE("text",{x:50,y:24,fill:"#fff","font-size":"13","font-weight":"700"},cg,"E"+(i+1)+" · "+(c.nome||"Carga"));
+    svgE("text",{x:50,y:40,fill:"#e0f7fa","font-size":"11","font-weight":"600"},cg,((+c.kW||0)*(+c.fd||0.85)).toFixed(1)+" kW · FP "+((+c.fp)||0.92).toFixed(2));
+    svgE("text",{x:50,y:55,fill:"#bae6fd","font-size":"9"},cg,"FD "+(+c.fd||0.85).toFixed(2)+" · "+(+c.horas||16)+" h/dia");
+    svgE("path",{d:"M"+(barraX+barraW)+" 250 L"+cgx+" "+(yy+32),stroke:"#0ea5e9","stroke-width":"2.5",fill:"none",class:"flowAnim",opacity:"0.9"},root);
+  });
+
+  var cyy=20;
+  TERMICAS.forEach(function(t,i){
+    var cg=svgE("g",{transform:"translate("+(W/2-110)+","+cyy+")"},root);
+    var icMap2={compressor_ar:"ico-comp",refrig_agua:"ico-chiller",secador_ar:"ico-dryer"};
+    var icKey2=icMap2[t.tipo]||"ico-flame";
+    var custo_h_v=+t.custo_h||((+t.cons||0)*(+t.custo||0));
+    svgE("rect",{x:0,y:0,width:230,height:60,rx:9,fill:"url(#termGrad)",stroke:"#7c2d12","stroke-width":"1.5",filter:"url(#dropShadow)"},cg);
+    useIco(cg,icKey2,10,15,30,"#fff");
+    svgE("text",{x:50,y:24,fill:"#fff","font-size":"13","font-weight":"700"},cg,"🌡 T"+(i+1)+" · "+(t.nome||"Térmica"));
+    svgE("text",{x:50,y:40,fill:"#fed7aa","font-size":"11","font-weight":"600"},cg,(+t.dem||0)+" · "+(t.comb||""));
+    svgE("text",{x:50,y:55,fill:"#ffe4c4","font-size":"9"},cg,"η "+((+t.rend)||0.86).toFixed(2)+" · R$ "+custo_h_v.toFixed(2)+"/h");
+    svgE("path",{d:"M"+(W/2-110+115)+" "+(cyy+60)+" L"+(barraX+barraW/2)+" 200",stroke:"#fb923c","stroke-width":"2","stroke-dasharray":"4 3",fill:"none",class:"flowAnim rev",opacity:"0.8"},root);
+    cyy+=70;
+  });
+
+  var qeeY=H-72;
+  var gQee=svgE("g",{transform:"translate(20,"+qeeY+")"},root);
+  svgE("rect",{x:0,y:0,width:W-40,height:52,rx:8,fill:"#0b1f3a",stroke:"#1e3a8a","stroke-width":"1.5"},gQee);
+  var kpis=["⚡ Energia sazonal "+nf(d.E_mes,2)+" MWh/mês","🏭 Local gerada "+nf(d.E_local,2)+" MWh/mês","💰 Fatura "+money(d.F_base)+" → "+money(d.F_cen),"📈 DIC "+(d.DEC_cen).toFixed(1)+" h "+(d.DEC_cen<8?"✓":"⚠"),"📊 THDv "+(((d.thdRes.linhas||[]).reduce(function(s,l){return s+(l.ths_v||0)},0))/Math.max((d.thdRes.linhas||[]).length,1)).toFixed(1)+"%","🌱 CO₂ evit. "+nf(d.CO_avoid,1)+" t/ano","↩ TIR "+(d.TIR*100).toFixed(1)+"%","⏱ Payback "+(isFinite(d.payback)?nf(d.payback,1):"—")+" a","📊 Índice sazonal "+nf(d.indicesazonal,2)];
+  var colW=(W-40)/kpis.length;
+  kpis.forEach(function(k,i){svgE("rect",{x:i*colW+1,y:1,width:colW-2,height:50,fill:i%2?"#1e293b":"#0f172a",opacity:"0.4"},gQee);svgE("text",{x:i*colW+colW/2,y:31,"text-anchor":"middle",fill:"#cbd5e1","font-size":"11","font-weight":"600"},gQee,k)});
+}
+
+function seasonalFactor(vec){if(!vec||!vec.length)return 1;return vec.reduce(function(s,x){return s+(+x||0)},0)/vec.length}
+function seasonalEnergyFromVector(E_mes_sazo,vec){if(!vec)return E_mes_sazo;var sum=vec.reduce(function(s,x){return s+(+x||0)},0);return E_mes_sazo*(sum/Math.max(vec.length,1))}
+
+function calc(){
+  var mkt=$("mercado").value;
+  var TE_p=+$("TE_p_").value||1.85,TE_fp=+$("TE_fp_").value||0.75;
+  var modalidade=($("modalidade")&&$("modalidade").value)||"Verde";
+  var TUSD_dem_p=+$("TUSD_dem_").value||12.5;
+  var TUSD_dem_fp=+(($("TUSD_fp_")&&$("TUSD_fp_").value)||8.5);
+  var dcP=+(($("dcP")&&$("dcP").value)||1050);
+  var dcFP=+(($("dcFP")&&$("dcFP").value)||900);
+  var dcSimples=+(($("dc")&&$("dc").value)||320);
+  var dc=modalidade==="Azul"?(dcP+dcFP):dcSimples;
+  var TUSD_dem=modalidade==="Azul"?((TUSD_dem_p+TUSD_dem_fp)/2):TUSD_dem_p;
+  var fp=+$("fp").value||0.92,hd=Math.max(+$("hd").value||16,16),dm=+$("dm").value||25,fu=+$("fu").value||0.85;
+  var saz=$("sazonal").value==="sim";
+  var porte=$("porte")&&$("porte").value||"pequena";
+  var nfunc=+$("nfunc").value||65;
+
+  var scFV=scnActive("scFV"),scRede=scnActive("scRede"),scMotor=scnActive("scMotor");
+  var scMicro=scnActive("scMicro"),scBESS=scnActive("scBESS"),scEolica=scnActive("scEolica"),scHibrido=scnActive("scHibrido");
+
+  var sum_kW=0;CARGAS.forEach(function(c){sum_kW+=(+c.kW||0)*(+c.fd||0.85)});
+  var E_dia_bruto=CARGAS.reduce(function(s,c){return s+(+c.kW||0)*(+c.fd||0.85)*(+c.horas||16)},0);
+  var E_mes_bruto=E_dia_bruto*fu*dm/1000;
+  var horasMes=hd*dm;
+
+  // Seasonality index
+  var indiceE=saz?seasonalFactor(SEZ_E[0]||[]):1;
+  var indiceT=saz?seasonalFactor(SEZ_T[0]||[]):1;
+  var E_mes_sazo_bruto=seasonalEnergyFromVector(E_mes_bruto,SEZ_E[0]||[]);
+  var E_mes=saz?E_mes_sazo_bruto:E_mes_bruto;
+
+  var therm_custo_mes_bruto=TERMICAS.reduce(function(s,t){return s+((+t.custo_h!==undefined)?+t.custo_h:((+t.cons||0)*(+t.custo||0)))*hd*dm},0);
+  var therm_custo_mes=saz?therm_custo_mes_bruto*indiceT:therm_custo_mes_bruto;
+  var therm_custo_anual=therm_custo_mes*12;
+  var therm_kW_total=TERMICAS.reduce(function(s,t){return s+(+t.dem||0)*hd*dm/((+t.rend||0.86)*1000)},0);
+
+  var f_mult=mkt==="ACL"?0.7:1.0;
+  // Demanda faturada separada (Azul): ponta separada de FP
+  var dcFat_p=mkt==="Azul"?(modalidade==="Azul"?dcP:+(($("dc")&&$("dc").value)||320)):dc;
+  var dcFat_fp=mkt==="Azul"?(modalidade==="Azul"?dcFP:+(($("dc")&&$("dc").value)||320)):0;
+  var custoDemandaP=dcFat_p*TUSD_dem_p*30.4/1000;
+  var custoDemandaFP=dcFat_fp*TUSD_dem_fp*30.4/1000;
+  var custoDemanda=custoDemandaP+custoDemandaFP;
+  // Multa reativo (PRODIST M4 vigente, fator de referência 0,92)
+  var pReativo=+(($("pReativo")&&$("pReativo").value)||30)/100;
+  var tgphi=Math.sqrt(1/Math.max(fp*fp,0.0001)-1);var tgphiLim=0.62;var E_ativa_kWh_mes=E_mes_bruto*1000;var kwh_reativo_exced=(fp<0.92&&tgphi>tgphiLim)?E_ativa_kWh_mes*Math.max(tgphi-tgphiLim,0):0;var tReativa=+(($("tReativa")&&$("tReativa").value)||0.60);var multaReativo_mes=kwh_reativo_exced*tReativa;
+  var multaReativo_ano=multaReativo_mes*12;
+  // Ultrapassagem (RN ANEEL 414/2010): DR_p ou DR_fp acima da DC contratada
+  var ultR_p=+(($("ultR_p")&&$("ultR_p").value)||25);
+  var ultR_fp=+(($("ultR_fp")&&$("ultR_fp").value)||17);
+  var ultrapassP_mes=0,ultrapassFP_mes=0;
+  if(DEM_HIST&&DEM_HIST.length){DEM_HIST.forEach(function(r){var drP=+r.dr_p||0,drFP=+r.dr_fp||0,rUp=0,rUfp=0;if(modalidade==="Azul"){var dcP_r=+r.dcP||dcP,dcFP_r=+r.dcFP||dcFP;if(drP>dcP_r*1.05){rUp=drP-dcP_r;ultrapassP_mes+=rUp*ultR_p}if(drFP>dcFP_r*1.05){rUfp=drFP-dcFP_r;ultrapassFP_mes+=rUfp*ultR_fp}}else{var dcU=+r.dc||dc||320;var drMax=Math.max(drP,drFP);if(drMax>dcU*1.05){rUp=drMax-dcU;ultrapassP_mes+=rUp*ultR_p}}r.ultP=rUp;r.ultFP=rUfp;r.rsUlt=rUp*ultR_p+rUfp*ultR_fp})}
+  var ultrapass_ano=(ultrapassP_mes+ultrapassFP_mes)*12;
+  var dieselOM=0;
+  try{if($("chp")&&$("chp").value==="sim"){var gcap=+($("gerCap")&&$("gerCap").value)||(+($("fv_kwp")&&$("fv_kwp").value)>0?0:500);var gfuel=+($("gerFuel")&&$("gerFuel").value)||0.30;var gprice=+($("gerPrice")&&$("gerPrice").value)||6.50;var gopex=+($("gerOpex")&&$("gerOpex").value)||20;dieselOM=(gcap*gfuel*gprice+gopex)*hd*dm/1000;}}
+  catch(e){dieselOM=0}
+  var F_base=E_mes_bruto*1000*TE_fp*f_mult+custoDemanda+multaReativo_mes+(ultrapassP_mes+ultrapassFP_mes)+(dieselOM||0);
+  if(!isFinite(F_base)||F_base<=0)F_base=E_mes_bruto*1000*TE_fp*f_mult+custoDemanda;
+  if(saz)F_base=F_base*indiceE;
+
+  var capMD=capModelData();
+  var capKw=+$("capKw").value||capMD.kW;
+  var capCostMWh=+$("capCost_MWh").value||5000;
+  var fv_kwp=+($("fv_kwp").value)||0,hsp=+($("hsp").value)||4.8,pr_v=+($("pr").value)||0.82;
+  var bess=+$("bess_kwh").value||0;
+  var capex_fv_k=+($("capex_fv_k").value)||3800,opex_fv_pct=(+(($("opex_fv").value)||1))/100;
+  var wacc=+($("wacc").value)||0.12,horiz=+($("horiz").value)||20,infl=+($("infl").value)||4.5,f_emis=+($("f_emis").value)||0.081;
+  var propOn=$("prop").value==="sim";
+
+  // Fuel prompts (motor + micro) — shared logic: GN requires R$/m³, BIO is free
+  var motorFuel=$("motorFuel")&&$("motorFuel").value||"GN";
+  var motorGN_Rm3=+$("motorGN_Rm3").value||3.85;
+  var motorConsGN=+$("motorConsGN").value||10.2;
+  var motorKw=+$("motorKw").value||180;
+  var motorElecEff=(motorFuel==="BIO")?0.42:0.36;
+  var motorFuelRS=(motorFuel==="BIO")?0:(motorConsGN*motorGN_Rm3*horasMes);
+  var motorFuelLabel=(motorFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+motorGN_Rm3.toFixed(2)+"/m³";
+
+  var microFuel=$("microFuel")&&$("microFuel").value||"GN";
+  var microGN_Rm3=+$("microGN_Rm3").value||3.85;
+  var microConsGN=+$("microConsGN").value||12.4;
+  var microFuelRS=(microFuel==="BIO")?0:(microConsGN*microGN_Rm3*horasMes);
+  var microFuelLabel=(microFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+microGN_Rm3.toFixed(2)+"/m³";
+
+  var eolicaKw=+$("eolicaKw").value||50;
+  var eolicaFC=0.30;
+
+  // Scenario energy contributions
+  var E_fv_break=scFV?fv_kwp*hsp*30.4*pr_v/1000:0;
+  var E_local_fv=Math.min(E_fv_break,E_mes*0.95);
+  var E_local_motor=scMotor?(motorKw*horasMes*motorElecEff/1000):0; // MWh/mês
+  var E_local_micro=scMicro?(capKw*horasMes*capMD.eta/1000):0;
+  var E_local_eol=scEolica?(eolicaKw*eolicaFC*horasMes*30.4/24/1000):0;
+  var E_local=E_local_fv+E_local_motor+E_local_micro+E_local_eol;
+  var E_rede=Math.max(E_mes-E_local_fv-E_local_micro-E_local_motor-E_local_eol,0);
+
+  // Capex/Opex
+  var CAPEXfv=scFV?fv_kwp*capex_fv_k:0;
+  var OPEXfv=scFV?fv_kwp*capex_fv_k*opex_fv_pct:0;
+  var CAPEXbess=scBESS?(bess*4500+8000):0;
+  var OPEXbess=scBESS?bess*120:0;
+  var CAPEXmotor=scMotor?380000:0;
+  var OPEXmotor=scMotor?22000:0;
+  var CAPEXmicro=scMicro?capKw*6500:0;
+  var OPEXmicro=scMicro?capKw*100:0;
+  var CAPEXeol=scEolica?eolicaKw*7500:0;
+  var OPEXeol=scEolica?eolicaKw*120:0;
+  var CAPEX=CAPEXfv+CAPEXbess+CAPEXmotor+CAPEXmicro+CAPEXeol;
+  var OPEX_a=OPEXfv+OPEXbess+OPEXmotor+OPEXmicro+OPEXeol;
+
+  // Scenario bill
+  var dc_efetiva=scBESS?Math.max(sum_kW*0.85,dc-(bess*0.4)):dc;
+  var F_cen_raw=E_rede*1000*TE_fp*f_mult+dc_efetiva*TUSD_dem*30.4/1000;
+  F_cen_raw += ((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))/12;
+  if(scBESS)F_cen_raw -= Math.min(bess*30*TE_p*0.4/12,E_mes*1000*0.05);
+  if(scMicro)F_cen_raw -= Math.min(E_local_micro*1000*TE_p*0.7,E_mes*1000*0.10);
+  if(scMotor)F_cen_raw -= Math.min(E_local_motor*1000*TE_p*0.6,E_mes*1000*0.08);
+  if(scEolica)F_cen_raw -= Math.min(E_local_eol*1000*TE_p*0.55,E_mes*1000*0.06);
+  var regPenaltyMes=(multaReativo_mes||0)+(ultrapassP_mes+ultrapassFP_mes||0);
+  var F_cen=propOn?(F_cen_raw-regPenaltyMes):F_base;
+
+  // Indicators
+  var eco_m=F_base-F_cen;
+  var eco_anual_bruto=Math.max(eco_m*12,0);
+  var eco_anual=eco_anual_bruto;
+  if(saz) eco_anual=eco_anual*((indiceE>1)?(1+(indiceE-1)*0.5):(2-indiceE)*0.7);
+  if(dieselOM>0) eco_anual=eco_anual+dieselOM*12;
+  eco_anual=Math.max(eco_anual,0);
+
+  var VPL=-CAPEX;
+  for(var t2=1;t2<=horiz;t2++){VPL+=(eco_anual+OPEX_a*0.3)*Math.pow(1+infl/100,t2-1)/Math.pow(1+wacc,t2);}
+  function npv(r){var n=-CAPEX;for(var k=1;k<=horiz;k++)n+=(eco_anual+OPEX_a*0.3)*Math.pow(1+infl/100,k-1)/Math.pow(1+r,k);return n}
+  var TIR=0;if(CAPEX>0&&eco_anual>0){var lo=-0.5,hi=2,mid=0;for(var it=0;it<60;it++){mid=(lo+hi)/2;if(npv(mid)>0)lo=mid;else hi=mid;if(Math.abs(npv(mid))<1)break}TIR=mid}
+  var payback=(CAPEX>0&&eco_anual>0)?CAPEX/eco_anual:Infinity;
+  var CO_orig=E_mes_bruto*12*f_emis;
+  var CO_avoid=Math.max(CO_orig-(E_rede*12*f_emis)-(E_local*12*f_emis)-therm_kW_total*0.2,0);
+  var DEC_orig=12+((+$("queda_mes").value||0)*(+$("queda_dur").value||0)+(+$("crit_ano").value||0)*(+$("crit_dur").value||0)/12)/60;
+  var DEC_cen=propOn?Math.max(DEC_orig*0.30,2.5):DEC_orig;
+
+  var demRes=calcDemandaOtima();
+  var thdRes=calcTHDSavings();
+  var EquipComparativo=renderEquipComparativo(therm_custo_anual);
+
+  return {
+    sum_kW:sum_kW, E_mes:E_mes, E_mes_bruto:E_mes_bruto, E_rede:E_rede, E_local:E_local,
+    E_local_fv:E_local_fv, E_local_motor:E_local_motor, E_local_micro:E_local_micro, E_local_eol:E_local_eol,
+    F_base:F_base, F_cen:F_cen, eco_m:eco_m, eco_anual:eco_anual, eco_anual_bruto:eco_anual_bruto,
+    CAPEX:CAPEX, OPEX_a:OPEX_a, VPL:VPL, TIR:TIR, payback:payback,
+    CO_orig:CO_orig, CO_avoid:CO_avoid, DEC_orig:DEC_orig, DEC_cen:DEC_cen,
+    demRes:demRes, thdRes:thdRes, sazonal:saz, indicesazonal:saz?indiceE:1,
+    therm_custo_anual:therm_custo_anual, therm_custo_mes:therm_custo_mes,
+    propOn:propOn, EquipComparativo:EquipComparativo,
+    porte:porte, nfunc:nfunc, modalidade:modalidade,
+    dcP:dcP, dcFP:dcFP, dcFatP:custoDemandaP, dcFatFP:custoDemandaFP,
+    multaReativo_mes:multaReativo_mes, multaReativo_ano:multaReativo_ano,
+    ultrapassP_mes:ultrapassP_mes, ultrapassFP_mes:ultrapassFP_mes, ultrapass_ano:ultrapass_ano,
+    scenarios:{FV:scFV,Rede:scRede,Motor:scMotor,Micro:scMicro,BESS:scBESS,Eolica:scEolica,Hibrido:scHibrido},
+    fuel:{motor:motorFuel,micro:microFuel},
+    cost_fuel:{motor_RS_mes:motorFuelRS,micro_RS_mes:microFuelRS,fuel_motor_label:motorFuelLabel,fuel_micro_label:microFuelLabel},
+    cap_kw:{motor:motorKw,micro:capKw,eolica:eolicaKw},
+    cap_cost_mwh:capCostMWh,f_emis:f_emis,
+    dieselOM:dieselOM,regPenaltyMes:regPenaltyMes,
+    E_mes_sazonal:E_mes,E_mes_sazonal_cen:E_mes,
+    F_cen_liq:F_cen,F_base_liq:F_base,indicesazonal:saz?indiceE:1,
+    tgphi:tgphi, tgphi_lim:tgphiLim, kwh_reativo_exced:kwh_reativo_exced, kWh_ativa_mes:E_ativa_kWh_mes, tReativa:tReativa, tgphi:tgphi, tgphi_lim:tgphiLim, kwh_reativo_exced:kwh_reativo_exced, kWh_ativa_mes:E_ativa_kWh_mes, tReativa:tReativa, multasAno:(multaReativo_mes+ultrapassP_mes+ultrapassFP_mes)*12
+  };
+}
+
+function calcDemandaOtima(){if(!DEM_HIST.length)return{empty:true};var TUSD_p=+(($("TUSD_dem_")&&$("TUSD_dem_").value)||12.5);var TUSD_fp=+(($("TUSD_fp_")&&$("TUSD_fp_").value)||8.5);var modAzul=($("modalidade")&&$("modalidade").value)==="Azul";function fat(p,fp){var cp=p*TUSD_p*30.4/1000;var cf=fp*TUSD_fp*30.4/1000;var uP=0,uFP=0;DEM_HIST.forEach(function(r){if(r.dr_p>p*1.05)uP+=(r.dr_p-p)*2*TUSD_p*30.4/1000;if(r.dr_fp>fp*1.05)uFP+=(r.dr_fp-fp)*2*TUSD_fp*30.4/1000});return cp+cf+uP+uFP}var dr_p_max=DEM_HIST.reduce(function(m,r){return Math.max(m,r.dr_p||0)},0);var dr_fp_max=DEM_HIST.reduce(function(m,r){return Math.max(m,r.dr_fp||0)},0);var minP=Math.max(50,Math.ceil(dr_p_max*0.6/10)*10);var maxP=Math.max(minP+10,Math.ceil(dr_p_max*1.4/10)*10);var minFP=Math.max(50,Math.ceil(dr_fp_max*0.6/10)*10);var maxFP=Math.max(minFP+10,Math.ceil(dr_fp_max*1.4/10)*10);var best={cost:Infinity,p:minP,fp:minFP};for(var p=minP;p<=maxP;p+=10){for(var fp=minFP;fp<=maxFP;fp+=10){var c=fat(p,fp);if(c<best.cost)best={cost:c,p:p,fp:fp}}}var dc_atual_p=+(($("dcP")&&$("dcP").value)||(($("dc")&&$("dc").value)||320));var dc_atual_fp=+(($("dcFP")&&$("dcFP").value)||0);if(!modAzul){dc_atual_fp=dc_atual_p}var custo_atual=fat(dc_atual_p,dc_atual_fp);return{empty:false,months:DEM_HIST.length,dc_atual_p:dc_atual_p,dc_atual_fp:dc_atual_fp,dc_rec_p:best.p,dc_rec_fp:best.fp,dr_p_max:dr_p_max,dr_fp_max:dr_fp_max,custo_atual_mes:custo_atual,custo_rec_mes:best.cost,ganho_anual_estimado:Math.max((custo_atual-best.cost)*12,0)}}
+
+function calcTHDSavings(){if(!THD_CIRCS.length)return{empty:true};var TE_fp=+$("TE_fp_").value||0.75;var hd=Math.max(+$("hd").value||16,16),dm=+$("dm").value||25;var total_kWh_eco=0,total_RS_eco=0,cumpr=true;var lins=THD_CIRCS.map(function(c){var T=c.T||30,I_op=c.I_op||0,I_nom=c.I_nom||1;var fct=T>30?Math.pow(0.94,(T-30)/10):Math.pow(1.05,(30-T)/10);var acima_v=(c.ths_v||0)>8;var acima_T=T>30;cumpr=cumpr&&!acima_v;var kwh_eco=Math.max(I_op*I_op*0.001*hd*dm/1000-I_op*fct*I_op*fct*0.0008*hd*dm/1000,0);var perdas_kWh=Math.max(I_op*I_op*0.001*hd*dm*(1-fct)/1000,0);var perdas_RS=perdas_kWh*TE_fp;total_kWh_eco+=kwh_eco;total_RS_eco+=kwh_eco*TE_fp;return{circ:c.circ,T:T,I_op:I_op,I_nom:I_nom,ths_v:c.ths_v,ths_i:c.ths_i,kwh_eco:kwh_eco,rs_eco:kwh_eco*TE_fp,acima_PRODIST:acima_v,acima_norma_T:acima_T,fct:fct,perdas_kWh:perdas_kWh,perdas_RS:perdas_RS}});return{linhas:lins,total_kWh_mes:total_kWh_eco,total_RS_mes:total_RS_eco,total_RS_ano:total_RS_eco*12,cumpr_PRODIST:cumpr}}
+
+function renderEquipComparativo(therm_anual){
+  if(!therm_anual||therm_anual<=0)return{gain_total:0,items:[]};
+  var groups={compressor_ar:{key:"comp_para_VSD_plus",ganho_pct:0.32},refrig_agua:{key:"chiller_trane_CVHE",ganho_pct:0.40},secador_ar:{key:"secador_FD_VSD",ganho_pct:0.20},forno:{key:"forno_inducao",ganho_pct:0.55},vapor:{key:"caldeira_biomassa_BFB",ganho_pct:0.35},agua:{key:"HP_industrial_IEA",ganho_pct:0.55},oleo:{key:"caldeira_GN_cond",ganho_pct:0.15},ar:{key:"HP_industrial_IEA",ganho_pct:0.30}};
+  var mapa={};EQUIP_CATALOG.forEach(function(e){mapa[e.key]=e});
+  var items=[];var gain_total=0;
+  TERMICAS.forEach(function(t){
+    var tipo=t.tipo||"vapor";
+    var g=groups[tipo];if(!g)return;
+    var custo_h=+t.custo_h||(+t.cons||0)*(+t.custo||0);
+    var economia_anual=custo_h*(+$("hd").value||16)*(+$("dm").value||25)*g.ganho_pct*12;
+    gain_total+=economia_anual;
+    var cad=mapa[g.key];
+    items.push({origem:t.nome,tipo:tipo,substituto:g.key,fabricante:cad?cad.fabricante:"-",modelo:cad?cad.modelo:"-",perf:cad?cad.perf:"-",fonte:cad?cad.fonte:"-",economia_anual_money:money(economia_anual),economia_anual_num:economia_anual,percentual:(g.ganho_pct*100).toFixed(0)+"%"});
+  });
+  return{gain_total:gain_total,items:items};
+}
+
+function comp(label,base,cenario,fmt,opts){opts=opts||{};var bf=+base||0,cf=+cenario||0;var delta=(opts.invert?(cf-bf):(bf-cf));if(!isFinite(delta))delta=0;var pct=bf!==0?Math.abs(delta/bf*100):(delta!==0?100:0);var cor=delta>0?'#0d6a42':(delta<0?'#c62828':'#6b7280');var seta=delta>0?'▲ ':(delta<0?'▼ ':'– ');var valStr=fmt(Math.abs(delta));if(typeof valStr==='string'&&valStr.indexOf('R$')===0)valStr=valStr.replace('R$ ','R$ ');return '<div class="ln"><span>'+label+'</span><b>'+fmt(bf)+'</b><b style="color:var(--brand2)">'+fmt(cf)+'</b><b style="color:'+cor+'">'+seta+valStr+' <small style="color:'+cor+'">('+pct.toFixed(1)+'%)</small></b></div>'}
+function renderCompare(d){var ln=function(l,b){return '<div class="ln"><span>'+l+'</span><b>'+b+'</b></div>'};var mo=function(x){return 'R$ '+Math.round(x).toLocaleString('pt-BR')};var pc=function(x){return (x*100).toFixed(1)+'%'};var hr=function(x){return x.toFixed(1)+' h'};var tc=function(x){return x.toFixed(1)+' t'};var mw=function(x){return x.toFixed(2)+' MWh'};var kw=function(x){return Math.round(x)+' kW'};
+var eq=(d.EquipComparativo&&d.EquipComparativo.gain_total)||0;var scn=d.scenarios||{};var fuel=d.fuel||{};
+var scnLabel=[scn.FV?'FV':'',scn.BESS?'BESS':'',scn.Motor?('Motor-'+(fuel.motor==='BIO'?'BIO':'GN')):'',scn.Micro?('Capstone-'+(fuel.micro==='BIO'?'BIO':'GN')):'',scn.Eolica?'Eólica':'',scn.Hibrido?'Híbrido':''].filter(Boolean).join(' + ')||'Baseline (manter rede)';
+var ultr=(d.ultrapassP_mes||0)+(d.ultrapassFP_mes||0);var ultrAno=(d.ultrapass_ano||(ultr*12));var multaR=d.multaReativo_mes||0;
+var B=$('cmpBefore'),C=$('cmpAfter'),G=$('cmpGain');
+B.innerHTML='<h3>Baseline (manter rede &middot; sazonal)</h3>'+ln('Cenário selecionado',scnLabel)+comp('Energia sazonal',d.E_mes,d.E_mes,mw)+comp('Energia comprada — rede',d.E_mes,d.E_mes,mw)+comp('DC Ponta contratada',((d.demRes&&d.demRes.dc_atual_p)||0),((d.demRes&&d.demRes.dc_atual_p)||0),kw)+comp('DC FP contratada',((d.demRes&&d.demRes.dc_atual_fp)||0),((d.demRes&&d.demRes.dc_atual_fp)||0),kw)+comp('Demanda ativa de pico',((d.demRes&&d.demRes.dr_p_max)||0),((d.demRes&&d.demRes.dr_p_max)||0),kw)+comp('Custo demanda (R$/mês)',((d.demRes&&d.demRes.custo_atual_mes)||0),((d.demRes&&d.demRes.custo_atual_mes)||0),mo)+comp('Multa reativo PRODIST M8 (R$/mês)',multaR,multaR,mo)+comp('Ultrapassagem RN 414/2010 (R$/mês)',ultr,ultr,mo)+comp('Fatura mensal',d.F_base,d.F_base,mo)+comp('Custo térmico anual',d.therm_custo_anual||0,d.therm_custo_anual||0,mo)+comp('CO2 emitido (t/ano)',d.CO_orig,d.CO_orig,tc)+comp('DIC (h/ano)',d.DEC_orig,d.DEC_orig,hr);
+C.innerHTML='<h3>Cenário &mdash; '+scnLabel+'</h3>'+comp('Energia sazonal',d.E_mes,d.E_mes_sazonal_cen||d.E_mes,mw)+comp('Energia local gerada',0,d.E_local,mw)+comp('Energia FV',0,d.E_local_fv,mw)+comp('Energia Motor a gás',0,d.E_local_motor,mw)+comp('Energia Microturbina Capstone',0,d.E_local_micro,mw)+comp('Energia Eólica',0,d.E_local_eol,mw)+comp('Energia comprada — rede',d.E_mes,d.E_rede,mw)+comp('DC Ponta recomendada',((d.demRes&&d.demRes.dc_atual_p)||0),((d.demRes&&d.demRes.dc_rec_p)||0),kw)+comp('DC FP recomendada',((d.demRes&&d.demRes.dc_atual_fp)||0),((d.demRes&&d.demRes.dc_rec_fp)||0),kw)+comp('Custo demanda (R$/mês)',((d.demRes&&d.demRes.custo_atual_mes)||0),((d.demRes&&d.demRes.custo_rec_mes)||0),mo)+comp('Multa reativo PRODIST M8',multaR,0,mo)+comp('Ultrapassagem RN 414/2010',ultr,0,mo)+comp('CAPEX acumulado',0,d.CAPEX,mo)+comp('OPEX/ano',0,d.OPEX_a,mo)+comp('Fatura mensal (cenário)',d.F_base,d.F_cen,mo)+comp('Custo térmico anual (cenário)',d.therm_custo_anual||0,(d.therm_custo_anual||0)-eq,mo)+comp('CO2 evitado/ano',d.CO_orig,d.CO_orig-(d.CO_avoid||0),tc)+comp('DIC (h/ano)',d.DEC_orig,d.DEC_cen,hr);
+G.innerHTML='<h3>Ganho (sazonalizado)</h3>'+comp('Economia fatura/ano',0,d.eco_anual,mo)+comp('Eco. demanda ótima/ano',0,((d.demRes&&d.demRes.ganho_anual_estimado)||0),mo)+comp('Eco. QEE/THD/ano',0,((d.thdRes&&d.thdRes.total_RS_ano)||0),mo)+comp('Eco. equipamentos/ano',0,eq,mo)+comp('Total Eco./ano (sazonal)',0,((d.eco_anual||0)+((d.demRes&&d.demRes.ganho_anual_estimado)||0)+((d.thdRes&&d.thdRes.total_RS_ano)||0)+eq+(multaR*12)+(ultrAno)),mo)+comp('CAPEX',0,d.CAPEX,mo)+comp('VPL (20 a · WACC 12%)',0,d.VPL,mo)+comp('TIR',0,d.TIR,pc)+comp('Payback (anos)',0,(isFinite(d.payback)?d.payback:0),function(x){return x.toFixed(1)+' a'})+comp('CO2 evitado/ano',0,d.CO_avoid,tc)+comp('Índice sazonal aplicado',1,d.indicesazonal,function(x){return (x||0).toFixed(2)})+comp('Plano EnergyLink sugerido','—',(function(){var v=(d.eco_anual||0)/12;var p=elPlan(v);return p.nome+(p.valor?' · R$ '+Math.round(p.valor).toLocaleString('pt-BR')+'/mês':'')})(),function(x){return String(x)});}
+
+function renderKPIs(d){
+  var scn=d.scenarios||{};var fuel=d.fuel||{};
+  var activeScn=[scn.FV?"FV":"",scn.BESS?"BESS":"",scn.Motor?("Motor-"+(fuel.motor==="BIO"?"BIO":"GN")):"",scn.Micro?("Capstone-"+(fuel.micro==="BIO"?"BIO":"GN")):"",scn.Eolica?"Eólica":"",scn.Hibrido?"Híbrido":""].filter(Boolean).join(" + ")||"Baseline";
+  var items=[
+    {l:"Energia sazonal",v:nf(d.E_mes,2)+" MWh/mês",c:"ok"},
+    {l:"Energia local gerada",v:nf(d.E_local,2)+" MWh/mês",c:d.E_local>0?"ok":"warn"},
+    {l:"Fatura base",v:money(d.F_base),c:""},
+    {l:"Fatura cenário",v:money(d.F_cen),c:d.F_cen<d.F_base?"ok":"warn"},
+    {l:"Economia/ano (saz.)",v:money(d.eco_anual),c:d.eco_anual>0?"ok":"bad"},
+    {l:"Demanda ótima/ano",v:money(d.demRes.ganho_anual_estimado||0),c:(d.demRes.ganho_anual_estimado||0)>0?"ok":"warn"},
+    {l:"QEE/THD/ano",v:money(d.thdRes.total_RS_ano||0),c:(d.thdRes.total_RS_ano||0)>0?"ok":"warn"},
+    {l:"Equip./ano",v:money((d.EquipComparativo&&d.EquipComparativo.gain_total)||0),c:((d.EquipComparativo&&d.EquipComparativo.gain_total)||0)>0?"ok":"warn"},
+    {l:"CAPEX",v:money(d.CAPEX),c:""},
+    {l:"OPEX/ano",v:money(d.OPEX_a),c:""},
+    {l:"VPL (20a)",v:money(d.VPL),c:d.VPL>0?"ok":"warn"},
+    {l:"TIR",v:pct(d.TIR),c:d.TIR>=0.16?"ok":d.TIR>=0.12?"warn":"bad"},
+    {l:"Payback",v:(isFinite(d.payback)?nf(d.payback,1):"—")+" a",c:d.payback<=6?"ok":d.payback<=8?"warn":"bad"},
+    {l:"CO2 evit.",v:nf(d.CO_avoid,1)+" t/ano",c:d.CO_avoid>0?"ok":"warn"},
+    {l:"Índice sazonal",v:nf(d.indicesazonal,2),c:d.sazonal?"warn":""},
+    {l:"Cenário ativo",v:activeScn,c:(scn.FV||scn.Motor||scn.Micro||scn.Eolica||scn.BESS)?"ok":"warn"},
+    {l:"Plano ",v:(function(){var p=elPlan(d.eco_anual/12);return p.nome+(p.valor&&typeof p.valor==="number"?" · R$ "+Math.round(p.valor).toLocaleString("pt-BR")+"/mês":"");})(),c:d.eco_anual/12>10000?"ok":"warn"},
+    {l:"Porte · "+(d.porte||"—"),v:(d.nfunc||0)+" func.",c:""}
+  ];
+  var h=$("kpis");h.innerHTML="";
+  items.forEach(function(k){var d2=document.createElement("div");d2.className="kpi "+(k.c||"");d2.innerHTML='<div class="lbl">'+k.l+'</div><div class="val">'+k.v+'</div>';h.appendChild(d2)});
+}
+
+
+function __epcFlatten(d){
+  if(!d) d={}; var hd=Math.max(+(($("hd")&&$("hd").value)||16),16), dm=+(($("dm")&&$("dm").value)||25);
+  // Pesos padrão: 70% elétrico + 30% térmico equivalente (kWh_via_COP_medio=2.6).
+  var COP_T=2.6;
+  var agg = Array(12).fill(0);
+  // Cargas elétricas: kW * FD * horas/dia * dm (kWh/mês) ponderado pelo fator sazonal SEZ_E
+  try{
+    (CARGAS||[]).forEach(function(c,i){
+      var base = (+c.kW||0)*(+c.fd||0.85)*(+c.horas||16)*(dm);
+      var sez  = Array.isArray(SEZ_E[i])? SEZ_E[i] : defaultSeasonal();
+      for(var m=0;m<12;m++){ var f = Math.max(0, Math.min(2, +(sez[m]||1))); agg[m] += base*f; }
+    });
+    (TERMICAS||[]).forEach(function(t,i){
+      var kWhMes = (+t.dem||0)*hd*dm / Math.max((+t.rend||0.86)*1000, 1);
+      var sez  = Array.isArray(SEZ_T[i])? SEZ_T[i] : defaultSeasonal();
+      for(var m=0;m<12;m++){ var f = Math.max(0, Math.min(2, +(sez[m]||1))); agg[m] += kWhMes*f/COP_T; }
+    });
+  }catch(e){ console.warn('EP_FLAT', e&&e.message); }
+  // Variável do backend: energia mensal total kWh (multiplica por 1000)
+  return agg.map(function(v){ return v * 1000; });
+}
+function __epcMAwrap(v, w){
+  w = w||3; var n=v.length, out=new Array(n);
+  var half = Math.floor(w/2);
+  for(var i=0;i<n;i++){
+    var sum=0, cnt=0;
+    for(var k=-half;k<=half;k++){ var idx=((i+k)%n+n)%n; sum+=v[idx]||0; cnt++; }
+    out[i]=sum/cnt;
+  }
+  return out;
+}
+function __epcMetrics(arr){
+  if(!arr||!arr.length) return {mean:0,peak:0,valley:0,LF:0,osc:0,peakIdx:0,valleyIdx:0};
+  var mn=0,mx=-Infinity,mxi=0,mnV=Infinity,mni=0;
+  for(var i=0;i<arr.length;i++){ var v=+arr[i]||0; mn+=v; if(v>mx){mx=v;mxi=i} }
+  var mean = mn/arr.length;
+  for(var j=0;j<arr.length;j++){ var v=+arr[j]||0; if(v<mnV){mnV=v;mni=j} }
+  mx = isFinite(mx)?mx:0; mnV = isFinite(mnV)?mnV:0;
+  return {mean:mean,peak:mx,valley:mnV,LF:mx>0?mean/mx:0,osc:mx>0?(mx-mnV)/mx:0,peakIdx:mxi,valleyIdx:mni};
+}
+function renderLoadLineChart(d){
+  var root = $("loadLineChart"); if(!root) return;
+  var metricRoot = $("loadLineMetrics"); if(metricRoot) metricRoot.innerHTML="";
+  root.innerHTML="";
+  var raw     = __epcFlatten(d||{});
+  var smooth  = __epcMAwrap(raw,3);
+  var mean    = 0; for(var i=0;i<raw.length;i++) mean+=raw[i]||0; mean=mean/raw.length;
+  var target  = raw.map(function(){return mean});
+  var mR = __epcMetrics(raw);
+  var mS = __epcMetrics(smooth);
+  // KPI chips
+  if(metricRoot){
+    function chip(lbl,val,color){return '<div style="background:#f1f5f9;border-radius:6px;padding:5px 9px;font-size:11px;border:1px solid var(--line);min-width:160px"><span style="color:#475569">'+lbl+': </span><b style="color:'+color+'">'+val+'</b></div>';}
+    metricRoot.innerHTML =
+      chip("Linha alvo = média",     Math.round(mean).toLocaleString("pt-BR")+" kWh/mês", "#7c3aed")+
+      chip("Pico (raw)",              Math.round(mR.peak).toLocaleString("pt-BR")+" kWh · "+MESES[mR.peakIdx],   "#0b6bcb")+
+      chip("Vale (raw)",              Math.round(mR.valley).toLocaleString("pt-BR")+" kWh · "+MESES[mR.valleyIdx], "#0b6bcb")+
+      chip("Fator de carga — antes",  (mR.LF*100).toFixed(1)+"%", "#c77700")+
+      chip("Fator de carga — depois", (mS.LF*100).toFixed(1)+"%", "#0d6a42")+
+      chip("Oscilação ↓",             ((mR.osc-mS.osc)*100).toFixed(1)+" pp", "#0d6a42");
+  }
+  // Plot region
+  var padL=46,padR=18,padT=22,H=200,W=600-12;
+  var ymax=0; for(var i=0;i<12;i++){ if((+raw[i]||0)>ymax)ymax=raw[i]; if((+smooth[i]||0)>ymax)ymax=smooth[i]; if((+target[i]||0)>ymax)ymax=target[i]; }
+  ymax=Math.max(ymax,1);
+  function axes(cmds){
+    svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
+    svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
+    [0,0.25,0.5,0.75,1].forEach(function(p){
+      var y=padT+H-p*H;
+      svgE("line",{x1:padL,y1:y,x2:padL+W,y2:y,stroke:"#eef1f6"},root);
+      svgE("text",{x:padL-6,y:y+4,"text-anchor":"end",fill:"#5b6b82","font-size":9},root,Math.round(p*ymax).toLocaleString("pt-BR"));
+    });
+    var xs=MESES.map(function(m,i){return padL+i*(W/11)});
+    MESES.forEach(function(m,i){svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m)});
+    function plot(arr,color,w,dash,dots,opacity){
+      if(!arr||!arr.length)return;
+      var path=arr.map(function(v,i){return (i===0?"M":"L")+xs[i]+" "+(padT+H-(v/ymax)*H)}).join(" ");
+      svgE("path",{d:path,stroke:color,"stroke-width":w||2,fill:"none","stroke-dasharray":dash||"",opacity:opacity||1},root);
+      if(dots!==false){arr.forEach(function(v,i){svgE("circle",{cx:xs[i],cy:padT+H-(v/ymax)*H,r:3,fill:color},root)})}
+    }
+    plot(target,"#7c3aed",2.5,"6 4",false,0.95);
+    plot(smooth,"#0d6a42",3, "",true,0.95);
+    plot(raw,"#0b6bcb",1.8,"",true,0.85);
+    svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":700},root,"Linha de carga agregada (kWh/mês · elétrico + térmico equiv. via COP="+COP_T_DESC+") · MA-3 wrap");
+    // legend
+    var lx=padL+W-160;
+    svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);
+    svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado (raw)");
+    svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);
+    svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Suavizado MA-3 (wrap)");
+    svgE("rect",{x:lx,y:padT+40,width:10,height:10,fill:"#7c3aed"},root);
+    svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= média)");
+  }
+  var COP_T_DESC=2.6;
+  axes(COP_T_DESC);
+  ;
+  function recForEach(){try{
+    var rp=document.getElementById("recPeak"),rv=document.getElementById("recValley"),rg=document.getElementById("recGain");
+    if(rp)rp.textContent=Math.round(mR.peak).toLocaleString("pt-BR")+" kWh · "+MESES[mR.peakIdx];
+    if(rv)rv.textContent=Math.round(mR.valley).toLocaleString("pt-BR")+" kWh · "+MESES[mR.valleyIdx];
+    if(rg)rg.textContent="+"+((mS.LF-mR.LF)*100).toFixed(1)+" pp (de "+(mR.LF*100).toFixed(1)+"% → "+(mS.LF*100).toFixed(1)+"%)";
+  }catch(_){}};recForEach();;try{window.__EPC_FLAT={
+      raw:raw.map(function(v){return +v||0}),
+      smooth:smooth.map(function(v){return +v||0}),
+      target:target.map(function(v){return +v||0}),
+      mean:+mean,
+      LF_raw:mR.LF, LF_smooth:mS.LF,
+      osc_raw:mR.osc, osc_smooth:mS.osc,
+      peakIdx:mR.peakIdx, valleyIdx:mR.valleyIdx
+    };
+  }catch(_){}
+}
+
+function __epcFlatten(d){
+  if(!d) d={};var hd=Math.max(+(($("hd")&&$("hd").value)||16),16),dm=+(($("dm")&&$("dm").value)||25),COP_T=2.6;
+  var agg=Array(12).fill(0);
+  try{(CARGAS||[]).forEach(function(c,i){
+    var base=(+c.kW||0)*(+c.fd||0.85)*(+c.horas||16)*(dm);
+    var sez=Array.isArray(SEZ_E[i])?SEZ_E[i]:defaultSeasonal();
+    for(var m=0;m<12;m++){var f=Math.max(0,Math.min(2,+(sez[m]||1)));agg[m]+=base*f}
+  });
+  (TERMICAS||[]).forEach(function(t,i){
+    var kWhMes=(+t.dem||0)*hd*dm/Math.max((+t.rend||0.86)*1000,1);
+    var sez=Array.isArray(SEZ_T[i])?SEZ_T[i]:defaultSeasonal();
+    for(var m=0;m<12;m++){var f=Math.max(0,Math.min(2,+(sez[m]||1)));agg[m]+=kWhMes*f/COP_T}
+  })}catch(_){}
+  return agg.map(function(v){return v*1000});
+}
+function __epcMAwrap(v,w){w=w||3;var n=v.length,out=new Array(n),half=Math.floor(w/2);
+  for(var i=0;i<n;i++){var s=0,c=0;for(var k=-half;k<=half;k++){var idx=((i+k)%n+n)%n;s+=v[idx]||0;c++}out[i]=s/c}return out}
+function __epcMetrics(arr){if(!arr||!arr.length)return{mean:0,peak:0,valley:0,LF:0,osc:0,peakIdx:0,valleyIdx:0};
+  var mn=0,mx=-Infinity,mxi=0,mv=Infinity,mni=0;
+  for(var i=0;i<arr.length;i++){var v=+arr[i]||0;mn+=v;if(v>mx){mx=v;mxi=i}}
+  var mean=mn/arr.length;
+  for(var j=0;j<arr.length;j++){var v=+arr[j]||0;if(v<mv){mv=v;mni=j}}
+  mx=isFinite(mx)?mx:0;mv=isFinite(mv)?mv:0;
+  return{mean:mean,peak:mx,valley:mv,LF:mx>0?mean/mx:0,osc:mx>0?(mx-mv)/mx:0,peakIdx:mxi,valleyIdx:mni}}
+function renderLoadLineChart(d){
+  var root=$("loadLineChart"),metricRoot=$("loadLineMetrics");
+  if(!root)return;
+  if(metricRoot)metricRoot.innerHTML="";
+  root.innerHTML="";
+  var raw=__epcFlatten(d||{}),smooth=__epcMAwrap(raw,3);
+  var mean=0;for(var i=0;i<raw.length;i++)mean+=raw[i]||0;mean=mean/raw.length;
+  var target=raw.map(function(){return mean});
+  var mR=__epcMetrics(raw),mS=__epcMetrics(smooth);
+  if(metricRoot){
+    function chip(lbl,val,color){return '<div style="background:#f1f5f9;border-radius:6px;padding:5px 9px;font-size:11px;border:1px solid var(--line);min-width:160px"><span style="color:#475569">'+lbl+': </span><b style="color:'+color+'">'+val+'</b></div>'}
+    metricRoot.innerHTML=
+      chip("Linha alvo (= m\u00e9dia)",Math.round(mean).toLocaleString("pt-BR")+" kWh/m\u00eas","#7c3aed")+
+      chip("Pico (raw)",Math.round(mR.peak).toLocaleString("pt-BR")+" kWh \u00b7 "+MESES[mR.peakIdx],"#0b6bcb")+
+      chip("Vale (raw)",Math.round(mR.valley).toLocaleString("pt-BR")+" kWh \u00b7 "+MESES[mR.valleyIdx],"#0b6bcb")+
+      chip("Fator de carga \u2014 antes",(mR.LF*100).toFixed(1)+"%","#c77700")+
+      chip("Fator de carga \u2014 depois",(mS.LF*100).toFixed(1)+"%","#0d6a42")+
+      chip("Oscila\u00e7\u00e3o \u2193",((mR.osc-mS.osc)*100).toFixed(1)+" pp","#0d6a42")
+  }
+  var padL=46,padR=18,padT=24,H=200,W=600-12;
+  var ymax=0;for(var i=0;i<12;i++){if((+raw[i]||0)>ymax)ymax=raw[i];if((+smooth[i]||0)>ymax)ymax=smooth[i];if((+target[i]||0)>ymax)ymax=target[i]}ymax=Math.max(ymax,1);
+  svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
+  svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
+  [0,0.25,0.5,0.75,1].forEach(function(p){var y=padT+H-p*H;svgE("line",{x1:padL,y1:y,x2:padL+W,y2:y,stroke:"#eef1f6"},root);svgE("text",{x:padL-6,y:y+4,"text-anchor":"end",fill:"#5b6b82","font-size":9},root,Math.round(p*ymax).toLocaleString("pt-BR"))});
+  var xs=MESES.map(function(m,i){return padL+i*(W/11)});
+  MESES.forEach(function(m,i){svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m)});
+  function plot(arr,color,w,dash,dots){
+    if(!arr||!arr.length)return;
+    var path=arr.map(function(v,i){return(i===0?"M":"L")+xs[i]+" "+(padT+H-(v/ymax)*H)}).join(" ");
+    svgE("path",{d:path,stroke:color,"stroke-width":w||2,fill:"none","stroke-dasharray":dash||"",opacity:1},root);
+    if(dots!==false){arr.forEach(function(v,i){
+      var c=svgE("circle",{cx:xs[i],cy:padT+H-(v/ymax)*H,r:3.5,fill:color},root);
+      c.setAttribute("data-mes",MESES[i]);
+      c.setAttribute("data-serie",color==="#0b6bcb"?"Agregado (raw)":color==="#0d6a42"?"Suavizado MA-3 (wrap)":"Linha alvo (= m\u00e9dia)");
+      c.setAttribute("data-val",(arr===target?mean:v).toFixed(2));
+      c.setAttribute("data-unid","kWh/m\u00eas");
+      try{c.style.cursor="pointer"}catch(_){}
+    })}
+  }
+  plot(target,"#7c3aed",2.5,"6 4",false);
+  plot(smooth,"#0d6a42",3,"",true);
+  plot(raw,"#0b6bcb",1.8,"",true);try{bind(document.getElementById("loadLineChart"))}catch(_){};
+  svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":"700"},root,"Linha de carga agregada (kWh/m\u00eas \u00b7 el\u00e9trico + t\u00e9rmico equiv. COP=2,6) \u00b7 MA-3 wrap");
+  var lx=padL+W-160;
+  svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado (raw)");
+  svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Suavizado MA-3 (wrap)");
+  svgE("rect",{x:lx,y:padT+40,width:10,height:10,fill:"#7c3aed"},root);svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= m\u00e9dia)");
+  try{renderLoadLineChart(window.__EP_LAST||{})}catch(_){}
+  try{window.__EPC_FLAT={raw:raw.map(function(v){return +v||0}),smooth:smooth.map(function(v){return +v||0}),target:target.map(function(v){return +v||0}),mean:+mean,LF_raw:mR.LF,LF_smooth:mS.LF,osc_raw:mR.osc,osc_smooth:mS.osc,peakIdx:mR.peakIdx,valleyIdx:mR.valleyIdx}}catch(_){}
+}
+function renderSezChart(d){
+  var root=$("sezChart");root.innerHTML="";
+  var padL=40,padB=30,padT=10,padR=20,W=600-padL-padR,H=260-padT-padB;
+  svgE("rect",{x:0,y:0,width:600,height:260,fill:"#fafcfe"},root);
+  var title=d.sazonal?"Curva Sazonal — Energia mensal × fator (índice sazonal aplicado)":"Operação contínua (fator mensal = 1,0)";
+  svgE("text",{x:padL,y:padT+10,fill:"#0b1f3a","font-size":"11","font-weight":"700"},root,title);
+  var xs=MESES.map(function(m,i){return padL+i*(W/(MESES.length-1))});
+  [0,0.5,1,1.4].forEach(function(v){var y=padT+H-(v/1.4)*H;svgE("line",{x1:padL,y1:y,x2:padL+W,y2:y,stroke:"#eef1f6"},root);svgE("text",{x:padL-6,y:y+4,"text-anchor":"end",fill:"#5b6b82","font-size":9},root,v.toFixed(2))});
+  svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
+  svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
+  MESES.forEach(function(m,i){svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m)});
+  function plotLine(arr,color){if(!arr||!arr.length)return;var path=arr.map(function(v,i){return(i===0?"M":"L")+xs[i]+" "+(padT+H-(v/1.4)*H)}).join(" ");svgE("path",{d:path,stroke:color,"stroke-width":2,fill:"none"},root);arr.forEach(function(v,i){var c=svgE("circle",{cx:xs[i],cy:padT+H-(v/1.4)*H,r:3,fill:color},root);c.setAttribute("data-mes",MESES[i]);c.setAttribute("data-serie",(color==="#0ea5e9")?"Cargas E (fator)":(color==="#fb923c")?"Cargas T (fator)":"Fator");c.setAttribute("data-val",(+v||0).toFixed(3));c.setAttribute("data-unid","fator");try{c.style.cursor="pointer"}catch(_){}})}
+  /**/var homeSazonal=d.sazonal||(SEZ_E[0]&&SEZ_E[0].length>0&&Math.abs((SEZ_E[0][0]||1)-1)>0.01);
+  if(d.sazonal){plotLine(SEZ_E[0],"#0ea5e9");plotLine(SEZ_T[0],"#fb923c")}
+  else if(homeSazonal){plotLine(SEZ_E[0],"#0ea5e9");plotLine(SEZ_T[0],"#fb923c")}
+  else{var ones=[1,1,1,1,1,1,1,1,1,1,1,1];plotLine(ones,"#94a3b8")}
+  svgE("rect",{x:padL+W-110,y:padT+5,width:10,height:10,fill:"#0ea5e9"},root);svgE("text",{x:padL+W-95,y:padT+15,fill:"#0b1f3a","font-size":10},root,"Cargas E (fator)");
+  svgE("rect",{x:padL+W-110,y:padT+20,width:10,height:10,fill:"#fb923c"},root);svgE("text",{x:padL+W-95,y:padT+30,fill:"#0b1f3a","font-size":10},root,"Cargas T (fator)");
+  svgE("text",{x:padL+W-padR-10,y:padT+50,"text-anchor":"end",fill:"#0b1f3a","font-size":10,"font-weight":700},root,"E sazonal aplicada: "+nf(d.E_mes,2)+" MWh/mês · Índice: "+nf(d.indicesazonal,2));
+  svgE("text",{x:padL+W-padR-10,y:padT+62,"text-anchor":"end",fill:"#0b1f3a","font-size":9},root,"Custo mensal sazonalizado: "+money(d.therm_custo_mes||0));
+}
+
+function renderCenarios(d){var h=$("cenarioRes");if(!h)return;var scn=d.scenarios||{};var fuel=d.fuel||{};var lines=[];if(scn.FV){var cv=d.CAPEX&&d.CAPEX>0?(((d.cap_kw.micro?1:1)).toString()):'';lines.push({c:"ok",t:"☀ FV",k:nf(d.E_local_fv,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXfv||0).toLocaleString("pt-BR")+" · TIR contribui"})}if(scn.BESS&&d.E_local){lines.push({c:"ok",t:"🔋 BESS",k:d.bess_peak?"peak-shaving ativa":"otimiza DC "+(d.demRes.dc_rec_p||0)+" kW"})}if(scn.Motor){lines.push({c:"ok",t:"⚙ Motor GN/BIO",k:nf(d.E_local_motor,2)+" MWh/mês · "+d.cost_fuel.fuel_motor_label+" · CAPEX R$ "+(d.CAPEXmotor||0).toLocaleString("pt-BR")})}if(scn.Micro){lines.push({c:"ok",t:"🔬 Capstone",k:nf(d.E_local_micro,2)+" MWh/mês · η "+(d.cap_kw.micro||200)+" kW · "+d.cost_fuel.fuel_micro_label})}if(scn.Eolica){lines.push({c:"ok",t:"🌀 Eólica",k:nf(d.E_local_eol,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXeol||0).toLocaleString("pt-BR")})}if(scn.Hibrido){var tot=d.E_local_fv+d.E_local_motor+d.E_local_micro+d.E_local_eol;lines.push({c:"ok",t:"🔀 Híbrido",k:"Σ "+tot.toFixed(2)+" MWh/mês · "+money((d.F_base||0)-(d.F_cen||0))+" /mês evitado"})}h.innerHTML=lines.length?'<h3 style="margin:0 0 8px;font-size:13px;color:var(--ok)">Cenários ativos</h3><div class="diag-grid">'+lines.map(function(l){return '<div class="diag-card"><div class="lbl">'+l.t+'</div><div class="val" style="color:var(--ok)">'+l.k+'</div></div>'}).join("")+'</div><div style="margin-top:8px;color:var(--bad);font-size:11.5px">Reativo PRODist M4 · FP '+nf(d.fp,2)+' → multa R$/ano '+money(d.multaReativo_ano||0)+' · Ultrapassagem RN 414/2010 → R$/ano '+money(d.ultrapass_ano||0)+'</div>':'<div class="aviso">Nenhum cenário selecionado. Marque FV, BESS, motor, microturbina, eólica ou híbrido na seção 10.</div>'}
+
+function renderGestion(d){var eq=d.EquipComparativo||{items:[]};var items=[
+{k:"Contribuição do Software",v:"Algoritmo IOP · v1.6.4",c:"ok"},
+{k:"SCEE / auto-consumo",v:(d.E_local>0?(d.E_local/d.E_mes*100).toFixed(0)+"%":"—"),c:d.E_local>0?"ok":"warn"},
+{k:"Peak-shaving BESS / demanda ótima",v:"DC "+(d.demRes.dc_atual_p||0)+" → "+(d.demRes.dc_rec_p||0)+" kW",c:(d.demRes.ganho_anual_estimado||0)>0?"ok":"warn"},
+{k:"DIC cenário (PRODIST M8)",v:nf(d.DEC_cen,1)+" h/ano",c:d.DEC_cen<8?"ok":d.DEC_cen<15?"warn":"bad"},
+{k:"Compliance THD",v:(d.thdRes.cumpr_PRODIST?"✓ BT/AT":"⚠"),c:d.thdRes.cumpr_PRODIST?"ok":"bad"},
+{k:"kWh economia QEE/THD",v:(Math.round((d.thdRes.total_RS_ano||0)/1000))+" kR$/ano",c:(d.thdRes.total_RS_ano||0)>0?"ok":"warn"},
+{k:"Vetor sazonal aplicado",v:d.sazonal?("Sim · índice "+nf(d.indicesazonal,2)):"Não (contínuo)",c:d.sazonal?"warn":""},
+{k:"Capstone CHP (η elétr)",v:(d.scenarios.Micro?((d.cap_kw.micro||200)+" kW · η "+(d.scenarios.Micro?0.33:0)):"—"),c:"ok"},
+{k:"Motor a gás (η elétr)",v:(d.scenarios.Motor?((d.cap_kw.motor||180)+" kW · GN "+(+($("motorGN_Rm3")&&$("motorGN_Rm3").value||3.85)).toFixed(2)+" R$/m³"):"—"),c:"ok"},
+{k:"Eólica on-site",v:(d.scenarios.Eolica?((d.cap_kw.eolica||50)+" kW · "+nf(d.E_local_eol,2)+" MWh/mês"):"—"),c:"ok"},
+{k:"Equip. comparados",v:EQUIP_CATALOG.length+" modelos (Atlas Copco / IR / Trane / Carrier)",c:"ok"},
+{k:"Integração ERP",v:"API EnergiaPro v1.6.14",c:"ok"}];
+var h=$("gestion");h.innerHTML="";items.forEach(function(it){var card=document.createElement("div");card.className="gestion-item";card.innerHTML='<div class="g-title">'+it.k+'</div><div class="g-v" style="color:'+(it.c==="ok"?"#0d6a42":it.c==="warn"?"#c77700":"#c62828")+'">'+it.v+'</div>';h.appendChild(card)})}
+
+function renderDemRes(d){var h=$("demRes");h.innerHTML="";var r=d.demRes;if(r.empty)return;var cards=[{l:"meses",v:r.months},{l:"DC atual ponta",v:r.dc_atual_p+" kW"},{l:"DR max ponta",v:r.dr_p_max+" kW",c:r.dr_p_max>r.dc_atual_p?"bad":"ok"},{l:"95º perc.",v:(function(){var v=(typeof computeP95==="function")?computeP95(DEM_HIST,"dr_p"):(+(r.dr_p_p95)>0?+r.dr_p_p95:0);return v>0?Number(Math.round(v)).toLocaleString("pt-BR")+" kW":"— kW";})(),c:(+(r.dr_p_p95)>0)?"ok":"warn"},{l:"DC recomendada",v:(isFinite(r.dc_rec_p)&&r.dc_rec_p>0?Number(r.dc_rec_p).toFixed(0):"—")+" kW",c:(isFinite(r.dc_rec_p)&&r.dc_rec_p>0)?"ok":"warn"},{l:"DR max FP",v:(isFinite(r.dr_fp_max)&&r.dr_fp_max>0?Number(r.dr_fp_max).toFixed(0):"—")+" kW",c:(isFinite(r.dr_fp_max)&&r.dr_fp_max>0?(r.dr_fp_max>r.dc_atual_fp?"bad":"ok"):"warn")},{l:"Eco./ano",v:money(r.ganho_anual_estimado),c:r.ganho_anual_estimado>0?"ok":"warn"},{l:"Fundamento",v:"RN 1000/2021"}];cards.forEach(function(k){var d2=document.createElement("div");d2.className="diag-card";d2.innerHTML='<div class="lbl">'+k.l+'</div><div class="val" style="color:'+(k.c==="ok"?"var(--ok)":k.c==="bad"?"var(--bad)":"var(--brand)")+'">'+k.v+'</div>';h.appendChild(d2)})}
+
+function renderTHDRes(d){var h=$("thdRes");var wb=document.getElementById("thdOverheat");var thdC=(d.thdRes&&(d.thdRes.linhas||d.thdRes.circuits))||[];var hotT=thdC.filter(function(c){return Number(c.T||0)>60});if(wb){wb.innerHTML=hotT.length?'<div class="epv13-overheat" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;font-weight:700;margin:6px 0;animation:epv13Pulse 1.4s ease-in-out infinite alternate">🔥 CUIDADO — AQUECIMENTO DO CIRCUITO: '+hotT.length+' circuito(s) acima de 60 °C — risco de superaquecimento (ampacidade violada conforme NBR 5410). Reduza carga ou reconduture imediatamente.</div>':""};try{var st=document.createElement("style");st.textContent='@keyframes epv13Pulse{from{background:#fee2e2;color:#991b1b;border-color:#fca5a5}to{background:#fecaca;color:#7f1d1d;border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.18)}}@keyframes epv13Flow{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}';if(!document.getElementById("epv13css")){st.id="epv13css";document.head.appendChild(st)}}catch(_){}h.innerHTML="";var r=d.thdRes;if(!r.linhas)return;var cards=[];r.linhas.forEach(function(l){cards.push({l:"THDv "+l.circ,v:(l.ths_v||0).toFixed(1)+"%",c:l.acima_PRODIST?"bad":(l.ths_v||0)>6?"warn":"ok"});cards.push({l:"THDi "+l.circ,v:(l.ths_i||0).toFixed(1)+"%",c:(l.ths_i||0)>15?"bad":(l.ths_i||0)>8?"warn":"ok"});cards.push({l:"Derating",v:(l.fct*100).toFixed(0)+"% @ "+l.T+"°C"});cards.push({l:"Econ.",v:Math.round(l.rs_eco)+" R$/mês",c:l.kwh_eco>0?"ok":"warn"})});cards.push({l:"Total kWh/mês",v:nf(r.total_kWh_mes,0)});cards.push({l:"R$/ano",v:money(r.total_RS_ano)});cards.push({l:"Compliance",v:r.cumpr_PRODIST?"✓":"⚠",c:r.cumpr_PRODIST?"ok":"bad"});cards.forEach(function(k){var d2=document.createElement("div");d2.className="diag-card";d2.innerHTML='<div class="lbl">'+k.l+'</div><div class="val" style="color:'+(k.c==="ok"?"var(--ok)":k.c==="bad"?"var(--bad)":k.c==="warn"?"var(--warn)":"var(--brand)")+'">'+k.v+'</div>';h.appendChild(d2)})}
+
+
+function __epcLoadProfile(d){
+  // Returns 12-month aggregated profile (kWh-equivalente elétrico) summing all cargas (elétrico) and térmicas.
+  // Peso_elétrico = kW * FD * horas/dia (kWh/dia base)
+  // Peso_térmico  = dem * horas_mes / (rendimento * 1000) kWh útil/mês, convertido a equivalente elétrico via COP/COP_t (default 2.6 médio).
+  var hd=Math.max(+$("hd").value||16,16),dm=+$("dm").value||25;
+  var COP_T=2.6;
+  var agg=[0,0,0,0,0,0,0,0,0,0,0,0];
+  // Elétrico: somar c.kW*fd*horas (kWh/dia) * SEZ_E[i][m] * dm  -> kWh/mês
+  try{(CARGAS||[]).forEach(function(c,i){
+    var base=(+c.kW||0)*(+c.fd||0.85)*(+c.horas||16)*(dm);
+    var sez=Array.isArray(SEZ_E[i])?SEZ_E[i]:defaultSeasonal();
+    for(var m=0;m<12;m++){var f=Math.max(0,Math.min(2.0,+(sez[m]||1)));agg[m]+=base*f;}
+  })}catch(_){ }
+  // Térmico: somar (dem kg ou L/h * hd*dm) / (rend*1000) kWh útil/mês, * SEZ_T[i][m] / COP_T => kWh elétrico equivalente
+  try{(TERMICAS||[]).forEach(function(t,i){
+    var kWhMes=(+t.dem||0)*hd*dm/Math.max((+t.rend||0.86)*1000,1);
+    var sez=Array.isArray(SEZ_T[i])?SEZ_T[i]:defaultSeasonal();
+    for(var m=0;m<12;m++){var f=Math.max(0,Math.min(2.0,+(sez[m]||1)));agg[m]+=kWhMes*f/COP_T;}
+  })}catch(_){ }
+  return agg;
+}
+function __epcMA3(v){
+  // Moving-average centrada, janela 3, com wrap (m11↔m0↔m1) para evitar artefato nas bordas
+  var out=new Array(12);
+  for(var i=0;i<12;i++){
+    var a=v[(i+11)%12]||0,b=v[i]||0,c=v[(i+1)%12]||0;
+    out[i]=(a+b+c)/3;
+  }
+  return out;
+}
+function __epcMetrics(arr){
+  if(!arr||!arr.length)return{mean:0,peak:0,valley:0,LF:0,osc:0,peakIdx:0,valleyIdx:0,swing:0};
+  var mn=0,mx=-1e18,mni=0,mxi=0;
+  for(var i=0;i<arr.length;i++){var v=+arr[i]||0;mn+=v;if(v>mx){mx=v;mxi=i}}
+  var mean=mn/arr.length;
+  var mv=+arr[0]||0,vi=0;
+  for(var j=1;j<arr.length;j++){var v=+arr[j]||0;if(v<mv){mv=v;vi=j}}
+  var LF=mx>0?mean/mx:0;
+  var osc=mx>0?((mx-mv)/mx):0;
+  var swing=mean>0?((mx-mv)/mean):0;
+  return {mean:mean,peak:mx,valley:mv,LF:LF,osc:osc,peakIdx:mxi,valleyIdx:vi,swing:swing};
+}
+function renderLoadLineChart(d){
+  var root=$("loadLineChart"); if(!root) return;
+  var metricRoot=$("loadLineMetrics"); if(metricRoot) metricRoot.innerHTML="";
+  root.innerHTML="";
+  var padL=42,padR=20,padT=20,H=200,W=600-12;
+  var raw=__epcLoadProfile(d||{});
+  var smooth=__epcMA3(raw);
+  var meanMetric=0;for(var i=0;i<12;i++)meanMetric+=raw[i]||0;
+  meanMetric=meanMetric/12;
+  var target=new Array(12).fill(meanMetric);
+  // Compute metrics
+  var mRaw=__epcMetrics(raw);
+  var mSm=__epcMetrics(smooth);
+  // Ymax
+  var ymax=0;for(var i=0;i<12;i++){if((+raw[i]||0)>ymax)ymax=raw[i];if((+smooth[i]||0)>ymax)ymax=smooth[i];if((+target[i]||0)>ymax)ymax=target[i];}
+  ymax=Math.max(ymax,1);
+  // Build HTML metrics row
+  if(metricRoot){
+    function card(lbl,val,color){
+      return '<div style="background:#f1f5f9;border-radius:6px;padding:5px 9px;font-size:11px;border:1px solid var(--line)"><span style="color:#475569">'+lbl+': </span><b style="color:'+color+'">'+val+'</b></div>';
+    }
+    metricRoot.innerHTML=
+      card("Média (alvo)", Math.round(meanMetric).toLocaleString("pt-BR")+" kWh/mês","#7c3aed")+
+      card("Pico agregado", Math.round(mRaw.peak).toLocaleString("pt-BR")+" kWh · "+MESES[mRaw.peakIdx],"#0b6bcb")+
+      card("Vale agregado",  Math.round(mRaw.valley).toLocaleString("pt-BR")+" kWh · "+MESES[mRaw.valleyIdx],"#0b6bcb")+
+      card("LF antes (raw)", (mRaw.LF*100).toFixed(1)+"%","#c77700")+
+      card("LF depois (suavizado)", (mSm.LF*100).toFixed(1)+"%","#0d6a42")+
+      card("Oscilação ↓", ((mRaw.osc-mSm.osc)*100).toFixed(1)+" pp","#0d6a42");
+  }
+  // Axis lines
+  svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
+  svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
+  // Y grid (4 linhas)
+  [0,0.25,0.5,0.75,1].forEach(function(p){
+    var y=padT+H-p*H;
+    svgE("line",{x1:padL,y1:y,x2:padL+W,y2:y,stroke:"#eef1f6"},root);
+    svgE("text",{x:padL-6,y:y+4,"text-anchor":"end",fill:"#5b6b82","font-size":9},root,Math.round(p*ymax).toLocaleString("pt-BR"));
+  });
+  var xs=MESES.map(function(m,i){return padL+i*(W/11)});
+  MESES.forEach(function(m,i){
+    svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m);
+  });
+  function plotLine(arr,color,strokeWidth,opts){
+    opts=opts||{}; var dash=opts.dash||"";
+    if(!arr||!arr.length)return;
+    var ymaxLocal=ymax;
+    var path=arr.map(function(v,i){
+      var y=(padT+H)-(v/ymaxLocal)*H;
+      return (i===0?"M":"L")+xs[i]+" "+y;
+    }).join(" ");
+    svgE("path",{d:path,stroke:color,"stroke-width":strokeWidth||2,fill:"none","stroke-dasharray":dash,opacity:opts.opacity||1},root);
+    if(opts.dots!==false){
+      arr.forEach(function(v,i){
+        var y=(padT+H)-(v/ymaxLocal)*H;
+        svgE("circle",{cx:xs[i],cy:y,r:3,fill:color},root);
+      });
+    }
+  }
+  // Linha alvo (média) primeiro, atrás
+  plotLine(target,"#7c3aed",2.5,{dash:"6 4",dots:false,opacity:0.95});
+  // Suavizado (moving average centrada)
+  plotLine(smooth,"#0d6a42",2.8,{dots:true,opacity:0.95});
+  // Agregado cru (azul)
+  plotLine(raw,"#0b6bcb",1.8,{dots:true,opacity:0.85});
+  // Title + legend
+  svgE("text",{x:padL,y:padT-6,fill:"#0b1f3a","font-size":11,"font-weight":700},root,"Linha de carga agregada (elétrico + térmico equivalente) · alvo + suavizada (MA3 wrap)");
+  svgE("rect",{x:padL+W-150,y:padT+5,width:10,height:10,fill:"#0b6bcb"},root);
+  svgE("text",{x:padL+W-135,y:padT+15,fill:"#0b1f3a","font-size":10},root,"Agregado (kWh/mês)");
+  svgE("rect",{x:padL+W-150,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);
+  svgE("text",{x:padL+W-135,y:padT+32,fill:"#0b1f3a","font-size":10},root,"Suavizado MA3 (wrap)");
+  svgE("rect",{x:padL+W-150,y:padT+39,width:10,height:10,fill:"#7c3aed"},root);
+  svgE("text",{x:padL+W-135,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= média)");
+  // Expose for export/calc
+  try{window.__EPC_FLAT={raw:raw,smooth:smooth,target:target,mean:meanMetric,LF_raw:mRaw.LF,LF_smooth:mSm.LF,osc_raw:mRaw.osc,osc_smooth:mSm.osc,peakIdx:mRaw.peakIdx,valleyIdx:mRaw.valleyIdx}}catch(_){}
+}
+function recalc(){var d;try{d=calc()}catch(e){console.error("calc_fail",e&&e.message);return}
+  [["drawDiag",drawDiag],["renderKPIs",renderKPIs],["renderCompare",renderCompare],["renderCenarios",renderCenarios],["renderSezChart",renderSezChart],["renderLoadLineChart",renderLoadLineChart],["renderDemRes",renderDemRes],["renderTHDRes",renderTHDRes],["renderEquipTable",renderEquipTable],["renderGestion",renderGestion]].forEach(function(p){try{p[1](d)}catch(e2){console.error(p[0]+"_fail",e2&&e2.message)}});
+  $("stateBadge").textContent="PRONTO"}
+
+function bindAll(){
+  $("btnAddCarga").addEventListener("click",function(){CARGAS.push({nome:"Carga "+(CARGAS.length+1),kW:50,fd:0.80,fp:0.92,horas:12,cat:"Geral"});SEZ_E.push(defaultSeasonal());renderCList();renderSezE();recalc()});
+  $("btnAddTerm").addEventListener("click",function(){var nova={nome:"Carga térmica "+(TERMICAS.length+1),tipo:"vapor",dem:200,rend:0.86,comb:"gás natural",cons:50,custo:0.85};nova.custo_h=nova.cons*nova.custo;TERMICAS.push(nova);SEZ_T.push(defaultSeasonal());renderTList();renderSezT();recalc()});
+  $("btnAddDem").addEventListener("click",function(){DEM_HIST.push({mes:"M"+(DEM_HIST.length+1),dc:320,dr_p:280,dr_fp:280});renderDemHist();recalc()});
+  $("btnAddThd").addEventListener("click",function(){THD_CIRCS.push({circ:"QGF-"+(THD_CIRCS.length+1),T:30,I_op:100,I_nom:120,ths_v:5,ths_i:10});renderThdRows();recalc()});
+  $("btnCalc").addEventListener("click",function(){recalc()});
+  $("btnExport").addEventListener("click",function(){var d=calc();var blob=new Blob([JSON.stringify({schemaVersion:"1.6.1",geradoEm:new Date().toISOString(),cargas:CARGAS.slice(),termicas:TERMICAS.slice(),sezE:SEZ_E.slice(),sezT:SEZ_T.slice(),demandHist:DEM_HIST.slice(),thdCirc:THD_CIRCS.slice(),equipCatalog:EQUIP_CATALOG,kpis:d},null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="energiaPro_v164.json";a.click()});
+  $("btnPrint").addEventListener("click",function(){window.print()});
+  // Force initial paint of reactive/ultrapassagem inputs visibility
+  try{aplicaModalidade();if($("fp")&&(+$("fp").value<0.92))$("reativoBox")&&($("reativoBox").style.display="grid")}catch(e){}
+  $("btnPause").addEventListener("click",function(){document.querySelectorAll(".flowAnim").forEach(function(l){l.style.animationPlayState="paused"});$("btnPause").style.display="none";$("btnResume").style.display="inline-block";$("stateBadge").textContent="⏸ PAUSADO"});
+  $("btnResume").addEventListener("click",function(){document.querySelectorAll(".flowAnim").forEach(function(l){l.style.animationPlayState="running"});$("btnPause").style.display="inline-block";$("btnResume").style.display="none";$("stateBadge").textContent="PRONTO"});
+  $("sazonal").addEventListener("change",function(){renderSezE();renderSezT();recalc()});
+  if($("modalidade"))$("modalidade").addEventListener("change",function(){aplicaModalidade()});
+  if($("dc")&&typeof DEM_HIST!=="undefined"){$("dc").addEventListener("input",function(){var v=+(this.value)||0;DEM_HIST.forEach(function(r){r.dc=v});renderDemHist();recalc()})}
+  if($("dcP")&&typeof DEM_HIST!=="undefined"){$("dcP").addEventListener("input",function(){var v=+(this.value)||0;DEM_HIST.forEach(function(r){r.dcP=v});renderDemHist();recalc()})}
+  if($("dcFP")&&typeof DEM_HIST!=="undefined"){$("dcFP").addEventListener("input",function(){var v=+(this.value)||0;DEM_HIST.forEach(function(r){r.dcFP=v});renderDemHist();recalc()})}
+  if($("fp"))$("fp").addEventListener("input",function(){if($("reativoBox"))$("reativoBox").style.display=(+this.value<0.92)?"grid":"none";recalc()});
+  // Sync master DC to demand-history table on edit
+  if($("dc")){$("dc").addEventListener("input",function(){var v=+(this.value)||0;DEM_HIST.forEach(function(r){r.dc=v});renderDemHist();recalc()})}
+  // Auto-fill DC column with cadastro value on load
+  if($("dc")&&DEM_HIST.length){var v=+(($("dc")||{}).value)||320;DEM_HIST.forEach(function(r){r.dc=v})}
+  ["scFV","scRede","scMotor","scMicro","scBESS","scEolica","scHibrido"].forEach(function(id){var el=$(id);if(!el)return;el.addEventListener("change",function(){
+    var mot=$("motorFuelPanel");var mic=$("microFuelPanel");var eol=$("eolPanel");var hib=$("hibridoPanel");
+    if(mot)mot.style.display=scnActive("scMotor")?"flex":"none";
+    if(mic)mic.style.display=scnActive("scMicro")?"flex":"none";
+    if(eol)eol.style.display=scnActive("scEolica")?"flex":"none";
+    if(hib)hib.style.display=scnActive("scHibrido")?"flex":"none";
+    recalc();
+  })});
+  ["mercado","modalidade","distribuidora","tensao","dc","fp","hd","dm","fu","ger_atual","ger_cap","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","chp","wacc","spread","horiz","infl","f_emis","prop","TE_p_","TE_fp_","TUSD_dem_","porte","nfunc","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",function(){if(id==="mercado"||id==="modalidade"||id==="distribuidora")autoTarifa();recalc()})}});
+  // Ensure dia container renders the diagram on first paint
+  try{if($("diagrama")){var initD=calc();drawDiag(initD);renderSezChart(initD)}}catch(e){console.error("firstPaint",e)}
+}
+
+function boot(){
+  var steps=[
+    function(){if($("dc")&&typeof DEM_HIST!=="undefined"){var v=+(($("dc")||{}).value)||320;DEM_HIST.forEach(function(r){r.dc=v})}},
+    function(){if($("dcP")&&typeof DEM_HIST!=="undefined"){var v=+(($("dcP")||{}).value)||1050;DEM_HIST.forEach(function(r){r.dcP=v})}},
+    function(){if($("dcFP")&&typeof DEM_HIST!=="undefined"){var v=+(($("dcFP")||{}).value)||900;DEM_HIST.forEach(function(r){r.dcFP=v})}},
+    aplicaModalidade,
+    bindAll,
+    autoTarifa,
+    renderCList,
+    renderTList,
+    renderDemHist,
+    renderThdRows,
+    renderSezE,
+    renderSezT,
+    recalc,
+    function(){var d=calc();drawDiag(d);renderSezChart(d)}
+  ];
+  steps.forEach(function(fn){try{if(typeof fn==="function")fn()}catch(e){console.error("boot_step",e&&e.message)}});
+  try{document.querySelectorAll(".flowAnim").forEach(function(l){if(l&&l.style)l.style.animationPlayState="running"})}catch(_){}
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+
+window.EnergiaPro={
+  version:"1.6.4",schemaVersion:"1.6.4",
+  schema:{schemaVersion:"1.6.1",cargas:"Array",termicas:"Array<custo_h>",sezE:"Array<matriz 12>",sezT:"Array<matriz 12>",demandHist:"Array",thdCirc:"Array",kpis:"object",EquipComparativo:"object",scenarios:"object{FV,Motor,Micro,BESS,Eolica,Hibrido}",fuel:"object{motor,micro}"},
+  populate:function(input){if(!input||typeof input!=="object")return false;["razao","cnpj","segmento","tensao","distribuidora","mercado","modalidade","dc","fp","hd","dm","fu","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","chp","wacc","spread","horiz","infl","f_emis","sazonal","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el&&input[id]!==undefined)el.value=input[id]});
+  if(Array.isArray(input.cargas)){CARGAS=input.cargas.slice();SEZ_E=CARGAS.map(function(_,i){return Array.isArray(input.sezE)&&Array.isArray(input.sezE[i])?input.sezE[i]:defaultSeasonal()})}
+  if(Array.isArray(input.termicas)){TERMICAS=input.termicas.map(function(t){if((t.custo_h===undefined||t.custo_h===null)&&t.cons!==undefined&&t.custo!==undefined)t.custo_h=t.cons*t.custo;else if(t.custo_h!==undefined&&(t.cons===undefined||t.custo===undefined)){if(!t.cons&&t.custo)t.cons=t.custo_h/Math.max(t.custo,1);else if(t.cons&&!t.custo)t.custo=t.custo_h/Math.max(t.cons,1)}return t});SEZ_T=TERMICAS.map(function(_,i){return Array.isArray(input.sezT)&&Array.isArray(input.sezT[i])?input.sezT[i]:defaultSeasonal()})}
+  if(Array.isArray(input.demandHist))DEM_HIST=input.demandHist.slice();
+  if(Array.isArray(input.thdCirc))THD_CIRCS=input.thdCirc.slice();
+  if(input.scenarios&&typeof input.scenarios==="object"){["scFV","scRede","scMotor","scMicro","scBESS","scEolica","scHibrido"].forEach(function(id){var el=$(id);if(el&&input.scenarios[id.replace("sc","")])el.checked=true})}
+  autoTarifa();recalc();return true},
+  validate:function(input){var m=[];if(!input||!input.mercado)m.push("mercado");if(!input||!Array.isArray(input.cargas))m.push("cargas");return{ok:m.length===0,missing:m}},
+  calculate:function(input){if(input&&typeof input==="object")this.populate(input);return calc()},
+  export:function(input){if(input)this.populate(input);return JSON.stringify({schemaVersion:"1.6.1",geradoEm:new Date().toISOString(),input:input||null,result:calc(),equipCatalog:EQUIP_CATALOG},null,2)},
+  playAnim:function(){document.querySelectorAll(".flowAnim").forEach(function(l){l.style.animationPlayState="running"});$("btnPause").style.display="inline-block";$("btnResume").style.display="none";$("stateBadge").textContent="PRONTO"},
+  pauseAnim:function(){document.querySelectorAll(".flowAnim").forEach(function(l){l.style.animationPlayState="paused"});$("btnPause").style.display="none";$("btnResume").style.display="inline-block";$("stateBadge").textContent="⏸ PAUSADO"}
+};
+
+/* --- Modulo SSE (Sensibilidade a Qualidade de Energia) --- */
+function calcSSE(){var p=$("ssePerfil").value;var perfis={comercial:{metaV:.98,metaFP:.92,metaTHDv:8,metaDeseq:2,metaSags:10,metaInt:30},industrial:{metaV:.98,metaFP:.92,metaTHDv:8,metaDeseq:2,metaSags:10,metaInt:30},hospital:{metaV:.99,metaFP:.98,metaTHDv:5,metaDeseq:2,metaSags:2,metaInt:9},datacenter:{metaV:.99,metaFP:.99,metaTHDv:3,metaDeseq:1,metaSags:2,metaInt:9},agronegocio:{metaV:.95,metaFP:.88,metaTHDv:8,metaDeseq:3,metaSags:15,metaInt:80},automacao:{metaV:.99,metaFP:.98,metaTHDv:5,metaDeseq:2,metaSags:2,metaInt:9}};var mt=perfis[p]||perfis.industrial;var V=+($("sseV").value||.95);var FP=+($("sseFP").value||.80);var THDv=+($("sseTHDv").value||8);var Deseq=+($("sseDeseq").value||4);var Sags=+($("sseSags").value||5);var Int=+($("sseInt").value||20);function fat(val,meta,dir){return Math.min(1,Math.max(0,(dir==="max")?(val/meta):((meta-val)/meta)));}var fV=fat(V,mt.metaV,"min");var fFP=fat(FP,mt.metaFP,"min");var fTHD=fat(THDv,mt.metaTHDv,"max");var fDes=fat(Deseq,mt.metaDeseq,"max");var fSag=fat(Sags,mt.metaSags,"max");var fInt=fat(Int,mt.metaInt,"max");var IS=30*fV+20*fTHD+15*fFP+15*fDes+10*fSag+10*fInt;var NC=+(100-IS).toFixed(1);IS=+IS.toFixed(1);var classe,acao;if(IS>90){classe="Excelente";acao="Nenhuma — manter monitoramento de rotina";}else if(IS>=80){classe="Boa";acao="Monitoramento contínuo da QEE";}else if(IS>=70){classe="Moderada";acao="Instalar banco de capacitores automático";}else if(IS>=60){classe="Sensível";acao="Capacitores + filtro harmônico passivo";}else if(IS>=50){classe="Crítica";acao="Condicionador de rede + filtro ativo";}else{classe="Muito crítica";acao="UPS dupla conversão + DVR + filtro ativo";}var rec=[];if(FP<mt.metaFP)rec.push("Banco de capacitores para elevar FP até "+nf(mt.metaFP,2));if(THDv>mt.metaTHDv)rec.push("Filtro harmônico para reduzir THDv até "+(p==="datacenter"?"3":"5")+" %");if(Deseq>mt.metaDeseq)rec.push("Equilibrador de fases / redistribuição de cargas");if(Math.abs(V-1)>Math.abs(1-mt.metaV))rec.push("Regulador de tensão / estabilizador");if(Sags>mt.metaSags)rec.push("DVR (Dynamic Voltage Restorer) para sags");if(Int>mt.metaInt)rec.push("UPS dupla conversão para disponibilidade "+mt.metaInt+" h/ano");if(p==="datacenter"||p==="hospital"||p==="automacao")rec.push("Monitoramento online + NOC 24×7");return {IS:IS,NC:NC,classe:classe,acao:acao,recomendacoes:rec,perfil:p,metas:mt,fV:fV,fFP:fFP,fTHD:fTHD,fDes:fDes,fSag:fSag,fInt:fInt};}
+function renderSSERes(d){var h=$("sseRes");if(!h)return;if(!d){h.innerHTML="";return;}var IS=d.IS,NC=d.NC,cls=d.classe;var color=IS>90?"#065f46":IS>=80?"#0e7490":IS>=70?"#a16207":IS>=60?"#c2410c":IS>=50?"#b91c1c":"#7f1d1d";var h2='<div style="background:'+color+'22;border-left:6px solid '+color+';padding:12px 14px;border-radius:8px;margin-bottom:8px">'+'<div style="font-weight:700;font-size:14px;color:'+color+'">IS = '+IS.toFixed(1)+' / 100 · NC = '+NC.toFixed(1)+' · Faixa: '+cls+'</div>'+'<div style="font-size:12px;color:#475569;margin-top:4px">'+d.acao+'</div></div>';var tabela='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9">'+'<th style="text-align:left;padding:6px">Parâmetro</th><th style="padding:6px">Valor</th><th style="padding:6px">Meta</th><th style="padding:6px">Peso</th><th style="padding:6px">Fator</th><th style="padding:6px">Contribuição</th></tr></thead><tbody>';var linhas=[["Tensão V/V_n",nf(d.fV,2),nf(d.metas.metaV,2),30,d.fV,30*d.fV],["FP",nf(d.fFP,2),nf(d.metas.metaFP,2),15,d.fFP,15*d.fFP],["THDv (%)",nf(d.fTHD,2),d.metas.metaTHDv+" %",20,d.fTHD,20*d.fTHD],["Desequilíbrio (%)",nf(d.fDes,2),d.metas.metaDeseq+" %",15,d.fDes,15*d.fDes],["Sags (ev/mês)",nf(d.fSag,2),d.metas.metaSags+" ev/mês",10,d.fSag,10*d.fSag],["Interrupções (h/ano)",nf(d.fInt,2),d.metas.metaInt+" h/ano",10,d.fInt,10*d.fInt]];linhas.forEach(function(r){tabela+='<tr><td style="padding:6px;text-align:left">'+r[0]+'</td><td style="padding:6px;text-align:center">'+r[1]+'</td><td style="padding:6px;text-align:center">'+r[2]+'</td><td style="padding:6px;text-align:center">'+r[3]+'</td><td style="padding:6px;text-align:center">'+r[4].toFixed(2)+'</td><td style="padding:6px;text-align:center">'+(r[3]*r[4]).toFixed(1)+'</td></tr>'});tabela+='</tbody><tfoot><tr style="background:#fef3c7;font-weight:700"><td colspan="5" style="padding:6px;text-align:right">IS = Σ(Peso×Fator)</td><td style="padding:6px;text-align:center">'+IS.toFixed(1)+' / 100</td></tr></tfoot></table>';var rec='<div style="margin-top:10px;padding:10px;background:#f8fafc;border-radius:8px"><div style="font-weight:700;color:#0f172a;margin-bottom:4px">Tecnologias recomendadas ('+d.perfil+')</div><ul style="margin:0;padding-left:18px">'+(d.recomendacoes.length?d.recomendacoes.map(function(x){return '<li style="margin:2px 0">'+x+'</li>';}).join(''):'<li style="color:#065f46">Nenhuma a\u00e7\u00e3o adicional necess\u00e1ria \u2014 instala\u00e7\u00e3o j\u00e1 atende aos limites-alvo.</li>')+'</ul></div>';h.innerHTML=h2+tabela+rec;}
+/* --- Modulo Biblioteca Editavel (localStorage) --- */
+(function(){
+function LSget(k){try{return localStorage.getItem(k)}catch(e){return null}}
+window.EXTRA_LIB=(function(){try{var r=LSget('energiaPro.library');if(!r)return[];var a=JSON.parse(r);return Array.isArray(a)?a:[]}catch(e){return[]}})();
+function libPersist(){try{localStorage.setItem('energiaPro.library',JSON.stringify(window.EXTRA_LIB||[]))}catch(e){}}
+function escU(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function libGain(c){var cap=parseFloat(c.cap)||50;var g=parseFloat(c.g);if(!isFinite(g)||g<=0){var COP=Math.max(parseFloat(c.cop)||3,1.1);var hrs=Math.max(parseFloat(c.horas)||16,8);return Math.max(0,Math.round(((cap/0.85)-(cap/COP))*0.92*hrs*25*12*0.65))}return Math.max(0,Math.round(cap*g*12*25*0.65))}
+function renderLibCustom(d){var h=document.getElementById('libCustomRes');if(!h)return;
+var q=((document.getElementById('libSearch')||{}).value||'').toLowerCase();
+var list=(window.EXTRA_LIB||[]).filter(function(c){if(!q)return true;return ((c.nome||'')+' '+(c.tipo||'')+' '+(c.fab||'')+' '+(c.modelo||'')+' '+(c.perf||'')).toLowerCase().indexOf(q)>=0});
+var html='<div style="font-weight:700;font-size:12px;color:#0f7a4d;margin:8px 0 4px">Sua biblioteca local ('+list.length+')</div>';
+if(!list.length){html+='<div class="aviso" style="padding:8px;font-size:12px">Nenhuma tecnologia local. Use <b>+ Criar nova tecnologia</b> acima para cadastrar a sua.</div>';h.innerHTML=html;return}
+html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px">';
+list.forEach(function(c){var k=JSON.stringify(c.key||'');
+html+='<div style="border:1px solid #bbf7d0;border-left:4px solid #16a34a;border-radius:8px;background:#fff;padding:10px 12px;font-size:12px">'
++'<div style="display:flex;justify-content:space-between;gap:6px;align-items:start"><b style="font-size:13px;color:#065f46">'+escU(c.nome||'-')+'</b><span style="background:#16a34a;color:#fff;border-radius:99px;padding:0 8px;font-size:10px">LOCAL</span></div>'
++'<div style="color:#475569;margin:3px 0">'+(c.fab?escU(c.fab)+' - ':'')+escU(c.modelo||'')+'</div>'
++'<div style="color:#334155">Tipo: '+escU(c.tipo||'-')+' | Capacidade: '+escU(c.cap||'-')+'</div>'
++'<div style="color:#334155">'+escU(c.perf||'')+'</div>'
++'<div style="color:#334155">Faixa: '+escU(c.preco||'-')+(c.fonte?' | '+escU(c.fonte):'')+'</div>'
++'<div style="background:#f0fdf4;border-radius:6px;padding:4px 8px;color:#065f46;font-weight:700;margin:6px 0">Economia estimada: R$ '+libGain(c).toLocaleString('pt-BR')+'/ano</div>'
++'<div style="display:flex;gap:6px"><button class="btn" data-lib="edit" data-key="'+k+'" style="flex:1;background:#0b6bcb;color:#fff;border-radius:6px">Editar</button><button class="btn" data-lib="del" data-key="'+k+'" style="background:#fee2e2;color:#991b1b;border-radius:6px">Excluir</button></div></div>';
+});html+='</div>';h.innerHTML=html;}
+function libFormFields(c){return [['nome','Nome',c.nome||''],['tipo','Tipo',c.tipo||''],['fab','Fabricante',c.fab||''],['modelo','Modelo',c.modelo||''],['cap','Capacidade (kW)',c.cap||''],['perf','Performance',c.perf||''],['preco','Faixa de precos',c.preco||''],['fonte','Fonte',c.fonte||'']].map(function(f){return '<label style="display:flex;flex-direction:column;font-size:11px;color:#475569;gap:2px"><span>'+f[1]+'</span><input type="text" data-libf="'+f[0]+'" value="'+escU(f[2])+'" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px"></label>'}).join('')}
+function libNewEquipment(){window._libEditKey=null;var ed=document.getElementById('libEditor');if(!ed)return;ed.style.display='block';ed.innerHTML='<div style="font-weight:700;color:#065f46;margin-bottom:8px">Nova tecnologia na biblioteca local</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">'+libFormFields({})+'</div><div style="display:flex;gap:6px;margin-top:10px"><button class="btn" id="_libSave" style="background:#16a34a;color:#fff;border-radius:6px">Salvar</button><button class="btn" id="_libCancel" style="background:#e2e8f0;color:#0f172a;border-radius:6px">Cancelar</button></div>'}
+function libEditEquipment(key){var c=(window.EXTRA_LIB||[]).find(function(x){return x.key===key});var ed=document.getElementById('libEditor');if(!ed||!c)return;window._libEditKey=key;ed.style.display='block';ed.innerHTML='<div style="font-weight:700;color:#065f46;margin-bottom:8px">Editar - '+escU(c.nome)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">'+libFormFields(c)+'</div><div style="display:flex;gap:6px;margin-top:10px"><button class="btn" id="_libSave" style="background:#16a34a;color:#fff;border-radius:6px">Salvar</button><button class="btn" id="_libCancel" style="background:#e2e8f0;color:#0f172a;border-radius:6px">Cancelar</button></div>'}
+function libSaveFromForm(){var obj={isCustom:true};document.querySelectorAll('[data-libf]').forEach(function(el){obj[el.getAttribute('data-libf')]=el.value});if(!obj.nome){alert('Informe ao menos o Nome');return}var ex=(window.EXTRA_LIB||[]);var i=-1;ex.forEach(function(x,j){if(x.key===window._libEditKey)i=j});if(i>=0){obj.key=window._libEditKey;ex[i]=obj}else{obj.key='custom_'+Date.now();(window.EXTRA_LIB=window.EXTRA_LIB||[]).push(obj)}window._libEditKey=null;libPersist();var ed=document.getElementById('libEditor');if(ed){ed.style.display='none';ed.innerHTML=''}renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
+function libDeleteEquipment(key){if(!confirm('Excluir esta tecnologia local?'))return;window.EXTRA_LIB=(window.EXTRA_LIB||[]).filter(function(x){return x.key!==key});libPersist();renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
+function libExport(){try{var b=new Blob([JSON.stringify({biblioteca_local:window.EXTRA_LIB||[],exportadoEm:new Date().toISOString(),schemaVersion:'1.6.12'},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='energiaPro_biblioteca.json';a.click()}catch(e){alert('Falha ao exportar')}}
+function bindLib(){document.addEventListener('click',function(e){var t=e.target;if(!t||!t.id)return;if(t.id==='btnLibNew')libNewEquipment();else if(t.id==='btnLibReset'){if(confirm('Restaurar biblioteca padrao? Itens locais serao apagados.')){localStorage.removeItem('energiaPro.library');window.EXTRA_LIB=[];renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}}else if(t.id==='btnLibExport')libExport();else if(t.id==='_libSave')libSaveFromForm();else if(t.id==='_libCancel'){var ed=document.getElementById('libEditor');if(ed){ed.style.display='none';ed.innerHTML=''}}});
+document.addEventListener('click',function(e){var t=e.target;if(!t)return;if(t.hasAttribute&&t.hasAttribute('data-lib')){var act=t.getAttribute('data-lib');var k=t.getAttribute('data-key');if(act==='edit')libEditEquipment(k);else if(act==='del')libDeleteEquipment(k)}});
+var ls=document.getElementById('libSearch');if(ls)ls.addEventListener('input',function(){var d={};try{if(typeof calc==='function')d=calc()}catch(e){}try{if(typeof renderEquipTable==='function')renderEquipTable(d)}catch(e){}renderLibCustom(d)});
+document.addEventListener('input',function(e){var t=e.target;if(!t||!t.id)return;if(t.closest&&t.closest('#secSSE')&&typeof calcSSE==='function'&&typeof renderSSERes==='function'){try{renderSSERes(calcSSE())}catch(e){}}});
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',bindLib)}else{bindLib()}
+renderLibCustom();
+try{if(typeof calcSSE==='function'&&typeof renderSSERes==='function'){renderSSERes(calcSSE())}}catch(e){}
+})();
+
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+
+<div id="epcTip" style="position:fixed;pointer-events:none;background:#0b1f3a;color:#fff;padding:6px 10px;border-radius:5px;font-size:11.5px;line-height:1.4;z-index:9999;opacity:0;transition:opacity .12s;box-shadow:0 6px 14px rgba(0,0,0,.32);max-width:260px"></div>
+<div id="epcModal" style="display:none;position:fixed;inset:0;background:rgba(11,31,58,.78);z-index:9998;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:8px;max-width:94vw;max-height:92vh;width:1200px;height:84vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#0b1f3a;color:#fff">
+      <b id="epcModalTitle">Curva</b>
+      <div style="display:flex;gap:8px">
+        <button id="epcModalPrint" style="background:#0d6a42;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Imprimir / PDF</button>
+        <button id="epcModalClose" style="background:#c62828;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:12px">Fechar (Esc)</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow:auto;padding:10px;background:#fafcfe">
+      <div id="epcModalHost" style="width:100%;height:100%"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var tip=document.getElementById("epcTip");
+function place(ev){var x=ev.clientX+14,y=ev.clientY+14,r=tip.getBoundingClientRect();if(x+r.width>window.innerWidth)x=ev.clientX-r.width-14;if(y+r.height>window.innerHeight)y=ev.clientY-r.height-14;tip.style.left=x+"px";tip.style.top=y+"px"}
+function show(mes,serie,val,unid,ev){if(!isFinite(val))return;tip.innerHTML=(mes?"<b>"+mes+"</b>":"")+(serie?" &middot; "+serie:"")+"<br>Valor: <b style=\"color:#67e8f9\">"+val.toLocaleString("pt-BR",{maximumFractionDigits:2})+"</b> "+(unid||"");tip.style.opacity="1";place(ev)}
+function bind(svg){if(!svg)return;svg.__epc=true;svg.addEventListener("mouseenter",function(ev){var t=ev.target;if(!t||t.tagName!=="circle")return;show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)},true);svg.addEventListener("mouseover",function(ev){var t=ev.target;if(!t||t.tagName!=="circle")return;show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev)});svg.addEventListener("mousemove",function(ev){var t=ev.target;if(t&&t.tagName==="circle"){show(t.getAttribute("data-mes"),t.getAttribute("data-serie"),parseFloat(t.getAttribute("data-val")),t.getAttribute("data-unid"),ev);place(ev)}else if(tip.style.opacity==="1"){place(ev)}});svg.addEventListener("mouseout",function(ev){if(ev.target&&ev.target.tagName==="circle")tip.style.opacity="0"})}
+function bindAll(){["sezChart","loadLineChart"].forEach(function(id){var s=document.getElementById(id);if(s)bind(s)})}
+bindAll();
+try{new MutationObserver(function(){__epcFillAttrs(); (window.__EP_BIND||function(){})();}).observe(document.body,{childList:true,subtree:true})}catch(_){}
+var bc=document.getElementById("btnCalc");if(bc)bc.addEventListener("click",function(){setTimeout(function(){(window.__EP_BIND||bindAll)(); __epcFillAttrs()},120)});
+function openModal(target){var src=document.getElementById(target);if(!src)return;var clone=src.cloneNode(true);clone.removeAttribute("id");clone.setAttribute("width","100%");clone.setAttribute("height","100%");clone.setAttribute("preserveAspectRatio","xMidYMid meet");clone.querySelectorAll("circle").forEach(function(c){try{c.style.cursor="pointer"}catch(_){}});var wrap=document.createElement("div");wrap.style.cssText="width:100%;height:100%;background:#fafcfe;border-radius:6px;padding:6px;display:flex;align-items:center;justify-content:center";wrap.appendChild(clone);var host=document.getElementById("epcModalHost");host.innerHTML="";host.appendChild(wrap);document.getElementById("epcModalTitle").textContent=target==="sezChart"?"Curva Sazonal · Fatores Mensais":target==="loadLineChart"?"Linha de Carga Agregada · Flattening (elétrico + térmico)":"Gráfico";bind(clone);document.getElementById("epcModal").style.display="flex"}
+function closeModal(){var m=document.getElementById("epcModal");m.style.display="none";document.getElementById("epcModalHost").innerHTML=""}
+document.addEventListener("click",function(ev){var t=ev.target;if(!t)return;if(t.classList&&t.classList.contains("epc-fullscreen-btn"))openModal(t.getAttribute("data-target"));if(t.id==="epcModalClose"||t.id==="epcModal")closeModal()});
+document.getElementById("epcModalClose").addEventListener("click",closeModal);
+document.getElementById("epcModalPrint").addEventListener("click",function(){var svg=document.querySelector("#epcModalHost svg");if(!svg){window.print();return}var xml=new XMLSerializer().serializeToString(svg);var w=window.open("","_blank","width=1100,height=750");if(!w){window.print();return}w.document.write("<!doctype html><html><head><title>Grafico EnergiaPro</title></head><body style=\"margin:0;background:#fff;display:flex;align-items:center;justify-content:center;height:100vh\">"+xml+"<script>
+window.__epcFillAttrs=function(){
+  try{
+    var mes=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    var flat=window.__EPC_FLAT;
+    var llc=document.getElementById("loadLineChart");
+    if(llc){
+      var raw=(flat&&flat.raw)||[],sm=(flat&&flat.smooth)||[],mn=(flat&&flat.mean)||0;
+      llc.querySelectorAll("circle").forEach(function(c,i){
+        var fill=c.getAttribute("fill")||"#0b6bcb";
+        var serie="Agregado (raw)",val=+raw[i]||0,unid="kWh/m\u00eas";
+        if(fill==="#0d6a42"){serie="Suavizado MA-3 (wrap)";val=+sm[i]||0}
+        else if(fill==="#7c3aed"){serie="Linha alvo (= m\u00e9dia)";val=+mn||0}
+        c.setAttribute("data-mes",mes[i%12]);
+        c.setAttribute("data-serie",serie);
+        c.setAttribute("data-val", nf((+val||0), 2));
+        c.setAttribute("data-unid",unid);
+        try{c.style.cursor="pointer"}catch(_){}
+      });
+    }
+    var sc=document.getElementById("sezChart");
+    if(sc){
+      sc.querySelectorAll("circle").forEach(function(c,i){
+        var fill=c.getAttribute("fill")||"#0ea5e9";
+        c.setAttribute("data-mes",mes[i%12]);
+        c.setAttribute("data-serie",fill==="#fb923c"?"Cargas T (fator)":"Cargas E (fator)");
+        c.setAttribute("data-unid","fator");
+        try{c.style.cursor="pointer"}catch(_){}
+      });
+    }
+  }catch(e){}
+};
+window.__epcRec=function(){
+  try{
+    var flat=window.__EPC_FLAT;
+    if(!flat||!document.getElementById("recPeak"))return;
+    var M=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    document.getElementById("recPeak").textContent=
+      Math.round(flat.raw[flat.peakIdx]).toLocaleString("pt-BR")+" kWh \u00b7 "+M[flat.peakIdx];
+    document.getElementById("recValley").textContent=
+      Math.round(flat.raw[flat.valleyIdx]).toLocaleString("pt-BR")+" kWh \u00b7 "+M[flat.valleyIdx];
+    document.getElementById("recGain").textContent=
+      "+"+nf(((flat.LF_smooth-flat.LF_raw)*100),1)+" pp (de "+
+      (flat.LF_raw*100).toFixed(1)+"% \u2192 "+(flat.LF_smooth*100).toFixed(1)+"%)";
+  }catch(e){}
+};
+function __epcBindTip(svg){
+  if(!svg||svg.__epcT)return;svg.__epcT=true;
+  var tip=document.getElementById("epcTip");
+  function onOver(ev){
+    var t=ev.target;
+    if(!t||t.tagName!=="circle"||!tip)return;
+    var v=parseFloat(t.getAttribute("data-val"));
+    if(!isFinite(v))return;
+    var mes=t.getAttribute("data-mes")||"";
+    var serie=t.getAttribute("data-serie")||"";
+    var unid=t.getAttribute("data-unid")||"";
+    tip.innerHTML=(mes?"<b>"+mes+"</b>":"")+(serie?" &middot; "+serie:"")+
+      "<br>Valor: <b style=\"color:#67e8f9\">"+v.toLocaleString("pt-BR",{maximumFractionDigits:2})+"</b> "+(unid||"");
+    tip.style.opacity="1";
+  }
+  function onMove(ev){if(tip&&tip.style.opacity==="1"){
+    var x=ev.clientX+14,y=ev.clientY+14;
+    var r=tip.getBoundingClientRect();
+    if(x+r.width>window.innerWidth)x=ev.clientX-r.width-14;
+    if(y+r.height>window.innerHeight)y=ev.clientY-r.height-14;
+    tip.style.left=x+"px";tip.style.top=y+"px";
+  }}
+  function onOut(ev){if(ev.target&&ev.target.tagName==="circle"&&tip)tip.style.opacity="0"}
+  svg.addEventListener("mouseover",onOver);
+  svg.addEventListener("mousemove",onMove);
+  svg.addEventListener("mouseout",onOut);
+}
+window.__epcBindTip=__epcBindTip;
+function __epcBoot(){
+  try{
+    if(document.getElementById("loadLineChart")) __epcBindTip(document.getElementById("loadLineChart"));
+    if(document.getElementById("sezChart"))    __epcBindTip(document.getElementById("sezChart"));
+    window.__epcFillAttrs();
+    window.__epcRec();
+  }catch(e){}
+}
+window.__epcBoot=__epcBoot;
+try{new MutationObserver(function(){__epcBoot()}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["d","fill","cx","cy"]})}catch(_){}
+if(window.MutationObserver){
+  setTimeout(__epcBoot,400); setTimeout(__epcBoot,1000);
+}
+var __bc=document.getElementById("btnCalc");
+if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoot()},120);setTimeout(function(){__epcBoot()},400)})}
+</script>
+
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+
+<script>
+(function () {
+  if (window.__ENERGIAPRO_V7_BRIDGE__) return;
+  window.__ENERGIAPRO_V7_BRIDGE__ = true;
+
+  function safeClone(value) {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {
+      return value ?? {};
+    }
+  }
+
+  function readState() {
+    try {
+      if (window.EnergiaPro && typeof window.EnergiaPro.export === 'function') {
+        return safeClone(window.EnergiaPro.export());
+      }
+      if (window.EnergiaPro && typeof window.EnergiaPro.getState === 'function') {
+        return safeClone(window.EnergiaPro.getState());
+      }
+      if (typeof window.exportData === 'function') {
+        return safeClone(window.exportData());
+      }
+      if (typeof window.getState === 'function') {
+        return safeClone(window.getState());
+      }
+      if (window.appState) {
+        return safeClone(window.appState);
+      }
+      if (window.state) {
+        return safeClone(window.state);
+      }
+    } catch (error) {
+      console.error('EnergiaPro bridge export error:', error);
+    }
+    return {};
+  }
+
+  function writeState(payload) {
+    try {
+      if (window.EnergiaPro && typeof window.EnergiaPro.import === 'function') {
+        window.EnergiaPro.import(payload);
+        return true;
+      }
+      if (window.EnergiaPro && typeof window.EnergiaPro.setState === 'function') {
+        window.EnergiaPro.setState(payload);
+        return true;
+      }
+      if (typeof window.importData === 'function') {
+        window.importData(payload);
+        return true;
+      }
+      if (typeof window.setState === 'function') {
+        window.setState(payload);
+        return true;
+      }
+
+      window.__ENERGIAPRO_PREFILL__ = payload;
+      return true;
+    } catch (error) {
+      console.error('EnergiaPro bridge import error:', error);
+      return false;
+    }
+  }
+
+  window.EnergiaProBridge = {
+    export: readState,
+    import: writeState,
+  };
+
+  window.addEventListener('message', function (event) {
+    var data = event.data || {};
+
+    if (data.type === 'ENERGIAPRO_EXPORT_REQUEST') {
+      var payload = readState();
+      event.source && event.source.postMessage({
+        type: 'ENERGIAPRO_EXPORT_RESPONSE',
+        requestId: data.requestId,
+        payload: payload
+      }, '*');
+      return;
+    }
+
+    if (data.type === 'ENERGIAPRO_IMPORT_DATA') {
+      var ok = writeState(data.payload || {});
+      event.source && event.source.postMessage({
+        type: 'ENERGIAPRO_IMPORT_ACK',
+        requestId: data.requestId,
+        ok: ok
+      }, '*');
+      return;
+    }
+  });
+})();
+</script>
+
+
+<script>
+(function () {
+  if (window.__ENERGIAPRO_UI__) return;
+
+  function cloneSafe(value) {
+    try {
+      if (typeof structuredClone === 'function') return structuredClone(value);
+    } catch (error) {}
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {
+      return value;
+    }
+  }
+
+  function isSerializable(value) {
+    try {
+      JSON.stringify(value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function cssPath(el) {
+    if (!el || !el.parentElement) return '';
+    if (el.id) return '#' + CSS.escape(el.id);
+
+    const parts = [];
+    let current = el;
+
+    while (current && current.nodeType === 1 && current !== document.body) {
+      let selector = current.tagName.toLowerCase();
+
+      if (current.name) {
+        selector += '[name="' + String(current.name).replace(/"/g, '\\"') + '"]';
+      }
+
+      const parent = current.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children).filter(function (node) {
+          return node.tagName === current.tagName;
+        });
+        if (siblings.length > 1) {
+          const index = siblings.indexOf(current) + 1;
+          selector += ':nth-of-type(' + index + ')';
+        }
+      }
+
+      parts.unshift(selector);
+      current = current.parentElement;
+    }
+
+    return parts.join(' > ');
+  }
+
+  function fieldSnapshot(el, indexByName) {
+    if (!el) return null;
+
+    const isContentEditable = el.getAttribute && el.getAttribute('contenteditable') === 'true';
+
+    const snap = {
+      tag: (el.tagName || '').toLowerCase(),
+      type: (el.type || '').toLowerCase(),
+      id: el.id || '',
+      name: el.name || '',
+      nameIndex: 0,
+      path: cssPath(el),
+      contenteditable: !!isContentEditable
+    };
+
+    if (snap.name) {
+      indexByName[snap.name] = (indexByName[snap.name] || 0) + 1;
+      snap.nameIndex = indexByName[snap.name] - 1;
+    }
+
+    if (isContentEditable) {
+      snap.value = el.textContent || '';
+      return snap;
+    }
+
+    if (snap.type === 'checkbox' || snap.type === 'radio') {
+      snap.checked = !!el.checked;
+      snap.value = el.value;
+      return snap;
+    }
+
+    snap.value = el.value;
+    return snap;
+  }
+
+  function findField(snap) {
+    if (!snap) return null;
+
+    if (snap.id) {
+      const byId = document.getElementById(snap.id);
+      if (byId) return byId;
+    }
+
+    if (snap.name) {
+      const byName = document.getElementsByName(snap.name);
+      if (byName && byName.length) {
+        return byName[snap.nameIndex || 0] || byName[0];
+      }
+    }
+
+    if (snap.path) {
+      try {
+        return document.querySelector(snap.path);
+      } catch (error) {}
+    }
+
+    return null;
+  }
+
+  function applyField(snap) {
+    const el = findField(snap);
+    if (!el) return;
+
+    if (snap.contenteditable) {
+      el.textContent = snap.value || '';
+      return;
+    }
+
+    if (snap.type === 'checkbox' || snap.type === 'radio') {
+      el.checked = !!snap.checked;
+    } else if ('value' in el) {
+      el.value = snap.value == null ? '' : snap.value;
+    }
+
+    ['input', 'change', 'blur'].forEach(function (eventName) {
+      try {
+        el.dispatchEvent(new Event(eventName, { bubbles: true }));
+      } catch (error) {}
+    });
+  }
+
+  function captureFields() {
+    const indexByName = {};
+    return Array.from(
+      document.querySelectorAll('input, select, textarea, [contenteditable="true"]')
+    ).map(function (el) {
+      return fieldSnapshot(el, indexByName);
+    }).filter(Boolean);
+  }
+
+  function captureTables() {
+    return Array.from(document.querySelectorAll('table')).map(function (table, index) {
+      return {
+        id: table.id || '',
+        path: cssPath(table),
+        index: index,
+        html: table.innerHTML
+      };
+    });
+  }
+
+  function restoreTables(tables) {
+    if (!Array.isArray(tables)) return;
+    tables.forEach(function (snap) {
+      let table = null;
+
+      if (snap.id) table = document.getElementById(snap.id);
+
+      if (!table && snap.path) {
+        try { table = document.querySelector(snap.path); } catch (error) {}
+      }
+
+      if (!table && typeof snap.index === 'number') {
+        table = document.querySelectorAll('table')[snap.index] || null;
+      }
+
+      if (table && typeof snap.html === 'string') {
+        table.innerHTML = snap.html;
+      }
+    });
+  }
+
+  function captureStorageArea(area) {
+    const out = {};
+    try {
+      for (let i = 0; i < area.length; i += 1) {
+        const key = area.key(i);
+        if (!key) continue;
+        const value = area.getItem(key);
+        if (value != null) out[key] = value;
+      }
+    } catch (error) {}
+    return out;
+  }
+
+  function restoreStorageArea(area, values) {
+    if (!values || typeof values !== 'object') return;
+    Object.keys(values).forEach(function (key) {
+      try { area.setItem(key, String(values[key])); } catch (error) {}
+    });
+  }
+
+  function captureGlobals() {
+    const patterns = [
+      /carga/i, /termic/i, /thermal/i, /sazon/i, /season/i, /curve/i, /curva/i,
+      /graf/i, /chart/i, /cenario/i, /scenario/i, /baseline/i, /flatten/i,
+      /load/i, /line/i, /dem/i, /thd/i, /qee/i, /reativ/i
+    ];
+
+    const blocked = new Set([
+      '__ENERGIAPRO_UI__','localStorage','sessionStorage','frames','parent','top',
+      'self','window','document','history','navigator','location','performance','console'
+    ]);
+
+    const out = {};
+    Object.keys(window).forEach(function (key) {
+      if (blocked.has(key)) return;
+      if (!patterns.some(function (regex) { return regex.test(key); })) return;
+
+      try {
+        const value = window[key];
+        const type = typeof value;
+        if (
+          value == null ||
+          type === 'string' ||
+          type === 'number' ||
+          type === 'boolean' ||
+          Array.isArray(value) ||
+          (type === 'object' && isSerializable(value))
+        ) {
+          out[key] = cloneSafe(value);
+        }
+      } catch (error) {}
+    });
+
+    return out;
+  }
+
+  function restoreGlobals(globals) {
+    if (!globals || typeof globals !== 'object') return;
+    Object.keys(globals).forEach(function (key) {
+      try { window[key] = cloneSafe(globals[key]); } catch (error) {}
+    });
+  }
+
+  function extractMetricChips() {
+    const matcher = /Média \(alvo\)|Pico agregado|Vale agregado|LF antes|LF depois|Oscilação/i;
+
+    const texts = Array.from(document.querySelectorAll('body *'))
+      .map(function (el) {
+        return (el.textContent || '').replace(/\s+/g, ' ').trim();
+      })
+      .filter(function (text) {
+        return text && text.length <= 220 && matcher.test(text);
+      });
+
+    return Array.from(new Set(texts)).slice(0, 12);
+  }
+
+  function runRenderHooks() {
+    const fnNames = [
+      'renderCenarios','renderCurvaSazonal','renderLinhaCargaAgregada','renderLinhaCarga',
+      'renderLoadLine','renderLoadLineMetrics','renderScenario','renderCharts',
+      'updateScenario','updateCharts','updateAll','refreshAll','recalculateAll',
+      'recalcularTudo','atualizarTudo','atualizarResumo','computeAll'
+    ];
+
+    fnNames.forEach(function (name) {
+      try {
+        if (typeof window[name] === 'function') window[name]();
+      } catch (error) {
+        console.warn('[EnergiaPro UI] hook falhou:', name, error);
+      }
+    });
+  }
+
+  window.__ENERGIAPRO_UI__ = {
+    exportState: function () {
+      const metricChips = extractMetricChips();
+      return {
+        fields: captureFields(),
+        tables: captureTables(),
+        globals: captureGlobals(),
+        storage: {
+          local: captureStorageArea(window.localStorage),
+          session: captureStorageArea(window.sessionStorage)
+        },
+        metricChips: metricChips,
+        loadLineMetrics: metricChips.join(' · '),
+        capturedAt: new Date().toISOString()
+      };
+    },
+    importState: function (state) {
+      if (!state || typeof state !== 'object') return;
+
+      restoreStorageArea(window.localStorage, state.storage && state.storage.local);
+      restoreStorageArea(window.sessionStorage, state.storage && state.storage.session);
+      restoreGlobals(state.globals || {});
+      restoreTables(state.tables || []);
+      (state.fields || []).forEach(applyField);
+
+      setTimeout(runRenderHooks, 0);
+      setTimeout(runRenderHooks, 120);
+      setTimeout(runRenderHooks, 400);
+      setTimeout(runRenderHooks, 900);
+    },
+    refresh: function () {
+      runRenderHooks();
+    }
+  };
+})();
+</script>
+
+</body></html>");w.document.close();setTimeout(function(){w.print()},260)});
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeModal()});
+})();
+</script>
+
+<script>
+(function () {
+  if (window.__ENERGIAPRO_V7_BRIDGE__) return;
+  window.__ENERGIAPRO_V7_BRIDGE__ = true;
+
+  function safeClone(value) {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {
+      return value ?? {};
+    }
+  }
+
+  function readState() {
+    try {
+      if (window.EnergiaPro && typeof window.EnergiaPro.export === 'function') {
+        return safeClone(window.EnergiaPro.export());
+      }
+      if (window.EnergiaPro && typeof window.EnergiaPro.getState === 'function') {
+        return safeClone(window.EnergiaPro.getState());
+      }
+      if (typeof window.exportData === 'function') {
+        return safeClone(window.exportData());
+      }
+      if (typeof window.getState === 'function') {
+        return safeClone(window.getState());
+      }
+      if (window.appState) {
+        return safeClone(window.appState);
+      }
+      if (window.state) {
+        return safeClone(window.state);
+      }
+    } catch (error) {
+      console.error('EnergiaPro bridge export error:', error);
+    }
+    return {};
+  }
+
+  function writeState(payload) {
+    try {
+      if (window.EnergiaPro && typeof window.EnergiaPro.import === 'function') {
+        window.EnergiaPro.import(payload);
+        return true;
+      }
+      if (window.EnergiaPro && typeof window.EnergiaPro.setState === 'function') {
+        window.EnergiaPro.setState(payload);
+        return true;
+      }
+      if (typeof window.importData === 'function') {
+        window.importData(payload);
+        return true;
+      }
+      if (typeof window.setState === 'function') {
+        window.setState(payload);
+        return true;
+      }
+
+      window.__ENERGIAPRO_PREFILL__ = payload;
+      return true;
+    } catch (error) {
+      console.error('EnergiaPro bridge import error:', error);
+      return false;
+    }
+  }
+
+  window.EnergiaProBridge = {
+    export: readState,
+    import: writeState,
+  };
+
+  window.addEventListener('message', function (event) {
+    var data = event.data || {};
+
+    if (data.type === 'ENERGIAPRO_EXPORT_REQUEST') {
+      var payload = readState();
+      event.source && event.source.postMessage({
+        type: 'ENERGIAPRO_EXPORT_RESPONSE',
+        requestId: data.requestId,
+        payload: payload
+      }, '*');
+      return;
+    }
+
+    if (data.type === 'ENERGIAPRO_IMPORT_DATA') {
+      var ok = writeState(data.payload || {});
+      event.source && event.source.postMessage({
+        type: 'ENERGIAPRO_IMPORT_ACK',
+        requestId: data.requestId,
+        ok: ok
+      }, '*');
+      return;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -72,6 +72,28 @@ type ApiEnvelope<T> = {
 
 const PAGE_SIZE = 10;
 
+function normalizeUserRole(profile?: Partial<UserProfile> | null) {
+  const candidates = [profile?.role, profile?.profile, profile?.role_label]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (["admin", "administrator", "administrador"].includes(candidate)) {
+      return "admin";
+    }
+
+    if (["seller", "comercial", "commercial"].includes(candidate)) {
+      return "comercial";
+    }
+
+    if (["manager", "gestor"].includes(candidate)) {
+      return "manager";
+    }
+  }
+
+  return candidates[0] || "";
+}
+
 function MetricCard({
   title,
   value,
@@ -167,6 +189,18 @@ function IconUsers() {
       <circle cx="9.5" cy="7" r="3" />
       <path d="M20 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round" />
       <path d="M16 4.13a3 3 0 0 1 0 5.74" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 4h6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v11a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 8h8" strokeLinecap="round" />
+      <path d="M8 12h8" strokeLinecap="round" />
+      <path d="M8 16h5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -466,6 +500,10 @@ export default function DashboardPage() {
     window.location.href = "/financeiro";
   }
 
+  function handleOpenDiagnostics() {
+    window.location.href = "/diagnostico";
+  }
+
   function handleEditProposal(proposalId: string) {
     if (accessToken) {
       persistAccessToken(accessToken);
@@ -564,8 +602,8 @@ export default function DashboardPage() {
   }
 
   function formatRole(role?: string) {
-    switch ((role || "").toLowerCase()) {
-      case "seller":
+    switch (normalizeUserRole({ role })) {
+      case "comercial":
         return "Comercial";
       case "admin":
         return "Administrador";
@@ -828,7 +866,10 @@ export default function DashboardPage() {
     setCurrentPage(1);
   }
 
-  const isAdmin = (profile?.role || "").toLowerCase() === "admin";
+  const normalizedUserRole = normalizeUserRole(profile);
+  const isAdmin = normalizedUserRole === "admin";
+  const isCommercial = normalizedUserRole === "comercial";
+  const canAccessDiagnostics = isAdmin || isCommercial;
 
   function isOwnProposal(proposal: Proposal) {
     return !!profile?.id && proposal.created_by === profile.id;
@@ -1388,6 +1429,17 @@ export default function DashboardPage() {
       onClick: handleOpenContactsRegistry,
       className: "bg-violet-600 hover:bg-violet-700",
     },
+    ...(canAccessDiagnostics
+      ? [
+          {
+            key: "diagnostico",
+            label: "Diagnóstico",
+            icon: <IconClipboard />,
+            onClick: handleOpenDiagnostics,
+            className: "bg-gradient-to-br from-emerald-600 to-teal-700",
+          },
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -1643,6 +1695,12 @@ export default function DashboardPage() {
                       {isAdmin && (
                         <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-900">
                           Administrador
+                        </span>
+                      )}
+
+                      {!isAdmin && isCommercial && (
+                        <span className="inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-300/30">
+                          Comercial
                         </span>
                       )}
                     </div>
