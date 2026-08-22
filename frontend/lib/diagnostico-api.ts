@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 export type DbStatus =
   | 'rascunho'
   | 'em_revisao'
@@ -94,35 +95,51 @@ export class DiagnosticApiError extends Error {
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
 
-let browserSupabaseClient: ReturnType<typeof createClient> | null = null;
+function waitForRestoredSession(
+  client: SupabaseClient,
+  timeoutMs = 2000
+): Promise<Session | null> {
+  return new Promise((resolve) => {
+    let settled = false;
 
-function getBrowserSupabaseClient() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      subscription.unsubscribe();
+      resolve(null);
+    }, timeoutMs);
 
-  if (browserSupabaseClient) {
-    return browserSupabaseClient;
-  }
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      if (settled) return;
+      if (!session?.access_token) return;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  browserSupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-  return browserSupabaseClient;
+      settled = true;
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+      resolve(session);
+    });
+  });
 }
 
 async function getBrowserAccessToken(): Promise<string | null> {
   try {
-    const client = getBrowserSupabaseClient();
+    const client = getSupabaseBrowserClient();
     if (!client) return null;
 
-    const { data } = await client.auth.getSession();
-    return data.session?.access_token ?? null;
+    const first = await client.auth.getSession();
+    if (first.data.session?.access_token) {
+      return first.data.session.access_token;
+    }
+
+    const restored = await waitForRestoredSession(client);
+    if (restored?.access_token) {
+      return restored.access_token;
+    }
+
+    const second = await client.auth.getSession();
+    return second.data.session?.access_token ?? null;
   } catch (error) {
     console.warn('[diagnostico-api] Falha ao obter access token:', error);
     return null;
@@ -143,23 +160,38 @@ function buildApiUrl(path: string, query?: QueryParams): string {
 }
 
 async function apiFetch(path: string, init?: RequestInit, query?: QueryParams): Promise<Response> {
-  const headers = new Headers(init?.headers ?? {});
-  if (!headers.has('Content-Type') && init?.body) {
-    headers.set('Content-Type', 'application/json');
-  }
+  async function doFetch(forceRetry = false): Promise<Response> {
+    const headers = new Headers(init?.headers ?? {});
 
-  if (!headers.has('Authorization')) {
-    const accessToken = await getBrowserAccessToken();
-    if (accessToken) {
-      headers.set('Authorization', `Bearer ${accessToken}`);
+    if (!headers.has('Content-Type') && init?.body) {
+      headers.set('Content-Type', 'application/json');
     }
+
+    if (!headers.has('Authorization')) {
+      const accessToken = await getBrowserAccessToken();
+      if (accessToken) {
+        headers.set('Authorization', `Bearer ${accessToken}`);
+      }
+    }
+
+    const response = await fetch(buildApiUrl(path, query), {
+      ...init,
+      headers,
+      cache: 'no-store',
+    });
+
+    if (
+      response.status === 401 &&
+      !forceRetry &&
+      !init?.headers
+    ) {
+      return doFetch(true);
+    }
+
+    return response;
   }
 
-  return fetch(buildApiUrl(path, query), {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  return doFetch(false);
 }
 
 async function readResponseBody(response: Response): Promise<unknown> {
