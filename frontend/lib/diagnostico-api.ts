@@ -1,5 +1,6 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+
 export type DbStatus =
   | 'rascunho'
   | 'em_revisao'
@@ -95,51 +96,130 @@ export class DiagnosticApiError extends Error {
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
 
-function waitForRestoredSession(
-  client: SupabaseClient,
-  timeoutMs = 2000
-): Promise<Session | null> {
-  return new Promise((resolve) => {
-    let settled = false;
+let pendingAccessTokenPromise: Promise<string | null> | null = null;
+let authCacheBootstrapped = false;
+let lastKnownAccessToken: string | null = null;
 
-    const timer = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      subscription.unsubscribe();
-      resolve(null);
-    }, timeoutMs);
+function bootstrapAuthCache(client: SupabaseClient) {
+  if (authCacheBootstrapped || typeof window === 'undefined') return;
+  authCacheBootstrapped = true;
 
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
-      if (settled) return;
-      if (!session?.access_token) return;
-
-      settled = true;
-      window.clearTimeout(timer);
-      subscription.unsubscribe();
-      resolve(session);
+  void client.auth
+    .getSession()
+    .then(({ data }) => {
+      lastKnownAccessToken = data.session?.access_token ?? null;
+    })
+    .catch(() => {
+      lastKnownAccessToken = null;
     });
+
+  client.auth.onAuthStateChange((_event, session) => {
+    lastKnownAccessToken = session?.access_token ?? null;
   });
 }
 
-async function getBrowserAccessToken(): Promise<string | null> {
+function waitForRestoredSession(
+  client: SupabaseClient,
+  timeoutMs = 2500
+): Promise<Session | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let pollTimer: number | null = null;
+    let timeoutTimer: number | null = null;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const cleanup = () => {
+      if (pollTimer !== null) {
+        window.clearInterval(pollTimer);
+      }
+
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+      }
+
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+
+    const finish = (session: Session | null) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+
+      if (session?.access_token) {
+        lastKnownAccessToken = session.access_token;
+      }
+
+      resolve(session);
+    };
+
+    const readSession = async () => {
+      try {
+        const { data } = await client.auth.getSession();
+        if (data.session?.access_token) {
+          finish(data.session);
+        }
+      } catch {
+        // noop
+      }
+    };
+
+    const authListener = client.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) return;
+      finish(session);
+    });
+
+    subscription = authListener.data.subscription;
+
+    pollTimer = window.setInterval(() => {
+      void readSession();
+    }, 150);
+
+    timeoutTimer = window.setTimeout(() => {
+      void readSession().then(() => {
+        finish(null);
+      });
+    }, timeoutMs);
+  });
+}
+
+async function getBrowserAccessToken(timeoutMs = 2500): Promise<string | null> {
   try {
     const client = getSupabaseBrowserClient();
-    if (!client) return null;
+    bootstrapAuthCache(client);
+
+    if (pendingAccessTokenPromise) {
+      return pendingAccessTokenPromise;
+    }
 
     const first = await client.auth.getSession();
     if (first.data.session?.access_token) {
+      lastKnownAccessToken = first.data.session.access_token;
       return first.data.session.access_token;
     }
 
-    const restored = await waitForRestoredSession(client);
-    if (restored?.access_token) {
-      return restored.access_token;
-    }
+    pendingAccessTokenPromise = (async () => {
+      const restored = await waitForRestoredSession(client, timeoutMs);
+      if (restored?.access_token) {
+        lastKnownAccessToken = restored.access_token;
+        return restored.access_token;
+      }
 
-    const second = await client.auth.getSession();
-    return second.data.session?.access_token ?? null;
+      const second = await client.auth.getSession();
+      if (second.data.session?.access_token) {
+        lastKnownAccessToken = second.data.session.access_token;
+        return second.data.session.access_token;
+      }
+
+      return lastKnownAccessToken;
+    })();
+
+    try {
+      return await pendingAccessTokenPromise;
+    } finally {
+      pendingAccessTokenPromise = null;
+    }
   } catch (error) {
     console.warn('[diagnostico-api] Falha ao obter access token:', error);
     return null;
@@ -162,13 +242,14 @@ function buildApiUrl(path: string, query?: QueryParams): string {
 async function apiFetch(path: string, init?: RequestInit, query?: QueryParams): Promise<Response> {
   async function doFetch(forceRetry = false): Promise<Response> {
     const headers = new Headers(init?.headers ?? {});
+    const hasExplicitAuthorization = headers.has('Authorization');
 
     if (!headers.has('Content-Type') && init?.body) {
       headers.set('Content-Type', 'application/json');
     }
 
-    if (!headers.has('Authorization')) {
-      const accessToken = await getBrowserAccessToken();
+    if (!hasExplicitAuthorization) {
+      const accessToken = await getBrowserAccessToken(forceRetry ? 1500 : 2500);
       if (accessToken) {
         headers.set('Authorization', `Bearer ${accessToken}`);
       }
@@ -180,11 +261,8 @@ async function apiFetch(path: string, init?: RequestInit, query?: QueryParams): 
       cache: 'no-store',
     });
 
-    if (
-      response.status === 401 &&
-      !forceRetry &&
-      !init?.headers
-    ) {
+    if (response.status === 401 && !forceRetry && !hasExplicitAuthorization) {
+      pendingAccessTokenPromise = null;
       return doFetch(true);
     }
 
@@ -215,7 +293,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const message =
-      typeof body === 'object' && body && 'message' in body && typeof (body as { message?: unknown }).message === 'string'
+      typeof body === 'object' &&
+      body &&
+      'message' in body &&
+      typeof (body as { message?: unknown }).message === 'string'
         ? (body as { message: string }).message
         : `Falha na requisição (${response.status}).`;
 
