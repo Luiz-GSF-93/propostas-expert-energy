@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 import {
@@ -25,6 +26,60 @@ type ApiEnvelope<T> = {
   profile?: T;
 };
 
+async function waitForBrowserSession(timeoutMs = 2500): Promise<Session | null> {
+  const first = await supabase.auth.getSession();
+
+  if (first.data.session?.access_token) {
+    return first.data.session;
+  }
+
+  return new Promise<Session | null>((resolve) => {
+    let settled = false;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const finish = (session: Session | null) => {
+      if (settled) return;
+      settled = true;
+
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+
+      resolve(session);
+    };
+
+    const timer = window.setTimeout(async () => {
+      const second = await supabase.auth.getSession();
+      finish(second.data.session ?? null);
+    }, timeoutMs);
+
+    const authListener = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) return;
+      window.clearTimeout(timer);
+      finish(session);
+    });
+
+    subscription = authListener.data.subscription;
+  });
+}
+
+async function fetchProfileWithRetry(session: Session): Promise<Response> {
+  let response = await apiFetch("/api/auth/me", session.access_token);
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const restoredSession = await waitForBrowserSession(1500);
+
+  if (!restoredSession?.access_token) {
+    return response;
+  }
+
+  response = await apiFetch("/api/auth/me", restoredSession.access_token);
+  return response;
+}
+
 export default function DiagnosticoAccessGuard({
   children,
 }: {
@@ -40,9 +95,9 @@ export default function DiagnosticoAccessGuard({
 
     async function checkAccess() {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        setError("");
+
+        const session = await waitForBrowserSession();
 
         if (!active) return;
 
@@ -54,11 +109,18 @@ export default function DiagnosticoAccessGuard({
 
         setIsAuthenticated(true);
 
-        const response = await apiFetch("/api/auth/me", session.access_token);
+        const response = await fetchProfileWithRetry(session);
 
         if (!active) return;
 
         if (!response.ok) {
+          if (response.status === 401) {
+            setIsAuthenticated(false);
+            setError("Sua sessão expirou. Faça login novamente.");
+            setLoading(false);
+            return;
+          }
+
           setError("Não foi possível carregar o perfil autenticado.");
           setLoading(false);
           return;
@@ -130,7 +192,7 @@ export default function DiagnosticoAccessGuard({
             Faça login para acessar o Diagnóstico
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Esta área exige autenticação. Entre com um usuário válido e tente novamente.
+            {error || "Esta área exige autenticação. Entre com um usuário válido e tente novamente."}
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
