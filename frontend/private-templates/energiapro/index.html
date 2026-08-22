@@ -1631,12 +1631,24 @@ if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoo
     });
   }
 
+  function isAllowedEnergiaStorageKey(key) {
+    const normalized = String(key || '');
+    if (!normalized) return false;
+
+    if (/^sb-/i.test(normalized)) return false;
+    if (/supabase/i.test(normalized)) return false;
+    if (/auth-token/i.test(normalized)) return false;
+    if (/access-token/i.test(normalized)) return false;
+
+    return /^energiaPro\./i.test(normalized) || /^energiapro\./i.test(normalized);
+  }
+
   function captureStorageArea(area) {
     const out = {};
     try {
       for (let i = 0; i < area.length; i += 1) {
         const key = area.key(i);
-        if (!key) continue;
+        if (!key || !isAllowedEnergiaStorageKey(key)) continue;
         const value = area.getItem(key);
         if (value != null) out[key] = value;
       }
@@ -1647,9 +1659,11 @@ if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoo
   function restoreStorageArea(area, values) {
     if (!values || typeof values !== 'object') return;
     Object.keys(values).forEach(function (key) {
+      if (!isAllowedEnergiaStorageKey(key)) return;
       try { area.setItem(key, String(values[key])); } catch (error) {}
     });
   }
+
 
   function captureGlobals() {
     const patterns = [
@@ -1762,6 +1776,7 @@ if(__bc){__bc.addEventListener("click",function(){setTimeout(function(){__epcBoo
 })();
 </script>
 
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body></html>");w.document.close();setTimeout(function(){w.print()},260)});
 document.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeModal()});
 })();
