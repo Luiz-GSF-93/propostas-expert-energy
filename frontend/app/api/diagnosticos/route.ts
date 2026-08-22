@@ -207,15 +207,8 @@ export async function POST(request: Request) {
         ? payloadBody.title.trim()
         : buildTitle(companyName);
 
-    const createdBy =
-      typeof payloadBody.created_by === 'string' && payloadBody.created_by.trim()
-        ? payloadBody.created_by.trim()
-        : null;
-
-    const actorEmail =
-      typeof payloadBody.actor_email === 'string' && payloadBody.actor_email.trim()
-        ? payloadBody.actor_email.trim()
-        : null;
+    const createdBy = auth.user?.id ?? null;
+    const actorEmail = auth.user?.email ?? null;
 
     const origin =
       typeof payloadBody.origin === 'string' && payloadBody.origin.trim()
@@ -255,7 +248,7 @@ export async function POST(request: Request) {
     if (createError) {
       console.error('[POST /api/diagnosticos] erro create:', createError);
       return NextResponse.json(
-        { error: 'Falha ao criar diagnóstico.' },
+        { message: createError.message || 'Falha ao criar diagnóstico.' },
         { status: 500 }
       );
     }
@@ -274,7 +267,7 @@ export async function POST(request: Request) {
       fromStatus: null,
       toStatus: status,
       note,
-      changedBy: createdBy,
+      changedBy: actorEmail ?? createdBy,
     });
 
     await tryInsertAuditLog({
