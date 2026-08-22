@@ -1,5 +1,3 @@
-'use client';
-
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let browserClient: SupabaseClient | null = null;
@@ -14,6 +12,13 @@ export function getSupabaseBrowserClient() {
     throw new Error('Variáveis NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY não configuradas.');
   }
 
-  browserClient = createClient(url, anonKey);
+  browserClient = createClient(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+
   return browserClient;
 }
