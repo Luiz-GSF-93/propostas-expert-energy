@@ -2351,20 +2351,20 @@ setTimeout(function(){ window.__epcBoot(); },500);
   var SECTION_MAP = [
     {
       id: "overview",
-      title: "Visão geral",
+      title: "Visão geral do módulo",
       target: "header",
       cards: [
         {
-          title: "Objetivo do módulo",
-          body: "O diagnóstico consolida dados cadastrais, operacionais, elétricos e térmicos para avaliar perfil de consumo, demanda contratada, sazonalidade, qualidade de energia e oportunidades de otimização."
+          title: "Objetivo do diagnóstico",
+          body: "O módulo transforma dados operacionais, contratuais, elétricos e térmicos em uma leitura técnica e econômica do cliente. Ele serve para identificar picos, sazonalidade, distorções, risco operacional, aderência contratual e oportunidades de melhoria."
         },
         {
-          title: "Como usar",
-          body: "Preencha os dados na ordem das seções. Primeiro cadastre empresa e contrato, depois operação, cargas, histórico de demanda e qualidade da energia. Só então interprete gráficos, indicadores e cenários."
+          title: "Ordem correta de trabalho",
+          body: "A sequência ideal é: 1) empresa e contrato, 2) operação e sazonalidade, 3) cargas elétricas, 4) cargas térmicas, 5) geração existente, 6) qualidade e falhas, 7) histórico de demanda, 8) THD, 9) leitura dos gráficos, 10) conclusão técnica e comercial."
         },
         {
-          title: "Como apresentar",
-          body: "Use o diagnóstico para mostrar contexto do cliente, problema atual, evidências nos gráficos/tabelas e proposta de melhoria baseada em dados."
+          title: "Resultado esperado",
+          body: "Ao final, o analista deve ser capaz de explicar o cenário atual do cliente, justificar os números com base nas entradas do sistema e apresentar oportunidades com embasamento técnico."
         }
       ]
     },
@@ -2374,16 +2374,20 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#razao",
       cards: [
         {
-          title: "Finalidade",
-          body: "Esta seção define o contexto contratual e regulatório do cliente. Mercado, modalidade, tensão, distribuidora e demanda contratada influenciam tarifas, leitura da demanda e comparativos."
+          title: "Finalidade da seção",
+          body: "Define o contexto do cliente: ambiente tarifário, distribuidora, tipo de contratação, tensão, modalidade e bases da demanda. Erros nessa etapa distorcem todas as análises seguintes."
         },
         {
-          title: "O que preencher com atenção",
-          body: "Razão social, CNPJ, segmento, distribuidora, mercado, modalidade, DC, DC ponta e fora ponta, fator de potência e tarifas."
+          title: "O que preencher com exatidão",
+          body: "Razão social, CNPJ, segmento, tensão, distribuidora, mercado, modalidade tarifária, demanda contratada, fator de potência e tarifas."
+        },
+        {
+          title: "Como obter os dados",
+          body: "Use contrato de fornecimento, fatura de energia, cadastro da unidade consumidora e informações confirmadas pelo cliente."
         },
         {
           title: "Impacto no diagnóstico",
-          body: "Erros aqui afetam diretamente o cálculo econômico, leitura de ultrapassagem e cenários de economia."
+          body: "Essa seção influencia cálculo econômico, leitura de ultrapassagem, comparação ponta/fora ponta e credibilidade da proposta."
         }
       ]
     },
@@ -2393,12 +2397,16 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#turnos",
       cards: [
         {
-          title: "Finalidade",
-          body: "Traduz a rotina operacional do cliente em horas, dias e sazonalidade. Esses dados influenciam carga agregada, perfil mensal e recomendações de redistribuição operacional."
+          title: "Finalidade da seção",
+          body: "Traduz a rotina produtiva em parâmetros energéticos. Turnos, horas de operação, dias úteis e sazonalidade afetam diretamente a linha de carga e a projeção mensal."
         },
         {
-          title: "Leitura correta",
-          body: "Turnos, horas/dia, dias úteis/mês, fator de utilização e operação sazonal devem refletir a operação real, não uma média intuitiva."
+          title: "O que observar",
+          body: "Se a empresa tem alta e baixa de operação ao longo do ano, se trabalha em mais de um turno, se tem paradas programadas ou sazonalidade comercial/produtiva."
+        },
+        {
+          title: "Risco de erro",
+          body: "Informar uma média genérica em vez da operação real reduz a qualidade dos gráficos e pode esconder picos e vales importantes."
         }
       ]
     },
@@ -2408,12 +2416,16 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#cList",
       cards: [
         {
-          title: "Finalidade",
-          body: "Lista os principais consumidores elétricos. Cada carga ajuda a compor o perfil agregado de energia e sustenta a análise de estabilidade, sazonalidade e gestão."
+          title: "Finalidade da seção",
+          body: "Identificar os principais consumidores elétricos e construir a base da energia agregada do cliente."
         },
         {
-          title: "Como interpretar",
-          body: "As cargas alimentam os gráficos e ajudam a entender quais equipamentos puxam os picos e onde existem oportunidades de deslocamento ou controle."
+          title: "Como preencher",
+          body: "Cadastre as cargas relevantes com potência, fator de demanda, horas de uso e parâmetros associados. Quanto mais fiel ao campo, mais confiável a leitura."
+        },
+        {
+          title: "Como interpretar depois",
+          body: "As cargas ajudam a explicar meses críticos, estabilização possível, deslocamento de consumo e efeito das ações operacionais."
         }
       ]
     },
@@ -2423,23 +2435,31 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#tList",
       cards: [
         {
-          title: "Finalidade",
-          body: "Transforma consumo térmico em equivalente energético para comparação e análise integrada com as cargas elétricas."
+          title: "Finalidade da seção",
+          body: "Converter cargas térmicas em equivalente energético para leitura integrada com o sistema elétrico."
+        },
+        {
+          title: "Importância estratégica",
+          body: "Essa seção é especialmente valiosa em propostas de eficiência, retrofit, substituição tecnológica e suavização do perfil agregado."
         },
         {
           title: "Como apresentar",
-          body: "Essa seção é importante para explicar ganhos por eficiência térmica, substituição tecnológica e suavização de perfil."
+          body: "Mostre ao cliente como o comportamento térmico também pressiona custo, estabilidade e sazonalidade."
         }
       ]
     },
     {
       id: "geracao",
-      title: "5. Geração Atual",
+      title: "5. Geração Atual Existente",
       target: "#ger_atual",
       cards: [
         {
-          title: "Finalidade",
-          body: "Mapeia geração própria já existente, combustível, custo e contribuição operacional."
+          title: "Finalidade da seção",
+          body: "Registrar fontes próprias já existentes e medir sua contribuição técnica e econômica."
+        },
+        {
+          title: "O que observar",
+          body: "Tipo de geração, combustível, consumo específico, custo, opex e relação com a operação atual."
         }
       ]
     },
@@ -2449,8 +2469,12 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#pisc_mes",
       cards: [
         {
-          title: "Finalidade",
-          body: "Registra falhas, quedas, impactos e criticidade da operação. Isso ajuda a sustentar projetos de confiabilidade, backup e mitigação de perdas."
+          title: "Finalidade da seção",
+          body: "Capturar o impacto da qualidade de suprimento na produção, na continuidade operacional e na justificativa de soluções de confiabilidade."
+        },
+        {
+          title: "Como interpretar",
+          body: "Piscadas, quedas, eventos críticos, duração e custo da hora impactada ajudam a justificar ações como backup, proteção, armazenamento ou reconfiguração."
         }
       ]
     },
@@ -2460,12 +2484,16 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#demHist",
       cards: [
         {
-          title: "Como ler a tabela",
-          body: "Compare a demanda contratada com a registrada mês a mês. Quando a registrada supera o limite regulatório, o sistema evidencia ultrapassagem e impacto financeiro."
+          title: "Como preencher corretamente",
+          body: "Use a série histórica real do cliente, com demanda contratada e demanda registrada mês a mês. Em Azul, validar ponta e fora ponta separadamente."
         },
         {
-          title: "O que observar",
-          body: "Meses com pico acima da média, padrão de repetição, contratação inadequada e oportunidade de reequilíbrio."
+          title: "Como ler a tabela",
+          body: "Compare o contratado com o registrado. Se o registrado ultrapassa o limite regulatório, existe evidência de ultrapassagem, possível penalidade e oportunidade de readequação."
+        },
+        {
+          title: "O que apresentar ao cliente",
+          body: "Destaque recorrência de picos, desperdício contratual, sazonalidade do uso e potencial de ganho anual com ajuste da demanda."
         }
       ]
     },
@@ -2475,27 +2503,77 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#thdRows",
       cards: [
         {
-          title: "Finalidade",
-          body: "Avaliar distorções harmônicas, riscos operacionais e aderência aos limites técnicos."
+          title: "Finalidade da seção",
+          body: "Avaliar distorções harmônicas, riscos de aquecimento, perda de desempenho e não conformidade técnica."
+        },
+        {
+          title: "Como interpretar",
+          body: "Observe criticidade, circuitos com maior distorção, desbalanceamentos e necessidade de mitigação."
+        },
+        {
+          title: "Uso comercial",
+          body: "Essa seção fortalece propostas de filtros, correções e intervenções de qualidade energética com base técnica."
+        }
+      ]
+    },
+    {
+      id: "tabelas",
+      title: "Leitura de tabelas",
+      target: "#demRes",
+      cards: [
+        {
+          title: "Tabela de demanda",
+          body: "A leitura correta deve responder: houve sobra contratada, houve ultrapassagem, em quais meses ocorreu, qual foi o padrão e qual é a recomendação econômica."
+        },
+        {
+          title: "Tabela THD",
+          body: "A leitura correta deve identificar circuito, indicador fora de faixa, severidade e impacto provável na confiabilidade ou durabilidade do sistema."
+        },
+        {
+          title: "Boa prática",
+          body: "Nunca apresentar a tabela apenas como dado bruto; sempre transformar em conclusão técnica e recomendação objetiva."
         }
       ]
     },
     {
       id: "graficos",
       title: "Leitura de gráficos",
-      target: "#sezChart",
+      target: "#loadLineChart",
       cards: [
         {
           title: "Curva sazonal",
-          body: "Mostra como os fatores mensais se comportam ao longo do ano e ajuda a explicar picos, vales e sazonalidade operacional."
+          body: "Mostra o comportamento mensal relativo das cargas. Deve ser usada para explicar concentração de consumo, meses de alta e meses de baixa."
         },
         {
           title: "Linha de carga agregada",
-          body: "Compara o comportamento agregado mensal com sua tendência suavizada e com a linha-alvo média. Quanto mais estável a curva, melhor o fator de carga e maior a previsibilidade operacional."
+          body: "Compara o comportamento agregado real com uma tendência suavizada e com a linha-alvo média. Quanto menor a oscilação e maior o fator de carga, maior a estabilidade operacional."
         },
         {
-          title: "Como apresentar ao cliente",
-          body: "Mostre o mês de pico, o mês de vale, a distância para a média e quais ações operacionais ou tecnológicas podem reduzir a oscilação."
+          title: "Como interpretar a linha alvo",
+          body: "A linha alvo representa a média mensal agregada. Ela serve como referência de equilíbrio. Meses muito acima dela indicam pressão de pico; meses muito abaixo indicam vales operacionais."
+        },
+        {
+          title: "Como apresentar",
+          body: "Aponte mês de pico, mês de vale, distância para a média e quais ações podem reduzir a oscilação: deslocamento de carga, ajuste de rotina, armazenagem, automação ou substituição tecnológica."
+        }
+      ]
+    },
+    {
+      id: "apresentacao",
+      title: "Como apresentar ao cliente",
+      target: "#btnCalc",
+      cards: [
+        {
+          title: "Ordem de apresentação recomendada",
+          body: "1) contexto do cliente, 2) leitura do problema atual, 3) evidências nas tabelas e gráficos, 4) impacto técnico/econômico, 5) recomendação."
+        },
+        {
+          title: "Transformar dado em argumento",
+          body: "Não diga apenas o número. Explique o que ele significa, por que importa, como afeta custo, risco ou estabilidade, e qual ação faz sentido."
+        },
+        {
+          title: "Linguagem comercial/técnica",
+          body: "A apresentação deve equilibrar precisão técnica com clareza executiva. Mostre fatos, explique o impacto e conclua com proposta concreta."
         }
       ]
     },
@@ -2505,8 +2583,12 @@ setTimeout(function(){ window.__epcBoot(); },500);
       target: "#btnCalc",
       cards: [
         {
-          title: "Erros que comprometem o diagnóstico",
-          body: "Preencher demanda com valor estimado, usar modalidade errada, ignorar sazonalidade real, omitir cargas relevantes e lançar tarifas fora da fatura."
+          title: "Erros que distorcem o diagnóstico",
+          body: "Usar modalidade errada, preencher demanda estimada, ignorar sazonalidade, omitir cargas relevantes, lançar tarifas divergentes da fatura, tratar dado eventual como padrão permanente."
+        },
+        {
+          title: "Boa prática final",
+          body: "Antes de apresentar, valide coerência entre dados de entrada, tabelas, gráficos e conclusão. O tutorial deve apoiar esse processo."
         }
       ]
     }
@@ -2515,67 +2597,111 @@ setTimeout(function(){ window.__epcBoot(); },500);
   var FIELD_HELP = {
     mercado: {
       title: "Mercado",
-      text: "Define se o cliente está no ambiente cativo (ACR) ou livre (ACL). Esse campo influencia tarifas, análise comparativa e interpretação econômica."
+      text: "Define se a unidade está no ambiente cativo (ACR) ou livre (ACL). Esse campo altera premissas econômicas e interpretação tarifária."
     },
     modalidade: {
       title: "Modalidade",
-      text: "Indica a forma contratual da demanda. Impacta leitura de ponta, fora ponta, ultrapassagem e estratégia de ajuste."
+      text: "Define a estrutura tarifária aplicada ao cliente. Em especial, afeta a leitura da demanda contratada e registrada."
+    },
+    razao: {
+      title: "Razão Social",
+      text: "Identificação formal do cliente. Deve ser preenchida com precisão para manter consistência documental."
+    },
+    cnpj: {
+      title: "CNPJ",
+      text: "Registro fiscal da empresa. Use o dado oficial para evitar divergência em proposta e documentação."
+    },
+    tensao: {
+      title: "Tensão",
+      text: "Define a condição de atendimento da unidade e influencia análise técnica e enquadramento."
+    },
+    distribuidora: {
+      title: "Distribuidora",
+      text: "Base para leitura tarifária, regulatória e alinhamento com o contrato/fatura da unidade."
     },
     dc: {
       title: "DC (kW)",
-      text: "Informe a demanda contratada atual da unidade. É a base para analisar excesso de demanda e oportunidade de recontratação."
+      text: "Demanda contratada atual. É um dos campos mais críticos para análise de custo, ultrapassagem e recontratação."
     },
     dcP: {
-      title: "DC Ponta (kW)",
-      text: "Usado na modalidade Azul. Deve refletir o valor contratual real da ponta."
+      title: "DC Ponta",
+      text: "Valor de demanda contratada no horário de ponta, aplicável à modalidade Azul."
     },
     dcFP: {
-      title: "DC Fora Ponta (kW)",
-      text: "Usado na modalidade Azul. Afeta a análise financeira e regulatória da demanda."
+      title: "DC Fora Ponta",
+      text: "Valor de demanda contratada fora ponta, também essencial na modalidade Azul."
     },
     fp: {
       title: "Fator de Potência",
-      text: "Indica qualidade do uso da energia. Valores baixos podem gerar penalidades e reforçar necessidade de correção."
+      text: "Indica a qualidade do uso da energia elétrica. Valores baixos podem gerar penalidade e necessidade de correção."
     },
     TE_p_: {
       title: "TE Ponta",
-      text: "Tarifa de energia na ponta. Deve ser coerente com a distribuidora e o mercado do cliente."
+      text: "Tarifa de energia do horário de ponta. Deve refletir a realidade contratual/faturada."
     },
     TE_fp_: {
       title: "TE Fora Ponta",
-      text: "Tarifa de energia fora ponta. Afeta cálculo econômico mensal e anual."
+      text: "Tarifa de energia fora ponta. Impacta diretamente o cálculo de custo energético."
     },
     TUSD_dem_: {
       title: "TUSD Demanda",
-      text: "Tarifa de uso do sistema vinculada à demanda. Campo essencial para avaliar custo de contratação."
+      text: "Tarifa associada à demanda. É fundamental para leitura de sobrecontratação, subcontratação e penalidade."
     },
     sazonal: {
       title: "Operação sazonal",
-      text: "Indique se o consumo varia ao longo do ano. Essa informação altera a leitura das curvas e recomendações."
+      text: "Indica se o consumo varia ao longo do ano. Afeta gráficos, curvas e interpretação do perfil mensal."
     },
     turnos: {
       title: "Turnos",
-      text: "Quantidade de turnos de operação. Ajuda a traduzir comportamento real da carga."
+      text: "Quantidade de turnos operacionais. Ajuda a traduzir intensidade de uso e ocupação energética."
     },
     hd: {
       title: "Horas por dia",
-      text: "Número médio de horas operadas por dia. Afeta energia mensal e linha de carga."
+      text: "Número médio de horas operadas por dia. Impacta energia mensal e formação da linha de carga."
     },
     dm: {
       title: "Dias úteis por mês",
-      text: "Usado para estimar consumo mensal e intensidade operacional."
+      text: "Base para cálculo mensal das cargas e consolidação do perfil energético."
     },
     fu: {
       title: "Fator de Utilização",
-      text: "Representa quanto da capacidade é realmente usada. Campo importante para realismo do diagnóstico."
+      text: "Representa quanto da capacidade instalada é efetivamente usada. Deve refletir a rotina real, não percepção genérica."
+    },
+    ger_atual: {
+      title: "Possui geração",
+      text: "Indica se já existe fonte de geração no cliente. Isso muda a interpretação do cenário atual."
+    },
+    ger_cap: {
+      title: "Capacidade de geração",
+      text: "Capacidade instalada da geração existente, importante para comparação com consumo e confiabilidade."
     },
     pisc_mes: {
-      title: "Piscadas e falhas",
-      text: "Ajuda a mensurar sensibilidade da operação e impacto de falhas na rede."
+      title: "Piscadas por mês",
+      text: "Indicador de instabilidade percebida. Ajuda a justificar análise de confiabilidade."
+    },
+    queda_mes: {
+      title: "Quedas por mês",
+      text: "Mostra frequência de interrupções, com impacto direto na produção e no risco operacional."
+    },
+    queda_dur: {
+      title: "Duração das quedas",
+      text: "Permite estimar o tempo total perdido e sua repercussão operacional."
+    },
+    crit_ano: {
+      title: "Eventos críticos por ano",
+      text: "Representa falhas mais severas, usadas para justificar soluções de proteção ou backup."
+    },
+    crit_dur: {
+      title: "Duração de eventos críticos",
+      text: "Importante para mensurar impacto acumulado e custo de indisponibilidade."
     },
     prod_h: {
       title: "Produção afetada por hora",
-      text: "Valor econômico associado à parada ou perda operacional por indisponibilidade."
+      text: "Traduz a falha elétrica em perda econômica. Campo essencial para apresentação executiva."
+    },
+    voll: {
+      title: "VOLL",
+      text: "Valor da energia não suprida. Ajuda a quantificar impacto de indisponibilidade."
     }
   };
 
