@@ -2,24 +2,35 @@
 
 import { useEffect, useState } from 'react';
 
-function buildAuditBootstrap(token: string) {
+function findDiagnosticIdFromText(text: string) {
+  const match = String(text || '').match(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i
+  );
+  return match ? match[0] : null;
+}
+
+function buildAuditBootstrap(token: string, diagnosticId: string | null) {
   const safeToken = JSON.stringify(token);
+  const safeDiagnosticId = JSON.stringify(diagnosticId);
 
   return `
 <script>
 (function () {
   var TOKEN = ${safeToken};
+  var FORCED_DIAGNOSTIC_ID = ${safeDiagnosticId};
   var sentAt = Object.create(null);
 
   function findDiagnosticId() {
     try {
+      if (FORCED_DIAGNOSTIC_ID) return FORCED_DIAGNOSTIC_ID;
+
       var href = String(window.location.href || '');
       var ref = String(document.referrer || '');
       var text = href + ' ' + ref;
       var match = text.match(/\\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b/i);
       return match ? match[0] : null;
     } catch (_) {
-      return null;
+      return FORCED_DIAGNOSTIC_ID || null;
     }
   }
 
@@ -112,6 +123,7 @@ function buildAuditBootstrap(token: string) {
 
 export default function EnergiaProPrivatePage() {
   const [message, setMessage] = useState('Aguardando autenticação do diagnóstico...');
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,19 +150,23 @@ export default function EnergiaProPrivatePage() {
         }
 
         let html = await response.text();
-        const auditScript = buildAuditBootstrap(token);
+
+        const diagnosticId = findDiagnosticIdFromText(
+          `${window.location.href} ${document.referrer || ''}`
+        );
+
+        const auditScript = buildAuditBootstrap(token, diagnosticId);
 
         if (html.includes('</body>')) {
-          html = html.replace('</body>', auditScript + '\n</body>');
+          html = html.replace('</body>', `${auditScript}\n</body>`);
         } else {
           html += auditScript;
         }
 
         if (cancelled) return;
 
-        document.open();
-        document.write(html);
-        document.close();
+        setHtmlContent(html);
+        setMessage('EnergiaPro privado carregado.');
       } catch (error) {
         console.error(error);
         if (!cancelled) {
@@ -188,6 +204,22 @@ export default function EnergiaProPrivatePage() {
       window.removeEventListener('message', onMessage);
     };
   }, []);
+
+  if (htmlContent) {
+    return (
+      <iframe
+        title="EnergiaPro protegido"
+        srcDoc={htmlContent}
+        style={{
+          width: '100%',
+          height: '100vh',
+          border: 'none',
+          display: 'block',
+          background: '#fff',
+        }}
+      />
+    );
+  }
 
   return (
     <main style={{ padding: 24, fontFamily: 'Arial, sans-serif', color: '#0f172a' }}>
