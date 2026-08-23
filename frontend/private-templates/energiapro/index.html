@@ -1966,5 +1966,127 @@ setTimeout(function(){ window.__epcBoot(); },500);
 </script>
 
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+
+<script>
+(function(){
+  /* EPC_LOADLINE_TOOLTIP_OVERRIDE */
+  window.renderLoadLineChart = renderLoadLineChart = function(d){
+    var root = $("loadLineChart"); if(!root) return;
+    var metricRoot = $("loadLineMetrics"); if(metricRoot) metricRoot.innerHTML = "";
+    root.innerHTML = "";
+
+    var padL=42,padR=20,padT=20,H=200,W=600-12;
+    var raw = __epcLoadProfile(d||{});
+    var smooth = __epcMA3(raw);
+
+    var meanMetric = 0;
+    for(var i=0;i<12;i++) meanMetric += raw[i] || 0;
+    meanMetric = meanMetric / 12;
+
+    var target = new Array(12).fill(meanMetric);
+
+    var mRaw = __epcMetrics(raw);
+    var mSm  = __epcMetrics(smooth);
+
+    if(metricRoot){
+      function card(lbl,val,color){
+        return '<div style="background:#f1f5f9;border-radius:6px;padding:5px 9px;font-size:11px;border:1px solid var(--line)"><span style="color:#475569">'+lbl+': </span><b style="color:'+color+'">'+val+'</b></div>';
+      }
+      metricRoot.innerHTML =
+        card("Média (alvo)", Math.round(meanMetric).toLocaleString("pt-BR")+" kWh/mês","#7c3aed")+
+        card("Pico agregado", Math.round(mRaw.peak).toLocaleString("pt-BR")+" kWh · "+MESES[mRaw.peakIdx],"#0b6bcb")+
+        card("Vale agregado",  Math.round(mRaw.valley).toLocaleString("pt-BR")+" kWh · "+MESES[mRaw.valleyIdx],"#0b6bcb")+
+        card("LF antes (raw)", (mRaw.LF*100).toFixed(1)+"%","#c77700")+
+        card("LF depois (suavizado)", (mSm.LF*100).toFixed(1)+"%","#0d6a42")+
+        card("Oscilação ↓", ((mRaw.osc-mSm.osc)*100).toFixed(1)+" pp","#0d6a42");
+    }
+
+    var ymax=0;
+    for(var j=0;j<12;j++){
+      if((+raw[j]||0)>ymax) ymax=raw[j];
+      if((+smooth[j]||0)>ymax) ymax=smooth[j];
+      if((+target[j]||0)>ymax) ymax=target[j];
+    }
+    ymax=Math.max(ymax,1);
+
+    svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
+    svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
+
+    [0,0.25,0.5,0.75,1].forEach(function(pct){
+      var y=padT+H-pct*H;
+      svgE("line",{x1:padL,y1:y,x2:padL+W,y2:y,stroke:"#eef1f6"},root);
+      svgE("text",{x:padL-6,y:y+4,"text-anchor":"end",fill:"#5b6b82","font-size":9},root,Math.round(pct*ymax).toLocaleString("pt-BR"));
+    });
+
+    var xs=MESES.map(function(m,i){ return padL+i*(W/11); });
+    MESES.forEach(function(m,i){
+      svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m);
+    });
+
+    function plot(arr,color,w,dash,dots,opacity,label,unit){
+      if(!arr||!arr.length) return;
+      var path=arr.map(function(v,i){
+        return (i===0?"M":"L")+xs[i]+" "+(padT+H-((+v||0)/ymax)*H);
+      }).join(" ");
+      svgE("path",{d:path,stroke:color,"stroke-width":w||2,fill:"none","stroke-dasharray":dash||"",opacity:opacity||1},root);
+
+      if(dots!==false){
+        arr.forEach(function(v,i){
+          var val = (arr===target ? meanMetric : (+v||0));
+          var c = svgE("circle",{
+            cx:xs[i],
+            cy:padT+H-((+v||0)/ymax)*H,
+            r:5,
+            fill:color,
+            stroke:"transparent",
+            "stroke-width":10,
+            "pointer-events":"all"
+          },root);
+          c.setAttribute("data-mes",MESES[i]);
+          c.setAttribute("data-serie",label||"Série");
+          c.setAttribute("data-val",String(val));
+          c.setAttribute("data-unid",unit||"kWh/mês");
+          try{ c.style.cursor="pointer"; }catch(_){}
+        });
+      }
+    }
+
+    plot(target,"#7c3aed",2.5,"6 4",true,0.95,"Linha alvo (média mensal)","kWh/mês");
+    plot(smooth,"#0d6a42",3,"",true,0.95,"Tendência suavizada (MA-3)","kWh/mês");
+    plot(raw,"#0b6bcb",1.8,"",true,0.85,"Agregado real","kWh/mês");
+
+    svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":"700"},root,"Linha de carga agregada (elétrico + térmico equivalente) · alvo + suavização MA-3");
+
+    var lx=padL+W-160;
+    svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);
+    svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado real (kWh/mês)");
+    svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);
+    svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Tendência suavizada (MA-3)");
+    svgE("rect",{x:lx,y:padT+40,width:10,height:10,fill:"#7c3aed"},root);
+    svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (média mensal)");
+
+    try{
+      window.__EPC_FLAT = {
+        raw: raw.map(function(v){return +v||0}),
+        smooth: smooth.map(function(v){return +v||0}),
+        target: target.map(function(v){return +v||0}),
+        mean: +meanMetric,
+        LF_raw: mRaw.LF,
+        LF_smooth: mSm.LF,
+        osc_raw: mRaw.osc,
+        osc_smooth: mSm.osc,
+        peakIdx: mRaw.peakIdx,
+        valleyIdx: mRaw.valleyIdx
+      };
+    }catch(_){}
+
+    try{ bind(document.getElementById("loadLineChart")); }catch(_){}
+  };
+
+  try{ renderLoadLineChart(window.__EP_LAST || {}); }catch(_){}
+  try{ if(typeof window.__epcBoot === "function") window.__epcBoot(); }catch(_){}
+})();
+</script>
+
 </body>
 </html>
