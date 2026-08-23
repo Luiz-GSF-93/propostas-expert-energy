@@ -492,6 +492,115 @@ main{max-width:1500px;margin:0 auto;padding:14px}
   }
 </style>
 
+<!-- ENERGIAPRO_DIAG_TUTORIAL_STAGE3 --><style id="diag-tutorial-stage3-style">
+  .diag-stage3{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    margin-top:18px;
+    padding:16px 14px;
+    border-top:1px solid rgba(148,163,184,.22);
+    background:rgba(2,6,23,.18);
+  }
+  .diag-stage3-title{
+    margin:0 0 10px;
+    font-size:15px;
+    font-weight:800;
+    color:#e5eefc;
+  }
+  .diag-stage3-lead{
+    margin:0 0 14px;
+    font-size:12px;
+    line-height:1.6;
+    color:#cbd5e1;
+  }
+  .diag-stage3-grid{
+    display:grid;
+    gap:10px;
+  }
+  .diag-stage3-card{
+    background:rgba(15,23,42,.55);
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:12px;
+    padding:12px;
+  }
+  .diag-stage3-card h4{
+    margin:0 0 8px;
+    font-size:13px;
+    color:#f8fafc;
+    font-weight:800;
+  }
+  .diag-stage3-card p,
+  .diag-stage3-card li{
+    font-size:12px;
+    line-height:1.6;
+    color:#dbeafe;
+  }
+  .diag-stage3-card ul,
+  .diag-stage3-card ol{
+    margin:8px 0 0 18px;
+    padding:0;
+  }
+  .diag-stage3-quote{
+    margin:8px 0 0;
+    padding:10px 12px;
+    border-left:3px solid #60a5fa;
+    background:rgba(30,41,59,.45);
+    border-radius:8px;
+    color:#eff6ff;
+    font-size:12px;
+    line-height:1.6;
+  }
+  .diag-stage3-accordion details{
+    background:rgba(15,23,42,.42);
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .diag-stage3-accordion summary{
+    cursor:pointer;
+    list-style:none;
+    font-size:12px;
+    font-weight:800;
+    color:#f3f7ff;
+  }
+  .diag-stage3-anchor-list{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin:10px 0 14px;
+  }
+  .diag-stage3-anchor{
+    display:block;
+    text-decoration:none;
+    padding:8px 10px;
+    border-radius:10px;
+    background:rgba(30,41,59,.45);
+    border:1px solid rgba(148,163,184,.14);
+    color:#dbeafe;
+    font-size:12px;
+    font-weight:700;
+  }
+  .diag-stage3-anchor:hover{
+    background:rgba(37,99,235,.18);
+  }
+  .diag-stage3-mini-title{
+    margin:12px 0 6px;
+    font-size:12px;
+    font-weight:800;
+    color:#f8fbff;
+  }
+  .diag-stage3-kv{
+    display:grid;
+    grid-template-columns:110px 1fr;
+    gap:6px 10px;
+    margin-top:10px;
+  }
+  .diag-stage3-k{color:#93c5fd;font-weight:800;font-size:12px;line-height:1.55;}
+  .diag-stage3-v{color:#dbeafe;font-size:12px;line-height:1.55;}
+</style>
+
 </head>
 <body>
 <div class="printHeader"><img src="https://www.expertenergy.com.br/images/logo-expert-energy.png" alt="Expert Energy Performance em Energia Ltda" onerror="this.style.display='none'"><div class="ptxt"><b>Expert Energy Performance em Energia Ltda</b><br><small>www.expertenergy.com.br — Proposta técnica EnergiaPro v1.6.14</small></div></div>
@@ -3141,110 +3250,47 @@ setTimeout(function(){ window.__epcBoot(); },500);
 </script>
 
 
+
+
 <script id="diag-tutorial-stage3-script">
 /* ENERGIAPRO_DIAG_TUTORIAL_STAGE3 */
 (function(){
-  function bySelectors(root, selectors){
-    for(var i=0;i<selectors.length;i++){
-      try{
-        var el = root.querySelector(selectors[i]);
-        if(el) return el;
-      }catch(_){}
-    }
-    return null;
-  }
+  function q(sel,root){ try{return (root||document).querySelector(sel)}catch(_){return null} }
+  function qa(sel,root){ try{return Array.from((root||document).querySelectorAll(sel))}catch(_){return []} }
 
   function getPanel(){
-    return document.getElementById("diagHelpPanel")
-      || document.querySelector(".diag-help-panel")
-      || document.querySelector("[data-diag-help-panel]");
+    return q('#diagHelpPanel')
+      || q('.diag-help-panel')
+      || q('[data-diag-help-panel]')
+      || q('.diag-help-drawer')
+      || q('.diag-tutorial-panel');
   }
 
   function getPanelBody(panel){
-    return bySelectors(panel, [
-      "[data-diag-help-body]",
-      ".diag-help-body",
-      ".diag-help-content",
-      ".diag-help-scroll",
-      ".diag-help-panel__body",
-      ".diag-help-inner"
-    ]) || panel;
+    if(!panel) return null;
+    return q('[data-diag-help-body]',panel)
+      || q('.diag-help-body',panel)
+      || q('.diag-help-content',panel)
+      || q('.diag-help-scroll',panel)
+      || q('.diag-help-panel__body',panel)
+      || q('.diag-help-inner',panel)
+      || panel;
   }
 
   function getPanelNav(panel){
-    return bySelectors(panel, [
-      "[data-diag-help-nav]",
-      ".diag-help-nav",
-      ".diag-help-index",
-      ".diag-help-menu",
-      "nav"
-    ]);
+    if(!panel) return null;
+    return q('[data-diag-help-nav]',panel)
+      || q('.diag-help-nav',panel)
+      || q('.diag-help-index',panel)
+      || q('.diag-help-menu',panel)
+      || q('nav',panel);
   }
 
-  function scrollToLocalId(id){
-    var target = document.getElementById(id);
-    if(!target) return;
-    try{ target.scrollIntoView({behavior:"smooth", block:"start"}); }
-    catch(_){ target.scrollIntoView(true); }
-  }
-
-  function ensureNavLink(nav, id, label){
-    if(!nav) return;
-    if(nav.querySelector('[data-stage3-link="'+id+'"]')) return;
-    var a = document.createElement("a");
-    a.href = "#"+id;
-    a.className = "diag-stage3-anchor";
-    a.setAttribute("data-stage3-link", id);
-    a.textContent = label;
-    a.addEventListener("click", function(ev){
-      ev.preventDefault();
-      scrollToLocalId(id);
-    });
-    nav.appendChild(a);
-  }
-
-  function card(title, html){
+  function buildStage3Html(){
     return '' +
-      '<section class="diag-stage3-card">' +
-        '<h4>'+title+'</h4>' +
-        html +
-      '</section>';
-  }
-
-  function details(title, html, open){
-    return '' +
-      '<details '+(open ? 'open' : '')+'>' +
-        '<summary>'+title+'</summary>' +
-        html +
-      '</details>';
-  }
-
-  function injectStage3(){
-    var panel = getPanel();
-    if(!panel) return false;
-
-    var body = getPanelBody(panel);
-    if(!body) return false;
-
-    if(document.getElementById("diagTutorialStage3")) return true;
-
-    var wrap = document.createElement("section");
-    wrap.id = "diagTutorialStage3";
-    wrap.className = "diag-stage3";
-    wrap.innerHTML =
+    '<section id="diagTutorialStage3" class="diag-stage3">' +
       '<h3 class="diag-stage3-title">Aprofundamento técnico · Etapa 3</h3>' +
-      '<p class="diag-stage3-lead">' +
-        'Este módulo aprofunda a leitura do diagnóstico para uso técnico, comercial e executivo. ' +
-        'A ideia é transformar o preenchimento em argumento consultivo, melhorar a interpretação de gráficos e ' +
-        'padronizar a apresentação ao cliente com segurança técnica.' +
-      '</p>' +
-
-      '<div class="diag-stage3-chip-row">' +
-        '<span class="diag-stage3-chip">Leitura orientada</span>' +
-        '<span class="diag-stage3-chip">Argumentação comercial</span>' +
-        '<span class="diag-stage3-chip">Padrão executivo</span>' +
-        '<span class="diag-stage3-chip">FAQ operacional</span>' +
-      '</div>' +
+      '<p class="diag-stage3-lead">Conteúdo complementar para leitura técnica, apresentação comercial e condução executiva do diagnóstico energético.</p>' +
 
       '<div class="diag-stage3-anchor-list">' +
         '<a class="diag-stage3-anchor" href="#diagStage3Glossario">Glossário técnico</a>' +
@@ -3256,125 +3302,166 @@ setTimeout(function(){ window.__epcBoot(); },500);
 
       '<div class="diag-stage3-grid">' +
 
-        card(
-          'Glossário técnico',
-          '<div id="diagStage3Glossario" class="diag-stage3-accordion">' +
-            details('Demanda contratada', '<p>Potência reservada junto à distribuidora. Serve de referência para custo fixo de demanda e para análise de ultrapassagem. Quando mal calibrada, pode gerar pagamento por capacidade ociosa ou penalidade por excedente.</p>', true) +
-            details('Demanda registrada', '<p>Maior valor efetivamente medido em um intervalo de faturamento. É o consumo de potência observado na operação real e precisa ser comparado com a demanda contratada para avaliar aderência operacional.</p>') +
-            details('Ultrapassagem', '<p>Excesso de demanda sobre o contratado. É um indicador crítico para mostrar ao cliente risco financeiro, necessidade de revisão contratual ou de disciplina operacional em horários de pico.</p>') +
-            details('Fator de potência', '<p>Índice de eficiência entre potência ativa e aparente. Quando abaixo do nível esperado, indica circulação reativa maior, risco de penalidade e oportunidade de correção com engenharia elétrica.</p>') +
-            details('THD', '<p>Distorção Harmônica Total. Ajuda a avaliar qualidade de energia, aquecimento indevido, ruídos, disparos indevidos e perda de performance em cargas eletrônicas sensíveis.</p>') +
-            details('Linha alvo', '<p>Média de referência da série. No gráfico de linha de carga agregada, a linha alvo ajuda a enxergar se os meses estão acima ou abaixo do comportamento médio esperado.</p>') +
-            details('MA-3', '<p>Média móvel de 3 períodos. Suaviza oscilações mensais para facilitar leitura de tendência sem substituir a série real.</p>') +
-            details('VOLL', '<p>Value of Lost Load. Representa custo estimado da energia não suprida para o processo produtivo. É útil para priorização econômica de confiabilidade e justificativa de investimento.</p>') +
-            details('TUSD Demanda', '<p>Parcela tarifária associada ao uso do sistema de distribuição na componente de demanda. Deve ser lida com cuidado ao explicar peso do custo fixo e impacto de demanda contratada.</p>') +
-          '</div>'
-        ) +
+        '<section class="diag-stage3-card" id="diagStage3Glossario">' +
+          '<h4>Glossário técnico</h4>' +
+          '<div class="diag-stage3-accordion">' +
+            '<details open><summary>Demanda contratada</summary><p>Potência reservada junto à distribuidora. Impacta custo fixo e análise de ultrapassagem.</p></details>' +
+            '<details><summary>Demanda registrada</summary><p>Maior valor efetivamente medido. Deve ser comparada com a contratada para avaliar aderência operacional.</p></details>' +
+            '<details><summary>Ultrapassagem</summary><p>Excesso de demanda sobre o contratado. Indica risco financeiro e possível necessidade de revisão contratual.</p></details>' +
+            '<details><summary>Fator de potência</summary><p>Indica eficiência entre potência ativa e aparente. Baixo FP pode sinalizar penalidade e necessidade de correção.</p></details>' +
+            '<details><summary>THD</summary><p>Distorção harmônica total. Relaciona-se a aquecimento, instabilidade e sensibilidade de cargas eletrônicas.</p></details>' +
+            '<details><summary>VOLL</summary><p>Valor econômico da energia não suprida. Útil para priorizar ações de confiabilidade.</p></details>' +
+            '<details><summary>TUSD Demanda</summary><p>Parcela tarifária da componente de demanda no uso do sistema de distribuição.</p></details>' +
+          '</div>' +
+        '</section>' +
 
-        card(
-          'FAQ operacional',
-          '<div id="diagStage3FAQ" class="diag-stage3-accordion">' +
-            details('Qual é a ordem ideal de preenchimento?', '<ol><li>Perfil da empresa e mercado.</li><li>Modalidade tarifária e dados contratuais.</li><li>Operação, turnos e sazonalidade.</li><li>Cargas elétricas e térmicas.</li><li>Histórico de demanda.</li><li>Qualidade de energia, falhas e gráficos finais.</li></ol>', true) +
-            details('O que fazer quando o cliente não sabe um valor exato?', '<p>Registrar estimativa somente quando necessário, sinalizar a origem da informação e destacar no fechamento que o dado precisa ser validado em conta, relatório ou medição real. Nunca apresentar estimativa como dado fechado.</p>') +
-            details('Quando a demanda contratada parece errada?', '<p>Compare a contratada com a registrada mês a mês. Se houver folga recorrente, existe capacidade ociosa. Se houver ultrapassagem frequente, pode haver subcontratação ou operação concentrada em janelas críticas.</p>') +
-            details('Como usar THD sem alarmar o cliente de forma indevida?', '<p>Mostre THD como indicador de qualidade e estabilidade. Explique efeito potencial em aquecimento, sensibilidade eletrônica e perdas. Só associe risco alto quando houver recorrência, histórico de falha ou evidência operacional.</p>') +
-            details('Como lidar com dados incompletos de sazonalidade?', '<p>Use a informação qualitativa do processo: meses de safra, manutenção, férias coletivas, aumento de produção, clima e turnos. O objetivo é contextualizar o comportamento do gráfico, não apenas preencher o campo.</p>') +
-            details('Quando levar o tema para proposta comercial?', '<p>Quando o diagnóstico mostrar um desvio claro: custo fixo elevado, baixo fator de potência, variação de carga, risco operacional, custo de falha ou oportunidade de automação/eficiência.</p>') +
-          '</div>'
-        ) +
+        '<section class="diag-stage3-card" id="diagStage3FAQ">' +
+          '<h4>FAQ operacional</h4>' +
+          '<div class="diag-stage3-accordion">' +
+            '<details open><summary>Qual a ordem ideal de preenchimento</summary><ol><li>Perfil da empresa</li><li>Modalidade e contrato</li><li>Operação e sazonalidade</li><li>Cargas</li><li>Histórico</li><li>Qualidade e gráficos</li></ol></details>' +
+            '<details><summary>O que fazer quando o cliente não sabe o valor exato</summary><p>Use estimativa identificada como provisória e sinalize necessidade de validação documental.</p></details>' +
+            '<details><summary>Quando a demanda contratada parece errada</summary><p>Compare contratada e registrada ao longo dos meses. Folga recorrente sugere ociosidade; excesso recorrente sugere subcontratação.</p></details>' +
+            '<details><summary>Como explicar THD sem alarmar</summary><p>Posicione THD como indicador de qualidade e conecte com sintomas reais antes de escalar criticidade.</p></details>' +
+          '</div>' +
+        '</section>' +
 
-        card(
-          'Exemplos de fala comercial',
-          '<div id="diagStage3Comercial">' +
-            '<div class="diag-stage3-quote">“Pelos dados do diagnóstico, a sua operação não parece ter um problema apenas de tarifa; existe também um componente de perfil de demanda e previsibilidade operacional. É aí que conseguimos atuar com mais precisão.”</div>' +
-            '<div class="diag-stage3-quote">“Quando a demanda registrada fica distante da contratada, o cliente pode estar pagando por capacidade não usada ou sofrendo com ultrapassagem. Nosso objetivo aqui é transformar esse dado em decisão econômica.”</div>' +
-            '<div class="diag-stage3-quote">“O gráfico não serve apenas para mostrar histórico; ele revela padrão. Quando a curva se afasta da linha média ou fica muito irregular, normalmente existe um ponto de processo, operação ou contratação que merece atenção.”</div>' +
-            '<div class="diag-stage3-quote">“Se o THD aparece elevado junto com relatos de instabilidade, o diagnóstico deixa de ser apenas energético e passa a apoiar uma decisão de confiabilidade e continuidade operacional.”</div>' +
-            '<div class="diag-stage3-mini-title">Estrutura recomendada da fala comercial</div>' +
-            '<ol>' +
-              '<li>Comece pelo impacto no negócio.</li>' +
-              '<li>Depois mostre a evidência técnica.</li>' +
-              '<li>Explique a consequência econômica.</li>' +
-              '<li>Feche com o próximo passo objetivo.</li>' +
-            '</ol>' +
-          '</div>'
-        ) +
+        '<section class="diag-stage3-card" id="diagStage3Comercial">' +
+          '<h4>Exemplos de fala comercial</h4>' +
+          '<div class="diag-stage3-quote">“O diagnóstico mostra não só custo de energia, mas também padrão operacional. Isso nos permite identificar oportunidade com mais precisão.”</div>' +
+          '<div class="diag-stage3-quote">“Quando a demanda registrada fica distante da contratada, o cliente pode estar pagando por capacidade ociosa ou sofrendo ultrapassagem.”</div>' +
+          '<div class="diag-stage3-quote">“O gráfico revela padrão de operação. Quando a curva se afasta muito da média, normalmente existe um fator de processo ou contratação a revisar.”</div>' +
+          '<div class="diag-stage3-mini-title">Estrutura recomendada</div>' +
+          '<ol><li>Impacto no negócio</li><li>Evidência técnica</li><li>Consequência econômica</li><li>Próximo passo</li></ol>' +
+        '</section>' +
 
-        card(
-          'Interpretação orientada de gráficos',
-          '<div id="diagStage3Graficos" class="diag-stage3-accordion">' +
-            details('Curva sazonal', '<p>Leia a curva sazonal como retrato da variabilidade do processo ao longo do ano. Pergunte sempre: quais meses fogem do padrão e por quê? Procure relação com produção, clima, turnos, manutenção, safra, férias e mudança de mix.</p><p><strong>Sinal de atenção:</strong> amplitude muito elevada sem justificativa operacional clara.</p>', true) +
-            details('Linha de carga agregada', '<p>A linha azul mostra o comportamento agregado real. A verde suaviza a leitura de tendência. A roxa representa a média de referência. O foco não é apenas o valor absoluto, mas a dispersão, a regularidade e o afastamento da média.</p><ul><li>Azul acima da roxa em vários meses: carga sustentada acima da média.</li><li>Azul muito serrilhada: instabilidade operacional ou sazonalidade forte.</li><li>Verde inclinada para cima: tendência estrutural de aumento.</li><li>Verde abaixo da roxa por longo período: operação abaixo do patamar médio.</li></ul>') +
-            details('Demanda contratada × registrada', '<p>Este gráfico/tabela é central para fala econômica. Se a registrada fica sempre abaixo da contratada, existe potencial de revisão contratual. Se ultrapassa com frequência, existe risco de penalidade e/ou necessidade de redistribuição da operação.</p>') +
-            details('THD e qualidade', '<p>Use a leitura de THD como complemento de confiabilidade. O gráfico não deve ser apresentado isoladamente; conecte com sintomas: falha, aquecimento, sensibilidade de inversores, paradas e ruído elétrico.</p>') +
-            details('Como apresentar gráfico sem confundir o cliente', '<p>Explique sempre três pontos: o que o gráfico mede, qual padrão esperado e o que o desvio significa para custo, risco ou oportunidade.</p>') +
-          '</div>'
-        ) +
+        '<section class="diag-stage3-card" id="diagStage3Graficos">' +
+          '<h4>Interpretação orientada de gráficos</h4>' +
+          '<ul>' +
+            '<li><strong>Curva sazonal:</strong> identifica meses fora do padrão e sua relação com operação, clima ou produção.</li>' +
+            '<li><strong>Linha de carga agregada:</strong> azul = comportamento real; verde = tendência suavizada; roxa = referência média.</li>' +
+            '<li><strong>Demanda contratada × registrada:</strong> traduz custo fixo, ociosidade e risco de ultrapassagem.</li>' +
+            '<li><strong>THD:</strong> use como complemento de confiabilidade, não isoladamente.</li>' +
+          '</ul>' +
+        '</section>' +
 
-        card(
-          'Apresentação executiva ao cliente',
-          '<div id="diagStage3Executivo">' +
-            '<p>Para apresentação executiva, reduza o excesso de detalhe e mantenha uma narrativa de negócio com base técnica. O objetivo não é despejar todos os campos; é mostrar como os dados levam a uma decisão.</p>' +
-            '<div class="diag-stage3-kv">' +
-              '<div class="diag-stage3-k">1. Contexto</div><div class="diag-stage3-v">Quem é a operação, qual o perfil produtivo e qual a lógica de consumo energético.</div>' +
-              '<div class="diag-stage3-k">2. Evidência</div><div class="diag-stage3-v">Quais gráficos e tabelas confirmam o comportamento observado.</div>' +
-              '<div class="diag-stage3-k">3. Impacto</div><div class="diag-stage3-v">Qual o reflexo em custo, risco, estabilidade, produtividade ou previsibilidade.</div>' +
-              '<div class="diag-stage3-k">4. Prioridade</div><div class="diag-stage3-v">O que merece ação imediata, o que depende de validação adicional e o que pode virar proposta.</div>' +
-              '<div class="diag-stage3-k">5. Próximo passo</div><div class="diag-stage3-v">Qual medição, estudo, ajuste contratual ou solução deve ser proposta.</div>' +
-            '</div>' +
-            '<div class="diag-stage3-mini-title">Roteiro executivo sugerido</div>' +
-            '<ol>' +
-              '<li>“Seu perfil energético mostra um comportamento estável/instável em X e Y.”</li>' +
-              '<li>“Os dados de demanda e carga indicam este desvio principal.”</li>' +
-              '<li>“O impacto provável está em custo, confiabilidade ou ociosidade.”</li>' +
-              '<li>“Nossa recomendação é validar A, corrigir B e estruturar C.”</li>' +
-            '</ol>' +
-          '</div>'
-        ) +
+        '<section class="diag-stage3-card" id="diagStage3Executivo">' +
+          '<h4>Apresentação executiva ao cliente</h4>' +
+          '<p>Apresente contexto, evidência, impacto, prioridade e próximo passo. Evite excesso de detalhe técnico sem conexão com decisão.</p>' +
+          '<div class="diag-stage3-kv">' +
+            '<div class="diag-stage3-k">Contexto</div><div class="diag-stage3-v">Perfil da operação e lógica de consumo</div>' +
+            '<div class="diag-stage3-k">Evidência</div><div class="diag-stage3-v">Gráficos e tabelas que sustentam a leitura</div>' +
+            '<div class="diag-stage3-k">Impacto</div><div class="diag-stage3-v">Custo, risco, estabilidade ou produtividade</div>' +
+            '<div class="diag-stage3-k">Prioridade</div><div class="diag-stage3-v">O que precisa de ação imediata</div>' +
+            '<div class="diag-stage3-k">Próximo passo</div><div class="diag-stage3-v">Validação, ajuste contratual, estudo ou proposta</div>' +
+          '</div>' +
+        '</section>' +
 
-      '</div>';
+      '</div>' +
+    '</section>';
+  }
 
-    body.appendChild(wrap);
-
-    wrap.querySelectorAll('a[href^="#"]').forEach(function(a){
-      a.addEventListener("click", function(ev){
-        var href = a.getAttribute("href") || "";
-        if(href.indexOf("#") !== 0) return;
+  function bindLocalAnchors(root){
+    qa('a[href^="#"]', root).forEach(function(a){
+      a.addEventListener('click', function(ev){
+        var href = a.getAttribute('href') || '';
+        if(href.charAt(0) !== '#') return;
         var id = href.slice(1);
-        if(!id) return;
+        var target = document.getElementById(id);
+        if(!target) return;
         ev.preventDefault();
-        scrollToLocalId(id);
+        try{ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+        catch(_){ target.scrollIntoView(true); }
       });
     });
+  }
 
+  function ensureNavLinks(panel){
     var nav = getPanelNav(panel);
-    ensureNavLink(nav, "diagStage3Glossario", "Etapa 3 · Glossário técnico");
-    ensureNavLink(nav, "diagStage3FAQ", "Etapa 3 · FAQ operacional");
-    ensureNavLink(nav, "diagStage3Comercial", "Etapa 3 · Fala comercial");
-    ensureNavLink(nav, "diagStage3Graficos", "Etapa 3 · Interpretação de gráficos");
-    ensureNavLink(nav, "diagStage3Executivo", "Etapa 3 · Apresentação executiva");
-
-    return true;
+    if(!nav) return;
+    var links = [
+      ['diagStage3Glossario','Etapa 3 · Glossário técnico'],
+      ['diagStage3FAQ','Etapa 3 · FAQ operacional'],
+      ['diagStage3Comercial','Etapa 3 · Fala comercial'],
+      ['diagStage3Graficos','Etapa 3 · Interpretação de gráficos'],
+      ['diagStage3Executivo','Etapa 3 · Apresentação executiva']
+    ];
+    links.forEach(function(item){
+      if(nav.querySelector('[data-stage3-link="'+item[0]+'"]')) return;
+      var a = document.createElement('a');
+      a.href = '#'+item[0];
+      a.className = 'diag-stage3-anchor';
+      a.setAttribute('data-stage3-link', item[0]);
+      a.textContent = item[1];
+      a.addEventListener('click', function(ev){
+        ev.preventDefault();
+        var target = document.getElementById(item[0]);
+        if(target){
+          try{ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+          catch(_){ target.scrollIntoView(true); }
+        }
+      });
+      nav.appendChild(a);
+    });
   }
 
-  function bootStage3(){
-    if(injectStage3()) return;
-    var tries = 0;
-    var timer = setInterval(function(){
-      tries++;
-      if(injectStage3() || tries > 40){
-        clearInterval(timer);
-      }
-    }, 250);
+  function injectStage3(){
+    var panel = getPanel();
+    if(!panel) return false;
+    var body = getPanelBody(panel);
+    if(!body) return false;
+
+    var old = document.getElementById('diagTutorialStage3');
+    if(old && old.parentNode !== body) old.remove();
+    if(!document.getElementById('diagTutorialStage3')){
+      body.insertAdjacentHTML('beforeend', buildStage3Html());
+    }
+
+    var stage3 = document.getElementById('diagTutorialStage3');
+    if(stage3){
+      stage3.style.display = 'block';
+      stage3.style.visibility = 'visible';
+      stage3.style.opacity = '1';
+      bindLocalAnchors(stage3);
+      ensureNavLinks(panel);
+      return true;
+    }
+    return false;
   }
 
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", bootStage3, { once:true });
-  }else{
-    bootStage3();
+  function scheduleInject(){
+    injectStage3();
+    setTimeout(injectStage3, 80);
+    setTimeout(injectStage3, 250);
+    setTimeout(injectStage3, 600);
+    setTimeout(injectStage3, 1200);
   }
 
-  window.addEventListener("load", bootStage3);
+  function boot(){
+    scheduleInject();
+
+    var btn = q('#diagHelpBtn') || q('.diag-help-btn') || q('[data-diag-help-btn]');
+    if(btn && !btn.__stage3Bound){
+      btn.__stage3Bound = true;
+      btn.addEventListener('click', function(){
+        setTimeout(scheduleInject, 40);
+      });
+    }
+
+    if(document.body && !document.body.__stage3Observer){
+      var mo = new MutationObserver(function(){
+        injectStage3();
+      });
+      mo.observe(document.body, {childList:true, subtree:true});
+      document.body.__stage3Observer = mo;
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot, {once:true});
+  } else {
+    boot();
+  }
+  window.addEventListener('load', boot);
 })();
 </script>
 
