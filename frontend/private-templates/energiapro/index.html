@@ -85,6 +85,259 @@ main{max-width:1500px;margin:0 auto;padding:14px}
 }
 
 </style>
+
+<style id="diag-tutorial-style">
+/* ENERGIAPRO_DIAG_TUTORIAL */
+.diag-help-fab{
+  position:fixed;
+  top:14px;
+  right:18px;
+  z-index:10040;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:none;
+  border-radius:999px;
+  padding:10px 14px;
+  background:linear-gradient(135deg,#0b6bcb,#0f7a4d);
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(11,31,58,.25);
+}
+.diag-help-fab:hover{filter:brightness(1.04)}
+.diag-help-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(11,31,58,.42);
+  z-index:10030;
+  display:none;
+}
+.diag-help-overlay.open{display:block}
+.diag-help-panel{
+  position:fixed;
+  top:0;
+  right:0;
+  width:min(460px,92vw);
+  height:100vh;
+  background:#fff;
+  z-index:10050;
+  box-shadow:-12px 0 30px rgba(11,31,58,.18);
+  transform:translateX(100%);
+  transition:transform .22s ease;
+  display:flex;
+  flex-direction:column;
+  border-left:1px solid #d6deea;
+}
+.diag-help-panel.open{transform:translateX(0)}
+.diag-help-header{
+  padding:16px 18px 12px;
+  border-bottom:1px solid #d6deea;
+  background:linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%);
+}
+.diag-help-header-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.diag-help-header h3{
+  margin:0;
+  font-size:16px;
+  color:#0b1f3a;
+}
+.diag-help-sub{
+  margin:6px 0 0;
+  font-size:12px;
+  color:#5b6b82;
+  line-height:1.45;
+}
+.diag-help-close{
+  border:none;
+  background:#e2e8f0;
+  color:#0f172a;
+  border-radius:8px;
+  padding:8px 10px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700;
+}
+.diag-help-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+.diag-help-toolbar button{
+  border:none;
+  border-radius:999px;
+  padding:8px 10px;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:700;
+}
+.diag-help-toolbar .primary{
+  background:#0b6bcb;
+  color:#fff;
+}
+.diag-help-toolbar .secondary{
+  background:#e2e8f0;
+  color:#0f172a;
+}
+.diag-help-main{
+  display:grid;
+  grid-template-columns:160px 1fr;
+  min-height:0;
+  flex:1;
+}
+.diag-help-nav{
+  border-right:1px solid #e5edf5;
+  overflow:auto;
+  padding:10px;
+  background:#fafcff;
+}
+.diag-help-nav button{
+  width:100%;
+  text-align:left;
+  border:none;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  padding:10px 10px;
+  margin-bottom:8px;
+  cursor:pointer;
+  font-size:12px;
+  color:#0b1f3a;
+  line-height:1.35;
+}
+.diag-help-nav button.active{
+  background:#e8f2ff;
+  border-color:#93c5fd;
+  color:#0b3d91;
+  font-weight:700;
+}
+.diag-help-body{
+  overflow:auto;
+  padding:16px 18px 24px;
+}
+.diag-help-section-title{
+  margin:0 0 8px;
+  font-size:18px;
+  color:#0b1f3a;
+}
+.diag-help-card{
+  border:1px solid #dbe7f3;
+  background:#f8fbff;
+  border-radius:12px;
+  padding:12px 14px;
+  margin-bottom:12px;
+}
+.diag-help-card h4{
+  margin:0 0 6px;
+  font-size:13px;
+  color:#0f7a4d;
+}
+.diag-help-card p,
+.diag-help-card li{
+  font-size:12px;
+  color:#334155;
+  line-height:1.55;
+}
+.diag-help-card ul{
+  margin:8px 0 0 18px;
+  padding:0;
+}
+.diag-help-mini{
+  display:grid;
+  gap:8px;
+}
+.diag-help-mini-item{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  padding:10px 12px;
+}
+.diag-help-mini-item b{
+  color:#0b1f3a;
+}
+.diag-help-jump{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.diag-help-jump button{
+  border:none;
+  border-radius:999px;
+  padding:8px 10px;
+  cursor:pointer;
+  background:#dbeafe;
+  color:#1d4ed8;
+  font-size:11px;
+  font-weight:700;
+}
+.diag-highlight{
+  outline:3px solid #f59e0b !important;
+  outline-offset:4px !important;
+  box-shadow:0 0 0 6px rgba(245,158,11,.15) !important;
+  border-radius:6px !important;
+}
+.diag-help-dot{
+  margin-left:6px;
+  width:18px;
+  height:18px;
+  border:none;
+  border-radius:999px;
+  background:#dbeafe;
+  color:#1d4ed8;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  vertical-align:middle;
+}
+.diag-help-pop{
+  position:fixed;
+  z-index:10070;
+  width:min(340px,90vw);
+  background:#0b1f3a;
+  color:#fff;
+  border-radius:12px;
+  padding:12px 14px;
+  box-shadow:0 18px 34px rgba(2,6,23,.35);
+  display:none;
+}
+.diag-help-pop.open{display:block}
+.diag-help-pop h4{
+  margin:0 0 6px;
+  font-size:13px;
+  color:#93c5fd;
+}
+.diag-help-pop p{
+  margin:0 0 6px;
+  font-size:12px;
+  line-height:1.5;
+  color:#e2e8f0;
+}
+.diag-help-pop .diag-help-pop-close{
+  margin-top:6px;
+  border:none;
+  background:#1e293b;
+  color:#fff;
+  border-radius:8px;
+  padding:6px 8px;
+  cursor:pointer;
+  font-size:11px;
+}
+@media (max-width: 980px){
+  .diag-help-main{grid-template-columns:1fr}
+  .diag-help-nav{border-right:none;border-bottom:1px solid #e5edf5;max-height:160px}
+}
+</style>
+
 </head>
 <body>
 <div class="printHeader"><img src="https://www.expertenergy.com.br/images/logo-expert-energy.png" alt="Expert Energy Performance em Energia Ltda" onerror="this.style.display='none'"><div class="ptxt"><b>Expert Energy Performance em Energia Ltda</b><br><small>www.expertenergy.com.br — Proposta técnica EnergiaPro v1.6.14</small></div></div>
@@ -2085,6 +2338,525 @@ setTimeout(function(){ window.__epcBoot(); },500);
 
   try{ renderLoadLineChart(window.__EP_LAST || {}); }catch(_){}
   try{ if(typeof window.__epcBoot === "function") window.__epcBoot(); }catch(_){}
+})();
+</script>
+
+
+<script id="diag-tutorial-script">
+(function(){
+  /* ENERGIAPRO_DIAG_TUTORIAL */
+  if(window.__DIAG_TUTORIAL_READY__) return;
+  window.__DIAG_TUTORIAL_READY__ = true;
+
+  var SECTION_MAP = [
+    {
+      id: "overview",
+      title: "Visão geral",
+      target: "header",
+      cards: [
+        {
+          title: "Objetivo do módulo",
+          body: "O diagnóstico consolida dados cadastrais, operacionais, elétricos e térmicos para avaliar perfil de consumo, demanda contratada, sazonalidade, qualidade de energia e oportunidades de otimização."
+        },
+        {
+          title: "Como usar",
+          body: "Preencha os dados na ordem das seções. Primeiro cadastre empresa e contrato, depois operação, cargas, histórico de demanda e qualidade da energia. Só então interprete gráficos, indicadores e cenários."
+        },
+        {
+          title: "Como apresentar",
+          body: "Use o diagnóstico para mostrar contexto do cliente, problema atual, evidências nos gráficos/tabelas e proposta de melhoria baseada em dados."
+        }
+      ]
+    },
+    {
+      id: "empresa",
+      title: "1. Empresa e Mercado",
+      target: "#razao",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Esta seção define o contexto contratual e regulatório do cliente. Mercado, modalidade, tensão, distribuidora e demanda contratada influenciam tarifas, leitura da demanda e comparativos."
+        },
+        {
+          title: "O que preencher com atenção",
+          body: "Razão social, CNPJ, segmento, distribuidora, mercado, modalidade, DC, DC ponta e fora ponta, fator de potência e tarifas."
+        },
+        {
+          title: "Impacto no diagnóstico",
+          body: "Erros aqui afetam diretamente o cálculo econômico, leitura de ultrapassagem e cenários de economia."
+        }
+      ]
+    },
+    {
+      id: "operacao",
+      title: "2. Operação e Sazonalidade",
+      target: "#turnos",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Traduz a rotina operacional do cliente em horas, dias e sazonalidade. Esses dados influenciam carga agregada, perfil mensal e recomendações de redistribuição operacional."
+        },
+        {
+          title: "Leitura correta",
+          body: "Turnos, horas/dia, dias úteis/mês, fator de utilização e operação sazonal devem refletir a operação real, não uma média intuitiva."
+        }
+      ]
+    },
+    {
+      id: "cargas-eletricas",
+      title: "3. Cargas Elétricas",
+      target: "#cList",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Lista os principais consumidores elétricos. Cada carga ajuda a compor o perfil agregado de energia e sustenta a análise de estabilidade, sazonalidade e gestão."
+        },
+        {
+          title: "Como interpretar",
+          body: "As cargas alimentam os gráficos e ajudam a entender quais equipamentos puxam os picos e onde existem oportunidades de deslocamento ou controle."
+        }
+      ]
+    },
+    {
+      id: "cargas-termicas",
+      title: "4. Cargas Térmicas",
+      target: "#tList",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Transforma consumo térmico em equivalente energético para comparação e análise integrada com as cargas elétricas."
+        },
+        {
+          title: "Como apresentar",
+          body: "Essa seção é importante para explicar ganhos por eficiência térmica, substituição tecnológica e suavização de perfil."
+        }
+      ]
+    },
+    {
+      id: "geracao",
+      title: "5. Geração Atual",
+      target: "#ger_atual",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Mapeia geração própria já existente, combustível, custo e contribuição operacional."
+        }
+      ]
+    },
+    {
+      id: "qualidade",
+      title: "6. Qualidade da Rede e Falhas",
+      target: "#pisc_mes",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Registra falhas, quedas, impactos e criticidade da operação. Isso ajuda a sustentar projetos de confiabilidade, backup e mitigação de perdas."
+        }
+      ]
+    },
+    {
+      id: "demanda",
+      title: "7. Demanda Contratada × Registrada",
+      target: "#demHist",
+      cards: [
+        {
+          title: "Como ler a tabela",
+          body: "Compare a demanda contratada com a registrada mês a mês. Quando a registrada supera o limite regulatório, o sistema evidencia ultrapassagem e impacto financeiro."
+        },
+        {
+          title: "O que observar",
+          body: "Meses com pico acima da média, padrão de repetição, contratação inadequada e oportunidade de reequilíbrio."
+        }
+      ]
+    },
+    {
+      id: "thd",
+      title: "8. THD e Qualidade da Energia",
+      target: "#thdRows",
+      cards: [
+        {
+          title: "Finalidade",
+          body: "Avaliar distorções harmônicas, riscos operacionais e aderência aos limites técnicos."
+        }
+      ]
+    },
+    {
+      id: "graficos",
+      title: "Leitura de gráficos",
+      target: "#sezChart",
+      cards: [
+        {
+          title: "Curva sazonal",
+          body: "Mostra como os fatores mensais se comportam ao longo do ano e ajuda a explicar picos, vales e sazonalidade operacional."
+        },
+        {
+          title: "Linha de carga agregada",
+          body: "Compara o comportamento agregado mensal com sua tendência suavizada e com a linha-alvo média. Quanto mais estável a curva, melhor o fator de carga e maior a previsibilidade operacional."
+        },
+        {
+          title: "Como apresentar ao cliente",
+          body: "Mostre o mês de pico, o mês de vale, a distância para a média e quais ações operacionais ou tecnológicas podem reduzir a oscilação."
+        }
+      ]
+    },
+    {
+      id: "erros",
+      title: "Erros comuns",
+      target: "#btnCalc",
+      cards: [
+        {
+          title: "Erros que comprometem o diagnóstico",
+          body: "Preencher demanda com valor estimado, usar modalidade errada, ignorar sazonalidade real, omitir cargas relevantes e lançar tarifas fora da fatura."
+        }
+      ]
+    }
+  ];
+
+  var FIELD_HELP = {
+    mercado: {
+      title: "Mercado",
+      text: "Define se o cliente está no ambiente cativo (ACR) ou livre (ACL). Esse campo influencia tarifas, análise comparativa e interpretação econômica."
+    },
+    modalidade: {
+      title: "Modalidade",
+      text: "Indica a forma contratual da demanda. Impacta leitura de ponta, fora ponta, ultrapassagem e estratégia de ajuste."
+    },
+    dc: {
+      title: "DC (kW)",
+      text: "Informe a demanda contratada atual da unidade. É a base para analisar excesso de demanda e oportunidade de recontratação."
+    },
+    dcP: {
+      title: "DC Ponta (kW)",
+      text: "Usado na modalidade Azul. Deve refletir o valor contratual real da ponta."
+    },
+    dcFP: {
+      title: "DC Fora Ponta (kW)",
+      text: "Usado na modalidade Azul. Afeta a análise financeira e regulatória da demanda."
+    },
+    fp: {
+      title: "Fator de Potência",
+      text: "Indica qualidade do uso da energia. Valores baixos podem gerar penalidades e reforçar necessidade de correção."
+    },
+    TE_p_: {
+      title: "TE Ponta",
+      text: "Tarifa de energia na ponta. Deve ser coerente com a distribuidora e o mercado do cliente."
+    },
+    TE_fp_: {
+      title: "TE Fora Ponta",
+      text: "Tarifa de energia fora ponta. Afeta cálculo econômico mensal e anual."
+    },
+    TUSD_dem_: {
+      title: "TUSD Demanda",
+      text: "Tarifa de uso do sistema vinculada à demanda. Campo essencial para avaliar custo de contratação."
+    },
+    sazonal: {
+      title: "Operação sazonal",
+      text: "Indique se o consumo varia ao longo do ano. Essa informação altera a leitura das curvas e recomendações."
+    },
+    turnos: {
+      title: "Turnos",
+      text: "Quantidade de turnos de operação. Ajuda a traduzir comportamento real da carga."
+    },
+    hd: {
+      title: "Horas por dia",
+      text: "Número médio de horas operadas por dia. Afeta energia mensal e linha de carga."
+    },
+    dm: {
+      title: "Dias úteis por mês",
+      text: "Usado para estimar consumo mensal e intensidade operacional."
+    },
+    fu: {
+      title: "Fator de Utilização",
+      text: "Representa quanto da capacidade é realmente usada. Campo importante para realismo do diagnóstico."
+    },
+    pisc_mes: {
+      title: "Piscadas e falhas",
+      text: "Ajuda a mensurar sensibilidade da operação e impacto de falhas na rede."
+    },
+    prod_h: {
+      title: "Produção afetada por hora",
+      text: "Valor econômico associado à parada ou perda operacional por indisponibilidade."
+    }
+  };
+
+  var state = {
+    open: false,
+    activeIndex: 0,
+    guided: false,
+    popOpen: false
+  };
+
+  function q(sel, root){ return (root || document).querySelector(sel); }
+  function qq(sel, root){ return Array.from((root || document).querySelectorAll(sel)); }
+
+  function ensureUI(){
+    if(q("#diagHelpBtn")) return;
+
+    var btn = document.createElement("button");
+    btn.id = "diagHelpBtn";
+    btn.className = "diag-help-fab";
+    btn.type = "button";
+    btn.innerHTML = '<span>📘</span><span>Guia do Diagnóstico</span>';
+
+    var overlay = document.createElement("div");
+    overlay.id = "diagHelpOverlay";
+    overlay.className = "diag-help-overlay";
+
+    var panel = document.createElement("aside");
+    panel.id = "diagHelpPanel";
+    panel.className = "diag-help-panel";
+    panel.innerHTML = ''
+      + '<div class="diag-help-header">'
+      + '  <div class="diag-help-header-top">'
+      + '    <div>'
+      + '      <h3>Tutorial do Diagnóstico</h3>'
+      + '      <p class="diag-help-sub">Guia operacional para preenchimento, leitura de tabelas, interpretação de gráficos e apresentação das informações.</p>'
+      + '    </div>'
+      + '    <button id="diagHelpClose" class="diag-help-close" type="button">Fechar</button>'
+      + '  </div>'
+      + '  <div class="diag-help-toolbar">'
+      + '    <button id="diagGuideStart" class="primary" type="button">Iniciar modo guiado</button>'
+      + '    <button id="diagGuidePrev" class="secondary" type="button">Anterior</button>'
+      + '    <button id="diagGuideNext" class="secondary" type="button">Próximo</button>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="diag-help-main">'
+      + '  <div id="diagHelpNav" class="diag-help-nav"></div>'
+      + '  <div id="diagHelpBody" class="diag-help-body"></div>'
+      + '</div>';
+
+    var pop = document.createElement("div");
+    pop.id = "diagHelpPop";
+    pop.className = "diag-help-pop";
+
+    document.body.appendChild(btn);
+    document.body.appendChild(overlay);
+    document.body.appendChild(panel);
+    document.body.appendChild(pop);
+  }
+
+  function setOpen(next){
+    state.open = !!next;
+    var panel = q("#diagHelpPanel");
+    var overlay = q("#diagHelpOverlay");
+    if(panel) panel.classList.toggle("open", state.open);
+    if(overlay) overlay.classList.toggle("open", state.open);
+  }
+
+  function clearHighlight(){
+    qq(".diag-highlight").forEach(function(el){
+      el.classList.remove("diag-highlight");
+    });
+  }
+
+  function highlightTarget(selector){
+    clearHighlight();
+    if(!selector) return;
+    var el = q(selector);
+    if(!el) return;
+    el.classList.add("diag-highlight");
+    try{ el.scrollIntoView({behavior:"smooth",block:"center"}); }catch(_){}
+  }
+
+  function renderNav(){
+    var nav = q("#diagHelpNav");
+    if(!nav) return;
+    nav.innerHTML = "";
+    SECTION_MAP.forEach(function(section, index){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = section.title;
+      if(index === state.activeIndex) b.classList.add("active");
+      b.addEventListener("click", function(){
+        state.activeIndex = index;
+        renderTutorial();
+        highlightTarget(section.target);
+        setOpen(true);
+      });
+      nav.appendChild(b);
+    });
+  }
+
+  function renderTutorial(){
+    renderNav();
+    var body = q("#diagHelpBody");
+    if(!body) return;
+    var section = SECTION_MAP[state.activeIndex];
+    if(!section) return;
+
+    var html = '';
+    html += '<h2 class="diag-help-section-title">'+section.title+'</h2>';
+
+    (section.cards || []).forEach(function(card){
+      html += '<div class="diag-help-card">';
+      html += '  <h4>'+card.title+'</h4>';
+      html += '  <p>'+card.body+'</p>';
+      html += '</div>';
+    });
+
+    html += '<div class="diag-help-card">';
+    html += '  <h4>Ações rápidas</h4>';
+    html += '  <div class="diag-help-jump">';
+    html += '    <button type="button" id="diagJumpTarget">Ir para a seção</button>';
+    html += '    <button type="button" id="diagOpenGuideStep">'+(state.guided ? 'Continuar guia' : 'Abrir modo guiado')+'</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    body.innerHTML = html;
+
+    var jump = q("#diagJumpTarget");
+    if(jump){
+      jump.addEventListener("click", function(){
+        highlightTarget(section.target);
+      });
+    }
+
+    var guideBtn = q("#diagOpenGuideStep");
+    if(guideBtn){
+      guideBtn.addEventListener("click", function(){
+        state.guided = true;
+        highlightTarget(section.target);
+      });
+    }
+  }
+
+  function nextStep(delta){
+    var total = SECTION_MAP.length;
+    state.activeIndex = Math.max(0, Math.min(total - 1, state.activeIndex + delta));
+    renderTutorial();
+    highlightTarget(SECTION_MAP[state.activeIndex].target);
+    setOpen(true);
+  }
+
+  function ensureFieldHelpButtons(){
+    Object.keys(FIELD_HELP).forEach(function(key){
+      var input = document.getElementById(key);
+      if(!input) return;
+      var label = input.closest("label");
+      if(!label || label.querySelector('.diag-help-dot[data-help-key="'+key+'"]')) return;
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "diag-help-dot";
+      btn.setAttribute("data-help-key", key);
+      btn.textContent = "i";
+      btn.addEventListener("click", function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        openFieldHelp(key, btn);
+      });
+      label.insertBefore(btn, input);
+    });
+  }
+
+  function openFieldHelp(key, anchor){
+    var data = FIELD_HELP[key];
+    var pop = q("#diagHelpPop");
+    if(!data || !pop || !anchor) return;
+
+    var rect = anchor.getBoundingClientRect();
+    pop.innerHTML = ''
+      + '<h4>'+data.title+'</h4>'
+      + '<p>'+data.text+'</p>'
+      + '<button type="button" class="diag-help-pop-close" id="diagHelpPopClose">Fechar</button>';
+
+    pop.classList.add("open");
+    pop.style.top = Math.min(window.innerHeight - 180, rect.bottom + 10) + "px";
+    pop.style.left = Math.min(window.innerWidth - 360, rect.left - 20) + "px";
+
+    var closeBtn = q("#diagHelpPopClose");
+    if(closeBtn){
+      closeBtn.addEventListener("click", function(){
+        pop.classList.remove("open");
+      });
+    }
+  }
+
+  function bindUI(){
+    var btn = q("#diagHelpBtn");
+    var overlay = q("#diagHelpOverlay");
+    var close = q("#diagHelpClose");
+    var start = q("#diagGuideStart");
+    var prev = q("#diagGuidePrev");
+    var next = q("#diagGuideNext");
+
+    if(btn && !btn.__diagBound){
+      btn.__diagBound = true;
+      btn.addEventListener("click", function(){
+        setOpen(!state.open);
+        renderTutorial();
+      });
+    }
+
+    if(overlay && !overlay.__diagBound){
+      overlay.__diagBound = true;
+      overlay.addEventListener("click", function(){
+        setOpen(false);
+      });
+    }
+
+    if(close && !close.__diagBound){
+      close.__diagBound = true;
+      close.addEventListener("click", function(){
+        setOpen(false);
+      });
+    }
+
+    if(start && !start.__diagBound){
+      start.__diagBound = true;
+      start.addEventListener("click", function(){
+        state.guided = true;
+        state.activeIndex = 0;
+        renderTutorial();
+        highlightTarget(SECTION_MAP[state.activeIndex].target);
+        setOpen(true);
+      });
+    }
+
+    if(prev && !prev.__diagBound){
+      prev.__diagBound = true;
+      prev.addEventListener("click", function(){
+        nextStep(-1);
+      });
+    }
+
+    if(next && !next.__diagBound){
+      next.__diagBound = true;
+      next.addEventListener("click", function(){
+        nextStep(1);
+      });
+    }
+
+    document.addEventListener("keydown", function(ev){
+      if(ev.key === "Escape"){
+        var pop = q("#diagHelpPop");
+        if(pop && pop.classList.contains("open")){
+          pop.classList.remove("open");
+          return;
+        }
+        if(state.open){
+          setOpen(false);
+        }
+      }
+    });
+  }
+
+  function bootTutorial(){
+    ensureUI();
+    ensureFieldHelpButtons();
+    renderTutorial();
+    bindUI();
+  }
+
+  setTimeout(bootTutorial, 0);
+  setTimeout(bootTutorial, 300);
+  setTimeout(bootTutorial, 900);
+
+  try{
+    new MutationObserver(function(){
+      ensureFieldHelpButtons();
+    }).observe(document.body, {childList:true, subtree:true});
+  }catch(_){}
 })();
 </script>
 
