@@ -837,15 +837,33 @@ function renderLoadLineChart(d){
     });
     var xs=MESES.map(function(m,i){return padL+i*(W/11)});
     MESES.forEach(function(m,i){svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m)});
-    function plot(arr,color,w,dash,dots,opacity){
+    function plot(arr,color,w,dash,dots,opacity,label,unit){
       if(!arr||!arr.length)return;
-      var path=arr.map(function(v,i){return (i===0?"M":"L")+xs[i]+" "+(padT+H-(v/ymax)*H)}).join(" ");
+      var path=arr.map(function(v,i){return (i===0?"M":"L")+xs[i]+" "+(padT+H-((+v||0)/ymax)*H)}).join(" ");
       svgE("path",{d:path,stroke:color,"stroke-width":w||2,fill:"none","stroke-dasharray":dash||"",opacity:opacity||1},root);
-      if(dots!==false){arr.forEach(function(v,i){svgE("circle",{cx:xs[i],cy:padT+H-(v/ymax)*H,r:3,fill:color},root)})}
+      if(dots!==false){
+        arr.forEach(function(v,i){
+          var val=(arr===target?mean:(+v||0));
+          var c=svgE("circle",{
+            cx:xs[i],
+            cy:padT+H-((+v||0)/ymax)*H,
+            r:5,
+            fill:color,
+            stroke:"transparent",
+            "stroke-width":10,
+            "pointer-events":"all"
+          },root);
+          c.setAttribute("data-mes",MESES[i]);
+          c.setAttribute("data-serie",label||"Série");
+          c.setAttribute("data-val",String(val));
+          c.setAttribute("data-unid",unit||"kWh/mês");
+          try{ c.style.cursor="pointer"; }catch(_){}
+        });
+      }
     }
-    plot(target,"#7c3aed",2.5,"6 4",false,0.95);
-    plot(smooth,"#0d6a42",3, "",true,0.95);
-    plot(raw,"#0b6bcb",1.8,"",true,0.85);
+    plot(target,"#7c3aed",2.5,"6 4",true,0.95,"Linha alvo (média mensal)","kWh/mês");
+    plot(smooth,"#0d6a42",3, "",true,0.95,"Tendência suavizada (MA-3)","kWh/mês");
+    plot(raw,"#0b6bcb",1.8,"",true,0.85,"Agregado real","kWh/mês");
     svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":700},root,"Linha de carga agregada (elétrico + térmico equivalente) · alvo + suavização MA-3");
     // legend
     var lx=padL+W-160;
@@ -961,7 +979,7 @@ function renderSezChart(d){
   svgE("line",{x1:padL,y1:padT+H,x2:padL+W,y2:padT+H,stroke:"#5b6b82"},root);
   svgE("line",{x1:padL,y1:padT,x2:padL,y2:padT+H,stroke:"#5b6b82"},root);
   MESES.forEach(function(m,i){svgE("text",{x:xs[i],y:padT+H+15,"text-anchor":"middle",fill:"#5b6b82","font-size":9},root,m)});
-  function plotLine(arr,color){if(!arr||!arr.length)return;var path=arr.map(function(v,i){return(i===0?"M":"L")+xs[i]+" "+(padT+H-(v/1.4)*H)}).join(" ");svgE("path",{d:path,stroke:color,"stroke-width":2,fill:"none"},root);arr.forEach(function(v,i){var c=svgE("circle",{cx:xs[i],cy:padT+H-(v/1.4)*H,r:3,fill:color},root);c.setAttribute("data-mes",MESES[i]);c.setAttribute("data-serie",(color==="#0ea5e9")?"Cargas E (fator)":(color==="#fb923c")?"Cargas T (fator)":"Fator");c.setAttribute("data-val",(+v||0).toFixed(3));c.setAttribute("data-unid","fator");try{c.style.cursor="pointer"}catch(_){}})}
+  function plotLine(arr,color){if(!arr||!arr.length)return;var path=arr.map(function(v,i){return(i===0?"M":"L")+xs[i]+" "+(padT+H-(v/1.4)*H)}).join(" ");svgE("path",{d:path,stroke:color,"stroke-width":2,fill:"none"},root);arr.forEach(function(v,i){var c=svgE("circle",{cx:xs[i],cy:padT+H-(v/1.4)*H,r:5,fill:color,stroke:"transparent","stroke-width":10,"pointer-events":"all"},root);c.setAttribute("data-mes",MESES[i]);c.setAttribute("data-serie",(color==="#0ea5e9")?"Cargas E (fator)":(color==="#fb923c")?"Cargas T (fator)":"Fator");c.setAttribute("data-val",(+v||0).toFixed(3));c.setAttribute("data-unid","fator");try{c.style.cursor="pointer"}catch(_){}})}
   /**/var homeSazonal=d.sazonal||(SEZ_E[0]&&SEZ_E[0].length>0&&Math.abs((SEZ_E[0][0]||1)-1)>0.01);
   if(d.sazonal){plotLine(SEZ_E[0],"#0ea5e9");plotLine(SEZ_T[0],"#fb923c")}
   else if(homeSazonal){plotLine(SEZ_E[0],"#0ea5e9");plotLine(SEZ_T[0],"#fb923c")}
@@ -1282,35 +1300,46 @@ function bind(svg){
   if(!svg || svg.__epcBoundTip)return;
   svg.__epcBoundTip=true;
 
-  svg.addEventListener("mouseover",function(ev){
-    var trg=ev.target;
-    if(!trg || trg.tagName!=="circle")return;
+  function getCircle(target){
+    if(!target) return null;
+    if(target.tagName==="circle") return target;
+    if(typeof target.closest==="function") return target.closest("circle");
+    return null;
+  }
+
+  function renderTip(target, ev){
+    var trg=getCircle(target);
+    if(!trg) return false;
+
+    var val=parseFloat(trg.getAttribute("data-val"));
+    if(!isFinite(val)) return false;
+
     showTip(
       trg.getAttribute("data-mes"),
       trg.getAttribute("data-serie"),
-      parseFloat(trg.getAttribute("data-val")),
+      val,
       trg.getAttribute("data-unid"),
       ev
     );
+    return true;
+  }
+
+  svg.addEventListener("mouseover",function(ev){
+    renderTip(ev.target, ev);
   },true);
 
   svg.addEventListener("mousemove",function(ev){
-    var trg=ev.target;
-    if(trg && trg.tagName==="circle"){
-      showTip(
-        trg.getAttribute("data-mes"),
-        trg.getAttribute("data-serie"),
-        parseFloat(trg.getAttribute("data-val")),
-        trg.getAttribute("data-unid"),
-        ev
-      );
-    }else{
+    if(!renderTip(ev.target, ev)){
       place(ev);
     }
   },true);
 
   svg.addEventListener("mouseout",function(ev){
-    if(ev.target && ev.target.tagName==="circle")hideTip();
+    if(getCircle(ev.target)) hideTip();
+  },true);
+
+  svg.addEventListener("click",function(ev){
+    renderTip(ev.target, ev);
   },true);
 }
 
@@ -1327,7 +1356,6 @@ function fillAttrs(){
         try{ c.style.cursor="pointer"; }catch(_){}
       });
     }
-
     var sc=document.getElementById("sezChart");
     if(sc){
       sc.querySelectorAll("circle").forEach(function(c,i){
