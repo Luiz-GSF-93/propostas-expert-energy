@@ -1432,53 +1432,9 @@ function closeModal(){
 }
 
 function printModalSvg(){
-  var svg=document.querySelector("#epcModalHost svg");
-  if(!svg){
+  try{
     window.print();
-    return;
-  }
-
-  var title=(document.getElementById("epcModalTitle") && document.getElementById("epcModalTitle").textContent) || "Gráfico EnergiaPro";
-  var svgMarkup=svg.outerHTML;
-  var html='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>html,body{margin:0;height:100%;background:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif}body{display:flex;align-items:center;justify-content:center;padding:16px}svg{width:100%;height:auto;max-width:1400px;border:1px solid #d6deea;border-radius:8px;background:#fafcfe}</style></head><body>'+svgMarkup+'</body></html>';
-
-  var frame=document.getElementById("epcPrintFrame");
-  if(frame && frame.parentNode){
-    frame.parentNode.removeChild(frame);
-  }
-
-  frame=document.createElement("iframe");
-  frame.id="epcPrintFrame";
-  frame.setAttribute("aria-hidden","true");
-  frame.style.position="fixed";
-  frame.style.right="0";
-  frame.style.bottom="0";
-  frame.style.width="0";
-  frame.style.height="0";
-  frame.style.border="0";
-  frame.style.opacity="0";
-  document.body.appendChild(frame);
-
-  frame.onload=function(){
-    setTimeout(function(){
-      try{
-        if(frame.contentWindow){
-          frame.contentWindow.focus();
-          frame.contentWindow.print();
-        }
-      }catch(_){}
-    },300);
-
-    setTimeout(function(){
-      try{
-        if(frame && frame.parentNode){
-          frame.parentNode.removeChild(frame);
-        }
-      }catch(_){}
-    },60000);
-  };
-
-  frame.srcdoc=html;
+  }catch(_){}
 }
 
 function bindExpandButtons(root){
@@ -1983,7 +1939,7 @@ setTimeout(function(){ window.__epcBoot(); },500);
       event.source && event.source.postMessage({
         type: 'ENERGIAPRO_EXPORT_RESPONSE',
         requestId: data.requestId,
-        payload: payloacd
+        payload: payload
       }, '*');
       return;
     }
