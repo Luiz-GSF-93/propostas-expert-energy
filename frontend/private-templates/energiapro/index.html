@@ -846,15 +846,15 @@ function renderLoadLineChart(d){
     plot(target,"#7c3aed",2.5,"6 4",false,0.95);
     plot(smooth,"#0d6a42",3, "",true,0.95);
     plot(raw,"#0b6bcb",1.8,"",true,0.85);
-    svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":700},root,"Linha de carga agregada (kWh/mês · elétrico + térmico equiv. via COP="+COP_T_DESC+") · MA-3 wrap");
+    svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":700},root,"Linha de carga agregada (elétrico + térmico equivalente) · alvo + suavização MA-3");
     // legend
     var lx=padL+W-160;
     svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);
-    svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado (raw)");
+    svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado real (kWh/mês)");
     svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);
-    svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Suavizado MA-3 (wrap)");
+    svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Tendência suavizada (MA-3)");
     svgE("rect",{x:lx,y:padT+40,width:10,height:10,fill:"#7c3aed"},root);
-    svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= média)");
+    svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (média mensal)");
   }
   var COP_T_DESC=2.6;
   axes(COP_T_DESC);
@@ -933,7 +933,7 @@ function renderLoadLineChart(d){
     if(dots!==false){arr.forEach(function(v,i){
       var c=svgE("circle",{cx:xs[i],cy:padT+H-(v/ymax)*H,r:3.5,fill:color},root);
       c.setAttribute("data-mes",MESES[i]);
-      c.setAttribute("data-serie",color==="#0b6bcb"?"Agregado (raw)":color==="#0d6a42"?"Suavizado MA-3 (wrap)":"Linha alvo (= m\u00e9dia)");
+      c.setAttribute("data-serie",color==="#0b6bcb"?"Agregado real (kWh/mês)":color==="#0d6a42"?"Tendência suavizada (MA-3)":"Linha alvo (= m\u00e9dia)");
       c.setAttribute("data-val",(arr===target?mean:v).toFixed(2));
       c.setAttribute("data-unid","kWh/m\u00eas");
       try{c.style.cursor="pointer"}catch(_){}
@@ -944,8 +944,8 @@ function renderLoadLineChart(d){
   plot(raw,"#0b6bcb",1.8,"",true);try{bind(document.getElementById("loadLineChart"))}catch(_){};
   svgE("text",{x:padL,y:padT-8,fill:"#0b1f3a","font-size":11,"font-weight":"700"},root,"Linha de carga agregada (kWh/m\u00eas \u00b7 el\u00e9trico + t\u00e9rmico equiv. COP=2,6) \u00b7 MA-3 wrap");
   var lx=padL+W-160;
-  svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado (raw)");
-  svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Suavizado MA-3 (wrap)");
+  svgE("rect",{x:lx,y:padT+4,width:10,height:10,fill:"#0b6bcb"},root);svgE("text",{x:lx+15,y:padT+13,fill:"#0b1f3a","font-size":10},root,"Agregado real (kWh/mês)");
+  svgE("rect",{x:lx,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);svgE("text",{x:lx+15,y:padT+31,fill:"#0b1f3a","font-size":10},root,"Tendência suavizada (MA-3)");
   svgE("rect",{x:lx,y:padT+40,width:10,height:10,fill:"#7c3aed"},root);svgE("text",{x:lx+15,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= m\u00e9dia)");
   try{renderLoadLineChart(window.__EP_LAST||{})}catch(_){}
   try{window.__EPC_FLAT={raw:raw.map(function(v){return +v||0}),smooth:smooth.map(function(v){return +v||0}),target:target.map(function(v){return +v||0}),mean:+mean,LF_raw:mR.LF,LF_smooth:mS.LF,osc_raw:mR.osc,osc_smooth:mS.osc,peakIdx:mR.peakIdx,valleyIdx:mR.valleyIdx}}catch(_){}
@@ -1107,7 +1107,7 @@ function renderLoadLineChart(d){
   svgE("rect",{x:padL+W-150,y:padT+22,width:10,height:10,fill:"#0d6a42"},root);
   svgE("text",{x:padL+W-135,y:padT+32,fill:"#0b1f3a","font-size":10},root,"Suavizado MA3 (wrap)");
   svgE("rect",{x:padL+W-150,y:padT+39,width:10,height:10,fill:"#7c3aed"},root);
-  svgE("text",{x:padL+W-135,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (= média)");
+  svgE("text",{x:padL+W-135,y:padT+49,fill:"#0b1f3a","font-size":10},root,"Linha alvo (média mensal)");
   // Expose for export/calc
   try{window.__EPC_FLAT={raw:raw,smooth:smooth,target:target,mean:meanMetric,LF_raw:mRaw.LF,LF_smooth:mSm.LF,osc_raw:mRaw.osc,osc_smooth:mSm.osc,peakIdx:mRaw.peakIdx,valleyIdx:mRaw.valleyIdx}}catch(_){}
 }
@@ -1318,32 +1318,12 @@ function fillAttrs(){
   try{
     var meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     var flat=window.__EPC_FLAT||{};
-
     var llc=document.getElementById("loadLineChart");
     if(llc){
-      var raw=Array.isArray(flat.raw)?flat.raw:[];
-      var sm=Array.isArray(flat.smooth)?flat.smooth:[];
-      var mn=+flat.mean||0;
-
-      llc.querySelectorAll("circle").forEach(function(c,i){
-        var fill=(c.getAttribute("fill")||"#0b6bcb").toLowerCase();
-        var serie="Agregado (raw)";
-        var val=+raw[i]||0;
-        var unid="kWh/mês";
-
-        if(fill==="#0d6a42"){
-          serie="Suavizado MA-3 (wrap)";
-          val=+sm[i]||0;
-        }else if(fill==="#7c3aed"){
-          serie="Linha alvo (= média)";
-          val=+mn||0;
+      llc.querySelectorAll("circle").forEach(function(c){
+        if(!c.getAttribute("data-unid")){
+          c.setAttribute("data-unid","kWh/mês");
         }
-
-        c.setAttribute("data-mes",meses[i%12]);
-        c.setAttribute("data-serie",serie);
-        c.setAttribute("data-val",String(val));
-        c.setAttribute("data-unid",unid);
-
         try{ c.style.cursor="pointer"; }catch(_){}
       });
     }
