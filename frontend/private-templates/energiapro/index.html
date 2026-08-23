@@ -87,7 +87,7 @@ main{max-width:1500px;margin:0 auto;padding:14px}
 </style>
 </head>
 <body>
-<div class="printHeader"><img src="https://www.expertenergy.com.br/images/logo-expert-energy.png" alt="Expert Energy Performance em Energia Ltda" onerror="this.style.display=\'none\'"><div class="ptxt"><b>Expert Energy Performance em Energia Ltda</b><br><small>www.expertenergy.com.br — Proposta técnica EnergiaPro v1.6.14</small></div></div>
+<div class="printHeader"><img src="https://www.expertenergy.com.br/images/logo-expert-energy.png" alt="Expert Energy Performance em Energia Ltda" onerror="this.style.display='none'"><div class="ptxt"><b>Expert Energy Performance em Energia Ltda</b><br><small>www.expertenergy.com.br — Proposta técnica EnergiaPro v1.6.14</small></div></div>
 <header><div><h1>⚡ EnergiaPro v1.6.14 — Diagnóstico &amp; Cenário</h1><p class="brand-row" style="color:#dbeafe">Embedded API · operação sazonal · catálogo (Atlas Copco / Ingersoll Rand / Trane CVHE / Carrier 19DV) · demanda ótima · THD PRODIST M8</p></div><div class="badge" id="stateBadge">PRONTO</div></header>
 <main>
 
@@ -1442,26 +1442,43 @@ function printModalSvg(){
   var svgMarkup=svg.outerHTML;
   var html='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>html,body{margin:0;height:100%;background:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif}body{display:flex;align-items:center;justify-content:center;padding:16px}svg{width:100%;height:auto;max-width:1400px;border:1px solid #d6deea;border-radius:8px;background:#fafcfe}</style></head><body>'+svgMarkup+'</body></html>';
 
-  var blob=new Blob([html],{type:"text/html"});
-  var url=URL.createObjectURL(blob);
-  var w=window.open(url,"_blank","width=1100,height=750");
-
-  if(!w){
-    URL.revokeObjectURL(url);
-    window.print();
-    return;
+  var frame=document.getElementById("epcPrintFrame");
+  if(frame && frame.parentNode){
+    frame.parentNode.removeChild(frame);
   }
 
-  setTimeout(function(){
-    try{
-      w.focus();
-      w.print();
-    }catch(_){}
-  },300);
+  frame=document.createElement("iframe");
+  frame.id="epcPrintFrame";
+  frame.setAttribute("aria-hidden","true");
+  frame.style.position="fixed";
+  frame.style.right="0";
+  frame.style.bottom="0";
+  frame.style.width="0";
+  frame.style.height="0";
+  frame.style.border="0";
+  frame.style.opacity="0";
+  document.body.appendChild(frame);
 
-  setTimeout(function(){
-    try{ URL.revokeObjectURL(url); }catch(_){}
-  },60000);
+  frame.onload=function(){
+    setTimeout(function(){
+      try{
+        if(frame.contentWindow){
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        }
+      }catch(_){}
+    },300);
+
+    setTimeout(function(){
+      try{
+        if(frame && frame.parentNode){
+          frame.parentNode.removeChild(frame);
+        }
+      }catch(_){}
+    },60000);
+  };
+
+  frame.srcdoc=html;
 }
 
 function bindExpandButtons(root){
@@ -1887,11 +1904,6 @@ setTimeout(function(){ window.__epcBoot(); },500);
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
-</body></html>");w.document.close();setTimeout(function(){w.print()},260)});
-document.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeModal()});
-})();
-</script>
-
 <script>
 (function () {
   if (window.__ENERGIAPRO_V7_BRIDGE__) return;
@@ -1989,5 +2001,6 @@ document.addEventListener("keydown",function(ev){if(ev.key==="Escape")closeModal
 })();
 </script>
 
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
