@@ -1096,7 +1096,7 @@ function calc(){
   var custoDemanda=custoDemandaP+custoDemandaFP;
   // Multa reativo (PRODIST M4 vigente, fator de referência 0,92)
   var pReativo=+(($("pReativo")&&$("pReativo").value)||30)/100;
-  var fpCalc=Math.max(Math.min((+fp||0.92),0.9999),0.0001);var tgphi=Math.sqrt((1/(fpCalc*fpCalc))-1);var tgphiLim=0.62;var E_ativa_kWh_mes=Math.max(E_mes_bruto*1000,0);var fatorReativoExced=(fpCalc<0.92&&tgphi>tgphiLim)?Math.max(tgphi-tgphiLim,0):0;var kwh_reativo_exced=E_ativa_kWh_mes*fatorReativoExced;var tReativa=+(($("tReativa")&&$("tReativa").value)||0.60);var multaReativo_mes=kwh_reativo_exced*tReativa;
+  var fpCalc=Math.max(Math.min((+fp||0.92),0.9999),0.0001);var tgphi=Math.sqrt((1/(fpCalc*fpCalc))-1);var tgphiLim=0.62;var E_ativa_kWh_mes=Math.max(E_mes_bruto*1000,0);var fatorReativoCalc=(fpCalc<0.92&&tgphi>tgphiLim)?Math.max(tgphi-tgphiLim,0):0;var fatorReativoManual=Math.max(pReativo||0,0);var fatorReativoExced=(fpCalc<0.92)?(fatorReativoManual>0?fatorReativoManual:fatorReativoCalc):0;var kwh_reativo_exced=E_ativa_kWh_mes*fatorReativoExced;var tReativa=+(($("tReativa")&&$("tReativa").value)||0.60);var multaReativo_mes=kwh_reativo_exced*tReativa;
   var multaReativo_ano=multaReativo_mes*12;
   // Ultrapassagem (RN ANEEL 414/2010): DR_p ou DR_fp acima da DC contratada
   var ultR_p=+(($("ultR_p")&&$("ultR_p").value)||25);
@@ -1196,7 +1196,7 @@ function calc(){
   var EquipComparativo=renderEquipComparativo(therm_custo_anual);
 
   return {
-    sum_kW:sum_kW, E_mes:E_mes, E_mes_bruto:E_mes_bruto, E_rede:E_rede, E_local:E_local,
+    sum_kW:sum_kW, E_mes:E_mes, E_mes_bruto:E_mes_bruto, E_rede:E_rede, E_local:E_local, fp:fpCalc, pReativo:pReativo,
     E_local_fv:E_local_fv, E_local_motor:E_local_motor, E_local_micro:E_local_micro, E_local_eol:E_local_eol,
     F_base:F_base, F_cen:F_cen, eco_m:eco_m, eco_anual:eco_anual, eco_anual_bruto:eco_anual_bruto,
     CAPEX:CAPEX, OPEX_a:OPEX_a, VPL:VPL, TIR:TIR, payback:payback,
@@ -1217,7 +1217,7 @@ function calc(){
     dieselOM:dieselOM,regPenaltyMes:regPenaltyMes,regPenaltyMesBase:regPenaltyMesBase,regPenaltyMesCen:regPenaltyMesCen,
     E_mes_sazonal:E_mes,E_mes_sazonal_cen:E_mes,
     F_cen_liq:F_cen,F_base_liq:F_base,indicesazonal:saz?indiceE:1,
-    tgphi:tgphi, tgphi_lim:tgphiLim, fatorReativoExced:fatorReativoExced, kwh_reativo_exced:kwh_reativo_exced, kwh_reativo_exced_cen:kwh_reativo_exced_cen, kWh_ativa_mes:E_ativa_kWh_mes, kWh_ativa_cen:E_ativa_kWh_cen, tReativa:tReativa, multasAno:(multaReativo_mes+ultrapassP_mes+ultrapassFP_mes)*12
+    tgphi:tgphi, tgphi_lim:tgphiLim, fatorReativoExced:fatorReativoExced, fatorReativoCalc:fatorReativoCalc, fatorReativoManual:fatorReativoManual, kwh_reativo_exced:kwh_reativo_exced, kwh_reativo_exced_cen:kwh_reativo_exced_cen, kWh_ativa_mes:E_ativa_kWh_mes, kWh_ativa_cen:E_ativa_kWh_cen, tReativa:tReativa, multasAno:(multaReativo_mes+ultrapassP_mes+ultrapassFP_mes)*12
   };
 }
 
