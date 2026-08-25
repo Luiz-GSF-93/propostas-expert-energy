@@ -190,103 +190,95 @@ export async function POST(req: Request) {
     } catch (e) { console.warn('[IA-DEBUGLOAN] erro:', (e as any)?.message); }
   }
 
-  // === ENRIQUECIMENTO DRE AUTO/MANUAL ===
+  
+  // === ENRIQUECIMENTO DRE V2 — formula do modulo DRE (regime 16%) ===
   try {
     const cf: any = (ctx.now as any).cashflow;
     const dre: any = (ctx.now as any).dre || {};
     const yr = year, mo = month;
 
-    let impostosManual = 0;
+    // Receita Bruta = APENAS vendas (cf.receita), NAO soma recFin (bate com a tabela)
+    const receitaBrutaVendas = Number(cf.receita ?? 0);
+
+    // Impostos = 16% sobre Receita Bruta (regime presumido, conforme tabela)
+    const impostosCalculados = +(receitaBrutaVendas * 0.16).toFixed(2);
+    const receitaLiquida = +(receitaBrutaVendas - impostosCalculados).toFixed(2);
+
+    const cmv = Number(dre.cmv ?? dre.custo_operacional ?? 0);
+    const lucroBruto = +(receitaLiquida - cmv).toFixed(2);
+
+    const despOp = Number(
+      (dre.despesas_administrativas ?? 0) + (dre.despesas_pessoal ?? 0) +
+      (dre.despesas_vendas ?? 0) + (dre.despesas_marketing ?? 0) +
+      (dre.despesas_infraestrutura ?? 0)
+    );
+
+    // RecFin = soma do DRE manual onde section/key indica receita financeira
+    let recFinManual = 0;
     if (supabaseAdmin) try {
       const { data: dreMan } = await supabaseAdmin
         .from("finance_dre_manual_entries").select("*").eq("year", yr).eq("month", mo);
       for (const r of (dreMan ?? [])) {
         const sec = String(r.section ?? "").toLowerCase();
         const key = String(r.line_key ?? "").toLowerCase();
-        if (sec.includes("impost") || key.includes("impost") || key.includes("tax") ||
-            sec.includes("tribut") || key.includes("tribut")) {
-          const s = String(r.operator ?? "add").toLowerCase().includes("sub") ? -1 : 1;
-          impostosManual += s * Number(r.amount ?? 0);
-        }
+        const sob = String(r.operator ?? "add").toLowerCase();
+        const isReceita = sec.includes("receita") || sec.includes("financ") || key.includes("financ") || key.includes("rendiment");
+        const isAdd = !sob.includes("sub");
+        if (isReceita && isAdd) recFinManual += Number(r.amount ?? 0);
       }
     } catch (e) {}
+    const recFinAuto = 0; // diag: nenhuma tabela automatica existe
 
-    let recFinAuto = 0;
-    for (const tbl of ["finance_investments","finance_applications","finance_application_yields",
-                       "finance_yields","finance_rendimentos","finance_rendimentos_aplicacoes",
-                       "finance_investment_returns","finance_receitas_automaticas",
-                       "finance_dividends","finance_juros_recebidos","finance_savings_yield"]) {
-      if (!supabaseAdmin) continue;
-      try {
-        const { data } = await (supabaseAdmin as any).from(tbl).select("*").eq("year", yr).eq("month", mo);
-        for (const r of (data ?? [])) {
-          const v = Number(r.amount ?? r.value ?? r.yield ?? 0);
-          if (v > 0) recFinAuto += v;
-        }
-      } catch (e) {}
-    }
-
-    let recFinManual = 0;
-    if (supabaseAdmin) try {
-      const { data: dreMan2 } = await supabaseAdmin
-        .from("finance_dre_manual_entries").select("*").eq("year", yr).eq("month", mo);
-      for (const r of (dreMan2 ?? [])) {
-        const sec = String(r.section ?? "").toLowerCase();
-        const key = String(r.line_key ?? "").toLowerCase();
-        if ((sec.includes("receita") || sec.includes("financ")) && key.includes("financ")) {
-          const s = String(r.operator ?? "add").toLowerCase().includes("sub") ? -1 : 1;
-          if (s > 0) recFinManual += Number(r.amount ?? 0);
-        }
-      }
-    } catch (e) {}
-
-    const receitaBrutaAuto = Number(cf.receita ?? 0);
-    const receitaBrutaTotal = receitaBrutaAuto + recFinAuto + recFinManual;
-    const impostosTotal = Number(dre.impostos ?? impostosManual ?? 0);
-    const receitaLiquida = receitaBrutaTotal - impostosTotal;
-    const cmv = Number(dre.cmv ?? dre.custo_operacional ?? 0);
-    const lucroBruto = receitaLiquida - cmv;
-    const despOp = Number(dre.despesas_operacionais ?? ((dre.despesas_administrativas ?? 0) + (dre.despesas_pessoal ?? 0) + (dre.despesas_vendas ?? 0) + (dre.despesas_marketing ?? 0) + (dre.despesas_infraestrutura ?? 0)));
-    const despFinAuto = Number(cf.emprestimos_auto ?? 0);
-    const despFinManual = Number(dre.despesas_financeiras ?? 0);
+    const despFinParcelas = Number(cf.emprestimos_auto ?? 0);
     const depreciacao = Number(dre.depreciacao ?? dre.depreciacao_amortizacao ?? 0);
-    const ebit = lucroBruto - despOp - despFinAuto - despFinManual + recFinAuto + recFinManual - depreciacao;
-    const ebitda = ebit + depreciacao;
+
+    // LAJIR / EBIT
+    const ebit = +(lucroBruto - despOp - despFinParcelas + recFinManual + recFinAuto - depreciacao).toFixed(2);
+    const ebitda = +(ebit + depreciacao).toFixed(2);
     const irpj = Number(dre.irpj_csll ?? 0);
-    const lucroLiquido = ebit - irpj;
-    const margem = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
+    const lucroLiquido = +(ebit - irpj).toFixed(2);
+    const margem = receitaBrutaVendas > 0 ? +((lucroLiquido / receitaBrutaVendas) * 100).toFixed(2) : 0;
 
     now.dre = {
       ...dre,
-      receita_bruta: receitaBrutaTotal,
-      receita_bruta_auto: receitaBrutaAuto,
-      receita_financeira_auto: recFinAuto,
+      receita_bruta: receitaBrutaVendas,
+      receita_bruta_total: receitaBrutaVendas,
       receita_financeira_manual: recFinManual,
-      impostos: impostosTotal,
+      receita_financeira_auto: recFinAuto,
+      receita_financeira: recFinManual + recFinAuto,
+      impostos: impostosCalculados,
+      aliquota_impostos_pct: 16,
       receita_liquida: receitaLiquida,
       cmv: cmv,
       lucro_bruto: lucroBruto,
       despesas_operacionais: despOp,
-      despesas_financeiras: despFinAuto + despFinManual,
-      despesas_financeiras_auto: despFinAuto,
-      despesas_financeiras_manual: despFinManual,
+      despesas_financeiras: despFinParcelas,
+      despesas_financeiras_auto: despFinParcelas,
+      despesas_financeiras_manual: Number(dre.despesas_financeiras ?? 0),
       depreciacao: depreciacao,
       ebit: ebit,
+      lajir: ebit,
       ebitda: ebitda,
       irpj_csll: irpj,
       lucro_liquido: lucroLiquido,
       margem_liquida_percent: margem,
+      _formula: "Receita Bruta=cf.receita(vendas); impostos 16% presumido; RecFin=manual dre; DespFin=parcelas loans; margem%/Receita Bruta"
     };
 
-    console.log("[IA-DRE-AUG]", JSON.stringify({
-      year: yr, month: mo,
-      rec_bruta_auto: receitaBrutaAuto, rec_fin_auto: recFinAuto, rec_fin_manual: recFinManual,
-      receita_bruta_total: receitaBrutaTotal, impostos: impostosTotal,
-      receita_liquida: receitaLiquida, desp_fin_auto: despFinAuto,
-      desp_fin_manual: despFinManual, ebit, ebitda, lucro_liquido: lucroLiquido,
-      margem_pct: margem.toFixed(2)
+    console.log("[IA-DRE-V2]", JSON.stringify({
+      yr, mo,
+      rec_bruta_vendas: receitaBrutaVendas,
+      impostos: impostosCalculados,
+      receita_liquida: receitaLiquida,
+      cmv, lucro_bruto: lucroBruto,
+      desp_op: despOp,
+      desp_fin_parcelas: despFinParcelas,
+      rec_fin_manual: recFinManual, rec_fin_auto: recFinAuto,
+      depreciacao, ebit, ebitda,
+      irpj, lucro_liquido: lucroLiquido,
+      margem_pct: margem
     }));
-  } catch (e) { console.warn("[IA-DRE-AUG] erro:", (e as any)?.message); }
+  } catch (e) { console.warn("[IA-DRE-V2] erro:", (e as any)?.message); }
 
   const insights: Insight[] = [];
   const suggestions: Sug[]  = [];
