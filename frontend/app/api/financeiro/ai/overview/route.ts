@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   checkAdminFromRequest, loadFinanceContextFull, logFinanceAiEvent,
   projecaoCaixa, simularCenario, anomalia, mean, dscr,
+  supabaseAdmin,
 } from "@/lib/financeiro/ai/server";
 
 export const runtime = "nodejs";
@@ -35,50 +36,49 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     Number(v?.receita ?? 0),
     Number(v?.despesa ?? 0)
   ]);
+
+  // soma por regex em qualquer variação de nome
   const sumBy = (rx: RegExp, kind: "receita" | "despesa"): number =>
     entries.reduce((s, [k, r, d]) => rx.test(k) ? s + (kind === "receita" ? r : d) : s, 0);
 
-  // ============ CF como FONTE PRIMÁRIA ============
-  const cfReceitaOp     = sumBy(/\bvenda|fatur|cliente|adiant|receita_ope|receita_op\b/, "receita");
-  const cfReceitaFin    = sumBy(/\b(financ|rendiment|invest|aplic|juro|resgate)|invest.*capex_capex/, "receita");
-  const cfReceitaOutros = sumBy(/outras?_?receit|reembolso|estorno/, "receita");
-  const cfCmv           = sumBy(/\bcusto|\bcmv|\bcpv|insumo|material|mercadoria\b/, "despesa");
-  const cfDespesaOp     = sumBy(/despesa[_ ]?(pesso|comerc|market|admin|infra|vend|operac)/, "despesa")
-                        + sumBy(/pessoal|folha|salario|comercial|marketing|administrativ|infraestrutura/, "despesa");
-  const cfDespesaFin    = sumBy(/despesa[_ ]?(financ|juros)|juros?_|iof|tarifa|banco/, "despesa");
-  const cfTributos      = sumBy(/\btribut|\bimpost|irpj|csll|pis|cofins|iss|icms/, "despesa");
-  const cfDepreciacao   = sumBy(/deprec|amortiz/, "despesa");
+  const cfReceitaOp    = sumBy(/venda|fatur|cliente|adiant|receita_ope|receita_op/, "receita");
+  const cfReceitaFin   = sumBy(/financ|rendiment|invest|aplic|juro|resgate/, "receita");
+  const cfReceitaOutros= sumBy(/outras?_?receit|reembolso|estorno/, "receita");
 
-  // ============ Manual ADITIVO (nunca substitui CF) ============
-  const manualReceita = Math.max(
-    Number(manualDre?.receitas ?? 0),
-    Number(manualDre?.receita_bruta ?? 0),
-    Number(manualDre?.receita_operacional ?? 0)
-  );
-  const manualDespOp = Math.max(
-    Number(manualDre?.despesas_operacionais ?? 0),
-    Number(manualDre?.despesa_op ?? 0)
-  );
-  const manualDespFin = Math.max(
-    Number(manualDre?.despesas_financeiras ?? 0),
-    Number(manualDre?.despesa_fin ?? 0)
-  );
-  const manualTributos = Math.max(
-    Number(manualDre?.tributos ?? 0),
-    Number(manualDre?.outros_tributos ?? 0)
-  );
-  const manualDepreciacao = Number(manualDre?.depreciacao_amortizacao ?? 0);
+  const cfCmv          = sumBy(/custo|cmv|cpv|insumo|material|mercadoria/, "despesa");
+  const cfDespesaOp    = sumBy(/despesa[_ ]?(oper|pesso|comerc|market|admin|infra|vend)/, "despesa")
+                       + sumBy(/pessoal|folha|salario|comercial|marketing|administrativ|infraestrutura/, "despesa");
+  const cfDespesaFin   = sumBy(/despesa[_ ]?(financ|juros|banco)|juros?_|iof|tarifa/, "despesa");
+  const cfTributos     = sumBy(/tribut|impost|irpj|csll|pis|cofins|iss|icms|imposto/, "despesa");
 
-  // ============ Composição: CF + Manual ADITIVO ============
-  const receitaLiquida = cfReceitaOp + cfReceitaFin + cfReceitaOutros + manualReceita;
-  const cmv            = cfCmv;
-  const despesasOp     = cfDespesaOp + manualDespOp;
-  const despesasFin    = cfDespesaFin + manualDespFin;
-  const tributos       = cfTributos + manualTributos;
-  const depreciacao    = cfDepreciacao + manualDepreciacao;
+  // Receita Total: prioriza DRE manual se > 0; senão soma CF
+  const receitaLiquida = (Number(manualDre?.receitas ?? manualDre?.receita_bruta ?? manualDre?.receita_operacional ?? 0) > 0)
+    ? Math.max(
+        Number(manualDre?.receitas ?? 0),
+        Number(manualDre?.receita_bruta ?? 0),
+        Number(manualDre?.receita_operacional ?? 0)
+      )
+    : (cfReceitaOp + cfReceitaFin + cfReceitaOutros);
+
+  const cmv          = (Number(manualDre?.custo_operacional ?? manualDre?.custo_total ?? 0) > 0)
+    ? Math.max(Number(manualDre?.custo_operacional ?? 0), Number(manualDre?.custo_total ?? 0))
+    : cfCmv;
+
+  const despesasOp = (Number(manualDre?.despesas_operacionais ?? manualDre?.despesa_op ?? 0) > 0)
+    ? Math.max(Number(manualDre?.despesas_operacionais ?? 0), Number(manualDre?.despesa_op ?? 0))
+    : cfDespesaOp;
+
+  const despesasFin = (Number(manualDre?.despesas_financeiras ?? manualDre?.despesa_fin ?? 0) > 0)
+    ? Math.max(Number(manualDre?.despesas_financeiras ?? 0), Number(manualDre?.despesa_fin ?? 0))
+    : cfDespesaFin;
+
+  const tributos = (Number(manualDre?.tributos ?? 0) > 0)
+    ? Number(manualDre?.tributos ?? 0)
+    : cfTributos;
 
   const lucroBruto       = receitaLiquida - cmv;
   const ebit             = lucroBruto - despesasOp;
+  const depreciacao      = Number(cf?.depreciacao_amortizacao ?? manualDre?.depreciacao_amortizacao ?? 0);
   const ebitda           = ebit + depreciacao;
   const lucroAntesIr     = ebitda - despesasFin;
   const lucroLiquido     = lucroAntesIr - tributos;
@@ -87,8 +87,6 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
   return {
     receita_bruta: receitaLiquida,
     receita_liquida: receitaLiquida,
-    receita_operacional: cfReceitaOp,
-    receita_financeira: cfReceitaFin + manualReceita,
     cmv,
     lucro_bruto: lucroBruto,
     despesas_operacionais: despesasOp,
@@ -112,8 +110,9 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     margem_ebitda_pct: pct(ebitda),
     margem_liquida_val: lucroLiquido,
     margem_liquida_pct: pct(lucroLiquido),
+    // aliases retro-compat
     receitas: receitaLiquida,
-    receita_operacional_alias: receitaLiquida,
+    receita_operacional: receitaLiquida,
     custo_operacional: cmv,
     custo_total: cmv,
     despesa_op: despesasOp,
@@ -121,7 +120,6 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     receita: receitaLiquida,
   };
 }
-
 
 
 export async function POST(req: Request) {
@@ -141,6 +139,37 @@ export async function POST(req: Request) {
     (ctx.now as any).cashflow,
     (ctx.now as any).dre
   ) as any;
+
+  // IA: somar parcelas de emprestimos (auto) + custos variaveis auto-rateados (que a UI gera em runtime)
+  if (supabaseAdmin && (ctx.now as any)?.cashflow) {
+    try {
+      const LOANS_T = process.env.FINANCE_AI_LOANS_TABLE || 'finance_loan_contracts';
+      const COSTS_T = process.env.FINANCE_AI_COSTS_TABLE || 'finance_cost_entries';
+      const cf: any = (ctx.now as any).cashflow;
+
+      const { data: loans } = await supabaseAdmin.from(LOANS_T).select('*');
+      const activeLoans = (loans ?? []).filter((l: any) =>
+        String(l.status ?? '').toLowerCase().includes('ativ') && l.active !== false);
+      const emprestimosMes = activeLoans.reduce(
+        (s: number, l: any) => s + Number(l.installment_amount ?? l.parcela_mes ?? 0), 0);
+
+      const { data: costs } = await supabaseAdmin.from(COSTS_T).select('*');
+      const variaveisAuto = ((costs ?? []).filter((c: any) =>
+        String(c.category ?? '').toLowerCase().match(/vari/))
+        .reduce((s: number, c: any) => {
+          const mAmt = Number(c.monthly_amount ?? 0);
+          if (mAmt > 0) return s + mAmt;
+          return s + (Number(cf.receita ?? 0) * Number(c.percentage_rate ?? 0)) / 100;
+        }, 0));
+
+      cf.emprestimos_auto      = Number(emprestimosMes.toFixed(2));
+      cf.custos_variaveis_auto = Number(variaveisAuto.toFixed(2));
+      cf.despesa_auto          = Number(((cf.despesa_auto ?? 0) + emprestimosMes + variaveisAuto).toFixed(2));
+      cf.despesa               = Number(((cf.despesa ?? 0) + emprestimosMes + variaveisAuto).toFixed(2));
+      cf.saldo                 = Number((Number(cf.receita ?? 0) - cf.despesa).toFixed(2));
+    } catch (_) { /* silencioso */ }
+  }
+
   const insights: Insight[] = [];
   const suggestions: Sug[]  = [];
 
@@ -294,13 +323,13 @@ export async function POST(req: Request) {
   });
 
   // ===== CENARIOS — desconta TODOS os custos =====
-  const custosTotais = (now.costs.total_mensal_estimado || 0)
-    + (now.dre.cmv || 0)
+    // FIX: total_mensal_estimado ja tem variaveis; cmv ja virou custos_fixos no CF
+  const custosTotais = (now.costs.fixos || 0)
     + (now.dre.despesas_administrativas || 0) + (now.dre.despesas_pessoal || 0)
     + (now.dre.despesas_vendas || 0) + (now.dre.despesas_marketing || 0)
     + (now.dre.despesas_infraestrutura || 0)
     + (now.dre.despesas_financeiras || 0) + (now.dre.irpj_csll || 0);
-  const receitaBase = now.dre.receita_bruta || now.cashflow.receita || 0;
+  const receitaBase = (now.dre as any).receitas || (now.dre as any).receita_bruta || now.cashflow.receita || 0;
   const otim = simularCenario(receitaBase, custosTotais,  10, -2);
   const real = simularCenario(receitaBase, custosTotais,   2,  2);
   const pess = simularCenario(receitaBase, custosTotais, -10,  8);
