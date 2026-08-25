@@ -181,7 +181,7 @@ export default function FinanceAISection() {
         <div className="mb-4 rounded-xl bg-slate-800/60 p-4">
           <h3 className="text-sm font-bold text-white mb-2">💡 Sugestões de gestão</h3>
           <ul className="list-disc pl-5 text-sm text-slate-100 space-y-1">
-            {data.sugestoes.map((s: string, i: number) => <li key={i}>{s}</li>)}
+            {(data?.sugestoes ?? []).map((s: string, i: number) => <li key={i}>{s}</li>)}
           </ul>
         </div>
       )}
@@ -191,7 +191,7 @@ export default function FinanceAISection() {
         <div className="mb-4 rounded-xl bg-emerald-900/40 p-4">
           <h3 className="text-sm font-bold text-white mb-2">🚀 Oportunidades identificadas</h3>
           <ul className="list-disc pl-5 text-sm text-emerald-100 space-y-1">
-            {data.oportunidades.map((o: string, i: number) => <li key={i}>{o}</li>)}
+            {(data?.oportunidades ?? []).map((o: string, i: number) => <li key={i}>{o}</li>)}
           </ul>
         </div>
       )}
@@ -199,23 +199,24 @@ export default function FinanceAISection() {
       {/* ====== CENÁRIOS ====== */}
       {data?.cenarios && (
         <div className="mb-6 grid gap-3 md:grid-cols-3">
-          {[
-            { k: "otimista",   cor: "#10b981", rotulo: "Otimista (+10%/-2%)" },
-            { k: "realista",   cor: "#0ea5e9", rotulo: "Realista (+2%/+2%)" },
-            { k: "pessimista", cor: "#ef4444", rotulo: "Pessimista (-10%/+8%)" }
-          ].map((c) => {
-            const ev = data.cenarios[c.k];
+          {(Array.isArray(data?.cenarios) ? data.cenarios : []).map((c: any, idx: number) => {
+            const cn = String(c?.nome ?? "");
+            const cor =
+              /^OTIM/i.test(cn) ? "#10b981" :
+              /^PESS/i.test(cn) ? "#ef4444" : "#0ea5e9";
+            const rotulo = c?.nome ?? `Cenário ${idx + 1}`;
+            const ev = c ?? {};
             return (
-              <div key={c.k} className="rounded-xl border border-slate-700 bg-slate-800/60 p-4"
-                   style={{ borderLeft: `3px solid ${c.cor}` }}>
-                <div className="text-xs uppercase text-slate-400">{c.rotulo}</div>
-                <div className="text-lg font-bold text-white mt-1">Receita: {fmtBRL(ev.receita)}</div>
-                <div className="text-sm text-slate-200">Custos: {fmtBRL(ev.custos)}</div>
-                <div className="text-lg font-bold mt-1" style={{ color: ev.lucro >= 0 ? "#86efac" : "#fca5a5" }}>
-                  Lucro: {fmtBRL(ev.lucro)}
+              <div key={`cen-${idx}`} className="rounded-xl border border-slate-700 bg-slate-800/60 p-4"
+                   style={{ borderLeft: `3px solid ${cor}` }}>
+                <div className="text-xs uppercase text-slate-400">{rotulo}</div>
+                <div className="text-lg font-bold text-white mt-1">Receita: {fmtBRL(Number(ev.receita ?? 0))}</div>
+                <div className="text-sm text-slate-200">Custos: {fmtBRL(Number(ev.custos ?? 0))}</div>
+                <div className="text-lg font-bold mt-1" style={{ color: Number(ev.lucro ?? 0) >= 0 ? "#86efac" : "#fca5a5" }}>
+                  Lucro: {fmtBRL(Number(ev.lucro ?? 0))}
                 </div>
                 <div className="text-xs text-slate-400">
-                  Δ vs atual: {fmtBRL(ev.delta_lucro)}
+                  Δ vs atual: {(Number(ev.delta_vs_atual_pct ?? 0)).toFixed(1)}%
                 </div>
               </div>
             );
