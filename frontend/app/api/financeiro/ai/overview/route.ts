@@ -35,49 +35,50 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     Number(v?.receita ?? 0),
     Number(v?.despesa ?? 0)
   ]);
-
-  // soma por regex em qualquer variação de nome
   const sumBy = (rx: RegExp, kind: "receita" | "despesa"): number =>
     entries.reduce((s, [k, r, d]) => rx.test(k) ? s + (kind === "receita" ? r : d) : s, 0);
 
-  const cfReceitaOp    = sumBy(/venda|fatur|cliente|adiant|receita_ope|receita_op/, "receita");
-  const cfReceitaFin   = sumBy(/financ|rendiment|invest|aplic|juro|resgate/, "receita");
-  const cfReceitaOutros= sumBy(/outras?_?receit|reembolso|estorno/, "receita");
+  // ============ CF como FONTE PRIMÁRIA ============
+  const cfReceitaOp     = sumBy(/\bvenda|fatur|cliente|adiant|receita_ope|receita_op\b/, "receita");
+  const cfReceitaFin    = sumBy(/\b(financ|rendiment|invest|aplic|juro|resgate)|invest.*capex_capex/, "receita");
+  const cfReceitaOutros = sumBy(/outras?_?receit|reembolso|estorno/, "receita");
+  const cfCmv           = sumBy(/\bcusto|\bcmv|\bcpv|insumo|material|mercadoria\b/, "despesa");
+  const cfDespesaOp     = sumBy(/despesa[_ ]?(pesso|comerc|market|admin|infra|vend|operac)/, "despesa")
+                        + sumBy(/pessoal|folha|salario|comercial|marketing|administrativ|infraestrutura/, "despesa");
+  const cfDespesaFin    = sumBy(/despesa[_ ]?(financ|juros)|juros?_|iof|tarifa|banco/, "despesa");
+  const cfTributos      = sumBy(/\btribut|\bimpost|irpj|csll|pis|cofins|iss|icms/, "despesa");
+  const cfDepreciacao   = sumBy(/deprec|amortiz/, "despesa");
 
-  const cfCmv          = sumBy(/custo|cmv|cpv|insumo|material|mercadoria/, "despesa");
-  const cfDespesaOp    = sumBy(/despesa[_ ]?(oper|pesso|comerc|market|admin|infra|vend)/, "despesa")
-                       + sumBy(/pessoal|folha|salario|comercial|marketing|administrativ|infraestrutura/, "despesa");
-  const cfDespesaFin   = sumBy(/despesa[_ ]?(financ|juros|banco)|juros?_|iof|tarifa/, "despesa");
-  const cfTributos     = sumBy(/tribut|impost|irpj|csll|pis|cofins|iss|icms|imposto/, "despesa");
+  // ============ Manual ADITIVO (nunca substitui CF) ============
+  const manualReceita = Math.max(
+    Number(manualDre?.receitas ?? 0),
+    Number(manualDre?.receita_bruta ?? 0),
+    Number(manualDre?.receita_operacional ?? 0)
+  );
+  const manualDespOp = Math.max(
+    Number(manualDre?.despesas_operacionais ?? 0),
+    Number(manualDre?.despesa_op ?? 0)
+  );
+  const manualDespFin = Math.max(
+    Number(manualDre?.despesas_financeiras ?? 0),
+    Number(manualDre?.despesa_fin ?? 0)
+  );
+  const manualTributos = Math.max(
+    Number(manualDre?.tributos ?? 0),
+    Number(manualDre?.outros_tributos ?? 0)
+  );
+  const manualDepreciacao = Number(manualDre?.depreciacao_amortizacao ?? 0);
 
-  // Receita Total: prioriza DRE manual se > 0; senão soma CF
-  const receitaLiquida = (Number(manualDre?.receitas ?? manualDre?.receita_bruta ?? manualDre?.receita_operacional ?? 0) > 0)
-    ? Math.max(
-        Number(manualDre?.receitas ?? 0),
-        Number(manualDre?.receita_bruta ?? 0),
-        Number(manualDre?.receita_operacional ?? 0)
-      )
-    : (cfReceitaOp + cfReceitaFin + cfReceitaOutros);
-
-  const cmv          = (Number(manualDre?.custo_operacional ?? manualDre?.custo_total ?? 0) > 0)
-    ? Math.max(Number(manualDre?.custo_operacional ?? 0), Number(manualDre?.custo_total ?? 0))
-    : cfCmv;
-
-  const despesasOp = (Number(manualDre?.despesas_operacionais ?? manualDre?.despesa_op ?? 0) > 0)
-    ? Math.max(Number(manualDre?.despesas_operacionais ?? 0), Number(manualDre?.despesa_op ?? 0))
-    : cfDespesaOp;
-
-  const despesasFin = (Number(manualDre?.despesas_financeiras ?? manualDre?.despesa_fin ?? 0) > 0)
-    ? Math.max(Number(manualDre?.despesas_financeiras ?? 0), Number(manualDre?.despesa_fin ?? 0))
-    : cfDespesaFin;
-
-  const tributos = (Number(manualDre?.tributos ?? 0) > 0)
-    ? Number(manualDre?.tributos ?? 0)
-    : cfTributos;
+  // ============ Composição: CF + Manual ADITIVO ============
+  const receitaLiquida = cfReceitaOp + cfReceitaFin + cfReceitaOutros + manualReceita;
+  const cmv            = cfCmv;
+  const despesasOp     = cfDespesaOp + manualDespOp;
+  const despesasFin    = cfDespesaFin + manualDespFin;
+  const tributos       = cfTributos + manualTributos;
+  const depreciacao    = cfDepreciacao + manualDepreciacao;
 
   const lucroBruto       = receitaLiquida - cmv;
   const ebit             = lucroBruto - despesasOp;
-  const depreciacao      = Number(cf?.depreciacao_amortizacao ?? manualDre?.depreciacao_amortizacao ?? 0);
   const ebitda           = ebit + depreciacao;
   const lucroAntesIr     = ebitda - despesasFin;
   const lucroLiquido     = lucroAntesIr - tributos;
@@ -86,6 +87,8 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
   return {
     receita_bruta: receitaLiquida,
     receita_liquida: receitaLiquida,
+    receita_operacional: cfReceitaOp,
+    receita_financeira: cfReceitaFin + manualReceita,
     cmv,
     lucro_bruto: lucroBruto,
     despesas_operacionais: despesasOp,
@@ -109,9 +112,8 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     margem_ebitda_pct: pct(ebitda),
     margem_liquida_val: lucroLiquido,
     margem_liquida_pct: pct(lucroLiquido),
-    // aliases retro-compat
     receitas: receitaLiquida,
-    receita_operacional: receitaLiquida,
+    receita_operacional_alias: receitaLiquida,
     custo_operacional: cmv,
     custo_total: cmv,
     despesa_op: despesasOp,
@@ -119,6 +121,7 @@ function deriveDreFromCashflow(cf: any, manualDre: any): any {
     receita: receitaLiquida,
   };
 }
+
 
 
 export async function POST(req: Request) {
