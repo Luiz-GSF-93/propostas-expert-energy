@@ -1,211 +1,40 @@
-import { NextResponse } from "next/server";
-import {
-  checkAdminFromRequest, loadFinanceContextFull, logFinanceAiEvent,
-  projecaoCaixa, simularCenario, anomalia, mean, dscr,
-  supabaseAdmin,
-} from "@/lib/financeiro/ai/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-type Insight = { modulo:string; titulo:string; severidade:"baixa"|"media"|"alta"; detalhe:string };
-type Sug     = { modulo:string; acao:string; impacto:string };
-type Cen     = { nome:string; receita:number; custos:number; lucro:number; delta_vs_atual_pct:number };
-
-const BRL = (n: number, frac=2) =>
-  Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: frac, maximumFractionDigits: frac });
-const PCT = (n: number|null, frac=1) => n == null ? "—" : `${Number(n).toFixed(frac)}%`;
-const sev = (txt: string): "baixa"|"media"|"alta" => {
-  const t = txt.toLowerCase();
-  if (/(negativ|crit|alta|mais de |deficit|risco)/.test(t)) return "alta";
-  if (/(abaixo|atencao|media)/.test(t)) return "media";
-  return "baixa";
-};
-
-
-/* ============================================================
-   deriveDreFromCashflow - robusto por REGEX.
-   Quando os lançamentos manuais de DRE estão esparsos (1-2 linhas/mes),
-   recompõe Receita, CMV, Despesas a partir do cashflow por categoria.
-   Manual > Cashflow quando manual > 0.
-   ============================================================ */
-function deriveDreFromCashflow(cf: any, manualDre: any): any {
-  const catMap: Record<string, {receita: number; despesa: number}> = (cf?.por_category ?? {}) as any;
-  const entries: [string, number, number][] = Object.entries(catMap).map(([k, v]: any) => [
-    String(k ?? "").toLowerCase(),
-    Number(v?.receita ?? 0),
-    Number(v?.despesa ?? 0)
-  ]);
-  const sumBy = (rx: RegExp, kind: "receita" | "despesa"): number =>
-    entries.reduce((s, [k, r, d]) => rx.test(k) ? s + (kind === "receita" ? r : d) : s, 0);
-
-  const cfReceitaOp  = sumBy(/venda|fatur|cliente|adiant|receita_op/, "receita");
-  const cfReceitaFin = sumBy(/financ|rendiment|aplic|invest|juro|resgate/, "receita");
-  const cfCmv        = sumBy(/custo|cmv|cpv|insumo|material|mercadoria/, "despesa");
-  const cfDespesaOp  = sumBy(/despesa[_ ]?(oper|pesso|comerc|market|admin|infra|vend)/, "despesa");
-  const cfDespesaFin = sumBy(/despesa[_ ]?(financ|juros)|iof|tarifa/, "despesa");
-  const cfTributos   = sumBy(/tribut|impost|irpj|csll|pis|cofins|iss|icms/, "despesa");
-
-  const manualReceita = Math.max(
-    Number(manualDre?.receitas ?? 0),
-    Number(manualDre?.receita_bruta ?? 0),
-    Number(manualDre?.receita_operacional ?? 0)
-  );
-  const manualDespOp = Math.max(
-    Number(manualDre?.despesas_operacionais ?? 0),
-    Number(manualDre?.despesa_op ?? 0)
-  );
-  const manualDespFin = Math.max(
-    Number(manualDre?.despesas_financeiras ?? 0),
-    Number(manualDre?.despesa_fin ?? 0)
-  );
-  const manualTributos = Math.max(
-    Number(manualDre?.tributos ?? 0),
-    Number(manualDre?.outros_tributos ?? 0),
-    Number(manualDre?.irpj_csll ?? 0)
-  );
-  const manualDepreciacao = Number(manualDre?.depreciacao_amortizacao ?? 0);
-
-  const receitaLiquida = cfReceitaOp + cfReceitaFin + manualReceita;
-  const cmv = cfCmv;
-  const despesasOp = cfDespesaOp + manualDespOp;
-  const despesasFin = cfDespesaFin + manualDespFin;
-  const tributos = cfTributos + manualTributos;
-  const depreciacao = manualDepreciacao;
-
-  const lucroBruto = receitaLiquida - cmv;
-  const ebit = lucroBruto - despesasOp;
-  const ebitda = ebit + depreciacao;
-  const lucroAntesIr = ebitda - despesasFin;
-  const lucroLiquido = lucroAntesIr - tributos;
-  const pct = (v: number) => receitaLiquida > 0 ? (v / receitaLiquida) * 100 : null;
-
-  return {
-    receita_bruta: receitaLiquida,
-    receita_liquida: receitaLiquida,
-    receita_operacional: cfReceitaOp,
-    receita_financeira: cfReceitaFin + manualReceita,
-    cmv,
-    lucro_bruto: lucroBruto,
-    despesas_operacionais: despesasOp,
-    despesas_pessoal: Number(manualDre?.despesas_pessoal ?? 0),
-    despesas_administrativas: Number(manualDre?.despesas_administrativas ?? 0),
-    despesas_vendas: Number(manualDre?.despesas_vendas ?? 0),
-    despesas_marketing: Number(manualDre?.despesas_marketing ?? 0),
-    despesas_infraestrutura: Number(manualDre?.despesas_infraestrutura ?? 0),
-    ebit,
-    ebitda,
-    depreciacao_amortizacao: depreciacao,
-    despesas_financeiras: despesasFin,
-    irpj_csll: 0,
-    outros_tributos: manualTributos,
-    tributos,
-    lucro_antes_ir: lucroAntesIr,
-    lucro_liquido: lucroLiquido,
-    margem_bruta_val: lucroBruto,
-    margem_bruta_pct: pct(lucroBruto),
-    margem_ebitda_val: ebitda,
-    margem_ebitda_pct: pct(ebitda),
-    margem_liquida_val: lucroLiquido,
-    margem_liquida_pct: pct(lucroLiquido),
-    receitas: receitaLiquida,
-    receita_operacional_alias: receitaLiquida,
-    custo_operacional: cmv,
-    custo_total: cmv,
-    despesa_op: despesasOp,
-    despesa_fin: despesasFin,
-    receita: receitaLiquida,
-  };
-}
-
-
-export async function POST(req: Request) {
-  const guard = await checkAdminFromRequest(req);
-  if (!guard.ok) return NextResponse.json({ error: guard.reason, auth_status: guard.status }, { status: guard.status });
-
-  const body = await req.json().catch(() => ({}));
-  const year  = Number(body?.year ?? new Date().getFullYear());
-  const month = Number(body?.month ?? new Date().getMonth() + 1);
-  const ctx = await loadFinanceContextFull(year, month);
-  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: 500 });
-
-  const now  = ctx.now;
-
-  // === OVERRIDE: DRE derivada do Cash Flow (8 receita_financeira_manual anual é insuficiente) ===
-  (ctx.now as any).dre = deriveDreFromCashflow(
-    (ctx.now as any).cashflow,
-    (ctx.now as any).dre
-  ) as any;
-
-  // IA: somar parcelas loans (dtect coluna automatica) + variaveis auto-rateados
-  if (supabaseAdmin && (ctx.now as any)?.cashflow) {
-    try {
-      const LOANS_T = process.env.FINANCE_AI_LOANS_TABLE || 'finance_loan_contracts';
-      const COSTS_T = process.env.FINANCE_AI_COSTS_TABLE || 'finance_cost_entries';
-      const cf: any = (ctx.now as any).cashflow;
-
-      // ===== EMPRESTIMOS =====
-      const { data: loans } = await supabaseAdmin.from(LOANS_T).select('*');
-      const isAtivo = (l: any) => {
-        const s = String(l.status ?? '').toLowerCase().trim();
-        if (!s) return true;
-        if (/inativ|cancel|encerr|final|expir|quited|pago/.test(s)) return false;
-        return /ativ|atv|active|em_curso|andamento|corrente|vigente|vig/.test(s);
-      };
-      const activeLoans = (loans ?? []).filter((l: any) => l.active !== false && isAtivo(l));
-
-      // Detectar dinamicamente qual coluna tem a parcela mensal
-      const parcelaCols = ['installment_amount','parcela_mes','monthly_payment','parcela','monthly_amount','installment_value','valor_parcela','parcela_mensal','valor'];
-      let parcelaCol: string | null = null;
-      let parcelaTest = 0;
-      for (const c of parcelaCols) {
-        const testSum = activeLoans.reduce((s, l) => s + (Number(l?.[c]) || 0), 0);
-        if (testSum > 0 && testSum > parcelaTest) { parcelaTest = testSum; parcelaCol = c; }
-      }
-      const emprestimosMes = parcelaCol
-        ? activeLoans.reduce((s, l) => s + Number(l?.[parcelaCol as string] ?? 0), 0)
-        : 0;
-
-      // ===== CUSTOS VARIAVEIS AUTO =====
-      const { data: costs } = await supabaseAdmin.from(COSTS_T).select('*');
-      const variaveisAuto = ((costs ?? []).filter((c: any) =>
-        String(c.category ?? '').toLowerCase().match(/vari/))
-        .reduce((s: number, c: any) => {
-          const mAmt = Number(c.monthly_amount ?? 0);
-          if (mAmt > 0) return s + mAmt;
-          return s + (Number(cf.receita ?? 0) * Number(c.percentage_rate ?? 0)) / 100;
-        }, 0));
-
-      // ===== ATUALIZAR CASHFLOW =====
-      cf.emprestimos_auto      = Number(emprestimosMes.toFixed(2));
-      cf.parcela_col_usada     = String(parcelaCol ?? 'nenhum');
-      cf.custos_variaveis_auto = Number(variaveisAuto.toFixed(2));
-      cf.despesa_auto          = Number((Number(cf.despesa_auto ?? 0) + emprestimosMes + variaveisAuto).toFixed(2));
-      cf.despesa               = Number((Number(cf.despesa ?? 0) + emprestimosMes + variaveisAuto).toFixed(2));
-      cf.saldo                 = Number((Number(cf.receita ?? 0) - cf.despesa).toFixed(2));
-
-      if (emprestimosMes === 0) {
-        console.warn('[IA-DEBUGLOAN] emprestimos=0 | loans ativos=' + activeLoans.length + ' | total loans=' + (loans ?? []).length + ' | colunas=' + Object.keys((loans ?? [])[0] ?? {}).join(','));
-      }
-    } catch (e) { console.warn('[IA-DEBUGLOAN] erro:', (e as any)?.message); }
-  }
-
-  
-  
-  // === FIX-V3-DRE-MAPEAMENTO-COST-TYPE ===
-  // === FIX-V3-CASTS ===
+  // === FIX-V4-CONSOME-FLUXO-CAIXA ===
   try {
-    const cf: any = (ctx.now as any).cashflow;
+    const cf: any = (ctx.now as any).cashflow || {};
     const dre: any = (ctx.now as any).dre || {};
     const yr = year, mo = month;
     const NUM = (v: any) => Number(v ?? 0);
+    const log = (...x: any[]) => console.log("[IA-DRE-V4]", JSON.stringify(x.length===1?x[0]:x));
 
-    const recBruta = NUM(cf.receita);
-    const impostos = +(recBruta * 0.16).toFixed(2);
-    const recLiquida = +(recBruta - impostos).toFixed(2);
-    const cmv = 0;
-    const lucroBruto = recLiquida;
+    // (1) BUSCA LANÇAMENTOS DETALHADOS DO FLUXO DE CAIXA DO MÊS
+    //    (categoria tipo: custos_fixos, investimentos_capex, custos_variavel, emprestimo, vendas_recorrentes, vendas_vista/prazo, receitas_financeiras)
+    let cfCustosFixos = 0, cfInvestCapex = 0, cfCustosVariavel = 0, cfEmprestimo = 0;
+    let cfReceita = 0, cfReceitasFinanceiras = 0;
+    let cfReceitasDespesas = { receita: 0, despesa: 0 };
 
+    if (supabaseAdmin) try {
+      const { data: cfe } = await supabaseAdmin
+        .from("finance_cash_flow_entries").select("*").eq("year", yr).eq("month", mo);
+      for (const r of (cfe ?? [])) {
+        const cat = String(r.category ?? "").toLowerCase();
+        const tipo = String(r.type ?? "").toLowerCase();
+        const v = NUM(r.amount);
+        if (tipo === "receita") {
+          cfReceitasDespesas.receita += v;
+          if (cat.includes("venda") || cat.includes("fatur") || cat.includes("cliente")) cfReceita += v;
+          if (cat.includes("financ") || cat.includes("rendiment") || cat.includes("invest")) cfReceitasFinanceiras += v;
+        } else if (tipo === "despesa") {
+          cfReceitasDespesas.despesa += v;
+          if (cat.includes("custo") && cat.includes("fix")) cfCustosFixos += v;
+          if (cat.includes("invest") && cat.includes("capex")) cfInvestCapex += v;
+          if (cat.includes("varia")) cfCustosVariavel += v;
+          if (cat.includes("emprest") || cat.includes("parcela") || cat.includes("loan")) cfEmprestimo += v;
+        }
+      }
+    } catch (e) { console.warn("[IA-DRE-V4] cf err:", (e as any)?.message); }
+
+    // (2) Backup: receita_financeira_manual do dre_manual
     let recFinManual = 0;
     if (supabaseAdmin) try {
       const { data: dm } = await supabaseAdmin
@@ -221,69 +50,39 @@ export async function POST(req: Request) {
       }
     } catch (e) {}
 
-    let despFinParcelas = 0;
-    if (supabaseAdmin) try {
-      const { data: loans } = await supabaseAdmin.from("finance_loan_contracts").select("*");
-      for (const ln of (loans ?? [])) {
-        const st = String(ln.status ?? "").toLowerCase();
-        const ativo = st === "active" || st.includes("ativ") || st.includes("andamento") || st.includes("corrente") || st.includes("vigente");
-        if (!ativo) continue;
-        const v = NUM(ln.current_installment_amount ?? ln.monthly_payment ?? ln.installment_amount ?? ln.parcela ?? ln.parcela_mes ?? 0);
-        if (v > 0) despFinParcelas += v;
-      }
-    } catch (e) {}
+    // (3) Receita Bruta = vendas do CF (somente vendas, nao receitas financeiras)
+    const recBruta = cfReceita;
+    if (recBruta <= 0) {
+      log({ WARN: "cf.receita=0, usando fallback cfReceitasDespesas.receita" });
+    }
+    const recBrutaFinal = recBruta > 0 ? recBruta : cfReceitasDespesas.receita;
 
-    const MAPA = {
-      salarios:"despesas_pessoal",salario:"despesas_pessoal",folha:"despesas_pessoal",
-      "pro-labore":"despesas_pessoal",prolabore:"despesas_pessoal",encargos:"despesas_pessoal",
-      fgts:"despesas_pessoal",inss:"despesas_pessoal","13o":"despesas_pessoal",
-      ferias:"despesas_pessoal",bonus:"despesas_pessoal",
-      aluguel:"despesas_administrativas",condominio:"despesas_administrativas",
-      "energia eletrica":"despesas_administrativas",energia:"despesas_administrativas",
-      agua:"despesas_administrativas",telefone:"despesas_administrativas",
-      internet:"despesas_administrativas",escritorio:"despesas_administrativas",
-      contabil:"despesas_administrativas",advocacia:"despesas_administrativas",
-      consultoria:"despesas_administrativas",material:"despesas_administrativas",
-      cartorio:"despesas_administrativas",limpeza:"despesas_administrativas",
-      seguro:"despesas_administrativas",administrativas:"despesas_administrativas",
-      comissoes:"despesas_vendas",comissao:"despesas_vendas",
-      comercial:"despesas_vendas",vendas:"despesas_vendas",
-      marketing:"despesas_marketing",publicidade:"despesas_marketing",
-      propaganda:"despesas_marketing",anuncio:"despesas_marketing",
-      divulgacao:"despesas_marketing",promocao:"despesas_marketing",
-      infraestrutura:"despesas_infraestrutura",ti:"despesas_infraestrutura",
-      software:"despesas_infraestrutura",sistema:"despesas_infraestrutura",
-      equipamento:"despesas_infraestrutura",licenca:"despesas_infraestrutura",
-      servidor:"despesas_infraestrutura",dominio:"despesas_infraestrutura",
-      hospedagem:"despesas_infraestrutura",cloud:"despesas_infraestrutura"
-    };
+    // (4) Imposto = 16% presumido (bate com tabela "Estrutura Anual do DRE")
+    const impostos = +(recBrutaFinal * 0.16).toFixed(2);
+    const recLiquida = +(recBrutaFinal - impostos).toFixed(2);
+    const cmv = 0;
+    const lucroBruto = recLiquida;
 
+    // (5) DES PESAS OPERACIONAIS = SOMENTE o que esta lancado no Fluxo de Caixa do mes
+    //     (custos_fixos + investimentos_capex + custos_variavel)
     const despesasOps = {
-      despesas_administrativas: 0, despesas_pessoal: 0,
-      despesas_vendas: 0, despesas_marketing: 0, despesas_infraestrutura: 0
+      despesas_administrativas: cfCustosFixos,   // mapeia fixos como adm nesta organizacao
+      despesas_pessoal: 0,
+      despesas_vendas: 0,
+      despesas_marketing: 0,
+      despesas_infraestrutura: cfInvestCapex       // capex como infra
     };
-    if (supabaseAdmin) try {
-      const { data: costs } = await supabaseAdmin.from("finance_cost_entries").select("*");
-      const ativos = (costs ?? []).filter((c: any) => c.status === "ativo");
-      for (const c of ativos) {
-        const ct = String(c.cost_type ?? "").toLowerCase().trim();
-        let target = (MAPA as any)[ct];
-        if (!target) {
-          for (const [k, v] of Object.entries(MAPA)) {
-            if (ct.includes(k)) { target = (v as string); break; }
-          }
-        }
-        if (!target) target = "despesas_administrativas";
-        (despesasOps as any)[target] += NUM(c.monthly_amount);
-      }
-    } catch (e) {}
+    const despOpTotal = cfCustosFixos + cfInvestCapex + cfCustosVariavel;
+    despesasOps.despesas_operacionais_total_somado_cf = despOpTotal;
 
-    const despOpTotal = despesasOps.despesas_administrativas + despesasOps.despesas_pessoal +
-                        despesasOps.despesas_vendas + despesasOps.despesas_marketing +
-                        despesasOps.despesas_infraestrutura;
+    // (6) DESPESAS FINANCEIRAS = EMPRESTIMOS lancados no CF do mes
+    const despFin = cfEmprestimo;
 
-    let depreciacao = NUM(dre.depreciacao);
-    let irpj = NUM(dre.irpj_csll);
+    // (7) RECEITAS FINANCEIRAS = receitas_financeiras (CF) + dre_manual
+    const recFinTotal = cfReceitasFinanceiras + recFinManual;
+
+    // (8) Depreciacao + IRPJ = finance_dre_manual_entries
+    let depreciacao = 0, irpj = 0;
     if (supabaseAdmin) try {
       const { data: dm2 } = await supabaseAdmin
         .from("finance_dre_manual_entries").select("*").eq("year", yr).eq("month", mo);
@@ -292,23 +91,26 @@ export async function POST(req: Request) {
         const key = String(r.line_key ?? "").toLowerCase();
         const op = String(r.operator ?? "add").toLowerCase();
         const sinal = op.includes("sub") ? -1 : 1;
-        if (sec.includes("despesa") && key.includes("depreciac")) depreciacao += NUM(r.amount);
+        if (sec.includes("despesa") && key.includes("depreciac")) depreciacao += sinal * NUM(r.amount);
         if (sec.includes("tribut") && (key.includes("irpj") || key.includes("csll"))) irpj += sinal * NUM(r.amount);
       }
     } catch (e) {}
 
-    const ebit = +(lucroBruto - despOpTotal - despFinParcelas + recFinManual - depreciacao).toFixed(2);
+    // (9) EBIT / LAJIR / Margem
+    const ebit = +(lucroBruto - despOpTotal - despFin + recFinTotal - depreciacao).toFixed(2);
     const ebitda = +(ebit + depreciacao).toFixed(2);
     const lucroLiquido = +(ebit - irpj).toFixed(2);
-    const margem = recBruta > 0 ? +((lucroLiquido / recBruta) * 100).toFixed(2) : 0;
+    const margem = recBrutaFinal > 0 ? +((lucroLiquido / recBrutaFinal) * 100).toFixed(2) : 0;
 
+    // (10) ATUALIZA NOW.DRE
     now.dre = {
       ...dre,
-      receita_bruta: recBruta,
-      receita_bruta_total: recBruta,
+      receita_bruta: recBrutaFinal,
+      receita_bruta_cf_vendas: cfReceita,
+      receita_financeira_cf: cfReceitasFinanceiras,
       receita_financeira_manual: recFinManual,
       receita_financeira_auto: 0,
-      receita_financeira: recFinManual,
+      receita_financeira: recFinTotal,
       impostos: impostos,
       aliquota_impostos_pct: 16,
       receita_liquida: recLiquida,
@@ -316,9 +118,9 @@ export async function POST(req: Request) {
       lucro_bruto: lucroBruto,
       ...despesasOps,
       despesas_operacionais: despOpTotal,
-      despesas_financeiras: despFinParcelas,
-      despesas_financeiras_auto: despFinParcelas,
-      despesas_financeiras_manual: 0,
+      despesas_financeiras: despFin,
+      despesas_financeiras_cf_emprestimo: cfEmprestimo,
+      despesas_financeiras_loans: cfEmprestimo,
       depreciacao: depreciacao,
       ebit: ebit,
       lajir: ebit,
@@ -326,20 +128,42 @@ export async function POST(req: Request) {
       irpj_csll: irpj,
       lucro_liquido: lucroLiquido,
       margem_liquida_percent: margem,
-      _formula: "RecBruta=cf.receita|Impostos=16%presumido|RecFin=dre_manual|DespFin=loans[current_installment_amount]|DespOps=costs(mapped by cost_type)|Margem=LL/RecBruta"
+      _formula: "FONTE UNICA = finance_cash_flow_entries | RecBruta=vendas | Impostos=16%presumido | RecFin=cf.receitas_financeiras+dre_manual | DespOp=cf.custos_fixos+invest_capex+variavel | DespFin=cf.emprestimo | Margem = LL/RecBruta"
     };
 
-    console.log("[IA-DRE-FIX-V3]", JSON.stringify({
+    // (11) ATUALIZA NOW.CASHFLOW para o card fluxo de caixa bater tambem
+    cf.despesa_cf_custos_fixos = cfCustosFixos;
+    cf.despesa_cf_invest_capex  = cfInvestCapex;
+    cf.despesa_cf_variavel      = cfCustosVariavel;
+    cf.despesa_cf_emprestimo    = cfEmprestimo;
+    cf.despesa = +(
+      cfCustosFixos + cfInvestCapex + cfCustosVariavel + cfEmprestimo
+    ).toFixed(2);
+    cf.receita = +cfReceita.toFixed(2);
+    cf.saldo = +((cfReceita - cf.despesa).toFixed(2));
+
+    log({
       yr, mo,
-      rec_bruta: recBruta, impostos, rec_liq: recLiquida,
-      cmv, lucro_bruto: lucroBruto,
-      despesasOps, desp_op_total: despOpTotal,
-      desp_fin_parcelas: despFinParcelas,
-      rec_fin_manual: recFinManual,
-      depreciacao, ebit, ebitda, irpj,
-      lucro_liquido: lucroLiquido, margem_pct: margem
-    }));
-  } catch (e) { console.warn("[IA-DRE-FIX-V3] erro:", (e as any)?.message); }
+      cf_custos_fixos: cfCustosFixos,
+      cf_invest_capex: cfInvestCapex,
+      cf_variavel: cfCustosVariavel,
+      cf_emprestimo: cfEmprestimo,
+      cf_receita_total_vendas: cfReceita,
+      cf_receitas_financeiras: cfReceitasFinanceiras,
+      rec_bruta_vendas: recBrutaFinal,
+      impostos, rec_liquida: recLiquida,
+      cmv,
+      desp_op: despOpTotal,
+      desp_fin: despFin,
+      rec_fin: recFinTotal,
+      depreciacao, ebit, ebitda,
+      irpj, lucro_liquido: lucroLiquido,
+      margem_pct: margem,
+      cf_despesa_total: cf.despesa,
+      cf_saldo_final: cf.saldo
+    });
+  } catch (e) { console.warn("[IA-DRE-V4] erro:", (e as any)?.message); }
+
 
   const insights: Insight[] = [];
   const suggestions: Sug[]  = [];
