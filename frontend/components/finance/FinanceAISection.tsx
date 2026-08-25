@@ -62,7 +62,7 @@ export default function FinanceAISection() {
   useEffect(() => {
     (async () => {
       try {
-        const { data: sessData } = await supabase.auth.getSession();
+        const { data: sess } = await supabase.auth.getSession();
         if (!sessData?.session?.access_token) { setAllowed(false); return; }
         const { data: prof } = await supabase.from("profiles").select("role").maybeSingle();
         setAllowed(String(prof?.role || "").toLowerCase() === "admin");
