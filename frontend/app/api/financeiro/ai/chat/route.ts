@@ -19,8 +19,9 @@ export async function POST(req: Request) {
     const authH   = req.headers.get("authorization") || "";
     const m       = authH.match(/^Bearer\s+(.+)$/i);
     const tok30   = m ? m[1].slice(0, 30) + "..." : "(sem bearer)";
+    const errMsg  = `GUARD_${guard.reason} | server_url=${envUrl} | has_service_role=${hasSR} | has_anon_key=${hasAnon} | has_openai_key=${openai} | token_prefix=${tok30}`;
     return NextResponse.json({
-      error: guard.reason,
+      error: errMsg,
       auth_status: guard.status,
       dbg: {
         env_supabase_url: envUrl,

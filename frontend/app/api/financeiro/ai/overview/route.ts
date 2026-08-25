@@ -13,16 +13,19 @@ export async function POST(req: Request) {
       : "(undefined)";
     const hasSR   = typeof process !== "undefined" && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
     const hasAnon = typeof process !== "undefined" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const openai  = typeof process !== "undefined" && Boolean(process.env.OPENAI_API_KEY);
     const authH   = req.headers.get("authorization") || "";
     const m       = authH.match(/^Bearer\s+(.+)$/i);
     const tok30   = m ? m[1].slice(0, 30) + "..." : "(sem bearer)";
+    const errMsg  = `GUARD_${guard.reason} | server_url=${envUrl} | has_service_role=${hasSR} | has_anon_key=${hasAnon} | has_openai_key=${openai} | token_prefix=${tok30}`;
     return NextResponse.json({
-      error: guard.reason,
+      error: errMsg,
       auth_status: guard.status,
       dbg: {
         env_supabase_url: envUrl,
         has_service_role: hasSR,
         has_anon_key: hasAnon,
+        has_openai_key: openai,
         auth_header_present: Boolean(authH),
         token_prefix_30: tok30
       }
@@ -37,6 +40,7 @@ export async function POST(req: Request) {
 
   type I = { titulo: string; severidade: "baixa" | "media" | "alta"; detalhe: string };
   const insights: I[] = [];
+
   const totalIn  = ctx.data.cashflow.filter((r: any) => r.type === "in").reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
   const totalOut = ctx.data.cashflow.filter((r: any) => r.type === "out").reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
   const saldo = totalIn - totalOut;
