@@ -1,36 +1,28 @@
 import { NextResponse } from "next/server";
 import {
-  checkAdminFromRequest, loadFinanceContext, logFinanceAiEvent
+  checkAdminFromRequest, loadFinanceContext, logFinanceAiEvent,
+  sumCashflow, sumDre, sumLoans, pctChange
 } from "@/lib/financeiro/ai/server";
 
 export const runtime = "nodejs";
 
-const SYS = "Você é um analista financeiro sênior. Use SOMENTE os números do contexto Supabase. Se faltar dado, diga explicitamente. Tom executivo, português do Brasil, até 6 bullets ou 1 parágrafo curto.";
+const SYS = `Você é um analista financeiro sênior. Use SOMENTE os números do CONTEXTO fornecido (tabelas Supabase). Se faltar dado, diga explicitamente.
+
+Sua resposta deve seguir este formato (em português do Brasil, tom executivo):
+
+1) SUMÁRIO EXECUTIVO — até 4 frases com o quadro geral do período.
+2) COMPARATIVO — variação % entre o mês atual e o anterior (usar campo comparativo.* do contexto).
+3) 2-3 SUGESTÕES CONCRETAS DE GESTÃO — cada uma com ação + impacto estimado quando possível.
+4) 1-2 OPORTUNIDADES DE MELHORIA — oportunidades vinculadas aos dados (corte, renegociação, realocação).
+
+Sempre cite números reais (R$) e % quando existirem no contexto. Seja direto.`;
 
 export async function POST(req: Request) {
   const guard = await checkAdminFromRequest(req);
   if (!guard.ok) {
-    const envUrl = typeof process !== "undefined"
-      ? (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "(empty)")
-      : "(undefined)";
-    const hasSR   = typeof process !== "undefined" && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-    const hasAnon = typeof process !== "undefined" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    const openai  = typeof process !== "undefined" && Boolean(process.env.OPENAI_API_KEY);
-    const authH   = req.headers.get("authorization") || "";
-    const m       = authH.match(/^Bearer\s+(.+)$/i);
-    const tok30   = m ? m[1].slice(0, 30) + "..." : "(sem bearer)";
-    const errMsg  = `GUARD_${guard.reason} | server_url=${envUrl} | has_service_role=${hasSR} | has_anon_key=${hasAnon} | has_openai_key=${openai} | token_prefix=${tok30}`;
     return NextResponse.json({
-      error: errMsg,
-      auth_status: guard.status,
-      dbg: {
-        env_supabase_url: envUrl,
-        has_service_role: hasSR,
-        has_anon_key: hasAnon,
-        has_openai_key: openai,
-        auth_header_present: Boolean(authH),
-        token_prefix_30: tok30
-      }
+      error: guard.reason, auth_status: guard.status,
+      dbg: { has_service_role: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY) }
     }, { status: guard.status });
   }
 
@@ -46,20 +38,45 @@ export async function POST(req: Request) {
   const apiKey = process.env.OPENAI_API_KEY || "";
   if (!apiKey) return NextResponse.json({ error: "openai_api_key_missing" }, { status: 500 });
 
+  const cf    = sumCashflow(ctx.now.data.cashflow);
+  const cfP   = sumCashflow(ctx.anterior.data.cashflow);
+  const dre   = sumDre(ctx.now.data.dre);
+  const dreP  = sumDre(ctx.anterior.data.dre);
+  const loans = sumLoans(ctx.now.data.loans);
+
   const resumo = {
-    periodo: ctx.periodo,
-    contagens: {
-      fluxo_caixa: ctx.data.cashflow.length, dre: ctx.data.dre.length,
-      custos: ctx.data.costs.length, emprestimos: ctx.data.loans.length,
-      planejamento: ctx.data.planning.length
+    periodo_atual: ctx.periodo,
+    periodo_anterior: ctx.periodo_ant,
+    fluxos: {
+      atual: cf,
+      anterior: cfP,
+      variacao_saldo_pct: pctChange(cf.saldo, cfP.saldo)
     },
-    amostras: {
-      cashflow: ctx.data.cashflow.slice(0, 20),
-      dre:      ctx.data.dre.slice(0, 20),
-      costs:    ctx.data.costs.slice(0, 20),
-      loans:    ctx.data.loans.slice(0, 5),
-      planning: ctx.data.planning.slice(0, 10)
-    }
+    dre: {
+      atual: dre,
+      anterior: dreP,
+      variacao_resultado_pct: pctChange(dre.resultado, dreP.resultado)
+    },
+    emprestimos: {
+      total: loans.total,
+      parcela_mensal_ativa: loans.parcela_mes,
+      saldo_devedor_total: loans.saldo_total,
+      distribuicao_por_status: loans.by_status,
+      Contratos_detalhados: ctx.now.data.loans.map((l: any) => ({
+        contract_number: l.contract_number,
+        lender: l.lender,
+        status: l.status,
+        parcela_mensal: Number(l.current_installment_amount ?? 0),
+        saldo: Number(l.balance_outstanding ?? 0),
+        taxa_mensal: Number(l.monthly_rate ?? 0),
+        sistema: l.amortization_system,
+        proximo_vencimento: l.final_due_date
+      }))
+    },
+    custos_ativos: ctx.now.data.costs,
+    dre_linhas_detalhadas: ctx.now.data.dre.slice(0, 30),
+    fluxos_detalhados: ctx.now.data.cashflow.slice(0, 50),
+    planejamento: ctx.now.data.planning.slice(0, 15)
   };
 
   let resposta = "";
@@ -69,10 +86,14 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        temperature: 0.2,
+        temperature: 0.25,
         messages: [
           { role: "system", content: SYS },
-          { role: "user", content: `CONTEXTO (Supabase, somente leitura):\n${JSON.stringify(resumo).slice(0, 28000)}\n\nPERGUNTA DO ADMIN:\n${pergunta}` }
+          { role: "user", content:
+              `CONTEXTO FINANCEIRO (Supabase, somente leitura):\n${JSON.stringify(resumo).slice(0, 28000)}\n\n` +
+              `PERGUNTA DO ADMIN:\n${pergunta}\n\n` +
+              `Responda no formato pedido (sumário + comparativo + sugestões + oportunidades), citando R$ e %.`
+          }
         ]
       })
     });
@@ -90,9 +111,18 @@ export async function POST(req: Request) {
   await logFinanceAiEvent({
     userId: guard.user.id, userEmail: guard.user.email,
     action: "chat", period: ctx.periodo, prompt: pergunta,
-    responseSummary: resposta.slice(0, 500),
-    modulesUsed: Object.keys(ctx.tables)
+    responseSummary: resposta.slice(0, 800),
+    modulesUsed: Object.keys(ctx.now.tables)
   });
 
-  return NextResponse.json({ resposta, contexto: { periodo: ctx.periodo, contagens: resumo.contagens } });
+  return NextResponse.json({
+    resposta,
+    contexto_usado: {
+      periodo: ctx.periodo,
+      periodo_anterior: ctx.periodo_ant,
+      fluxos: { atual: cf, anterior: cfP },
+      dre:    { atual: dre, anterior: dreP },
+      emprestimos: { total: loans.total, parcela_mensal_ativa: loans.parcela_mes, saldo_total: loans.saldo_total }
+    }
+  });
 }
