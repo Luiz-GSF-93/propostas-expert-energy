@@ -21,6 +21,106 @@ const sev = (txt: string): "baixa"|"media"|"alta" => {
   return "baixa";
 };
 
+
+/* ============================================================
+   deriveDreFromCashflow - robusto por REGEX.
+   Quando os lançamentos manuais de DRE estão esparsos (1-2 linhas/mes),
+   recompõe Receita, CMV, Despesas a partir do cashflow por categoria.
+   Manual > Cashflow quando manual > 0.
+   ============================================================ */
+function deriveDreFromCashflow(cf: any, manualDre: any): any {
+  const catMap: Record<string, {receita: number; despesa: number}> = (cf?.por_category ?? {}) as any;
+  const entries: [string, number, number][] = Object.entries(catMap).map(([k, v]: any) => [
+    String(k ?? "").toLowerCase(),
+    Number(v?.receita ?? 0),
+    Number(v?.despesa ?? 0)
+  ]);
+
+  // soma por regex em qualquer variação de nome
+  const sumBy = (rx: RegExp, kind: "receita" | "despesa"): number =>
+    entries.reduce((s, [k, r, d]) => rx.test(k) ? s + (kind === "receita" ? r : d) : s, 0);
+
+  const cfReceitaOp    = sumBy(/venda|fatur|cliente|adiant|receita_ope|receita_op/, "receita");
+  const cfReceitaFin   = sumBy(/financ|rendiment|invest|aplic|juro|resgate/, "receita");
+  const cfReceitaOutros= sumBy(/outras?_?receit|reembolso|estorno/, "receita");
+
+  const cfCmv          = sumBy(/custo|cmv|cpv|insumo|material|mercadoria/, "despesa");
+  const cfDespesaOp    = sumBy(/despesa[_ ]?(oper|pesso|comerc|market|admin|infra|vend)/, "despesa")
+                       + sumBy(/pessoal|folha|salario|comercial|marketing|administrativ|infraestrutura/, "despesa");
+  const cfDespesaFin   = sumBy(/despesa[_ ]?(financ|juros|banco)|juros?_|iof|tarifa/, "despesa");
+  const cfTributos     = sumBy(/tribut|impost|irpj|csll|pis|cofins|iss|icms|imposto/, "despesa");
+
+  // Receita Total: prioriza DRE manual se > 0; senão soma CF
+  const receitaLiquida = (Number(manualDre?.receitas ?? manualDre?.receita_bruta ?? manualDre?.receita_operacional ?? 0) > 0)
+    ? Math.max(
+        Number(manualDre?.receitas ?? 0),
+        Number(manualDre?.receita_bruta ?? 0),
+        Number(manualDre?.receita_operacional ?? 0)
+      )
+    : (cfReceitaOp + cfReceitaFin + cfReceitaOutros);
+
+  const cmv          = (Number(manualDre?.custo_operacional ?? manualDre?.custo_total ?? 0) > 0)
+    ? Math.max(Number(manualDre?.custo_operacional ?? 0), Number(manualDre?.custo_total ?? 0))
+    : cfCmv;
+
+  const despesasOp = (Number(manualDre?.despesas_operacionais ?? manualDre?.despesa_op ?? 0) > 0)
+    ? Math.max(Number(manualDre?.despesas_operacionais ?? 0), Number(manualDre?.despesa_op ?? 0))
+    : cfDespesaOp;
+
+  const despesasFin = (Number(manualDre?.despesas_financeiras ?? manualDre?.despesa_fin ?? 0) > 0)
+    ? Math.max(Number(manualDre?.despesas_financeiras ?? 0), Number(manualDre?.despesa_fin ?? 0))
+    : cfDespesaFin;
+
+  const tributos = (Number(manualDre?.tributos ?? 0) > 0)
+    ? Number(manualDre?.tributos ?? 0)
+    : cfTributos;
+
+  const lucroBruto       = receitaLiquida - cmv;
+  const ebit             = lucroBruto - despesasOp;
+  const depreciacao      = Number(cf?.depreciacao_amortizacao ?? manualDre?.depreciacao_amortizacao ?? 0);
+  const ebitda           = ebit + depreciacao;
+  const lucroAntesIr     = ebitda - despesasFin;
+  const lucroLiquido     = lucroAntesIr - tributos;
+  const pct = (v: number) => receitaLiquida > 0 ? (v / receitaLiquida) * 100 : null;
+
+  return {
+    receita_bruta: receitaLiquida,
+    receita_liquida: receitaLiquida,
+    cmv,
+    lucro_bruto: lucroBruto,
+    despesas_operacionais: despesasOp,
+    despesas_pessoal: Number(manualDre?.despesas_pessoal ?? 0),
+    despesas_administrativas: Number(manualDre?.despesas_administrativas ?? 0),
+    despesas_vendas: Number(manualDre?.despesas_vendas ?? 0),
+    despesas_marketing: Number(manualDre?.despesas_marketing ?? 0),
+    despesas_infraestrutura: Number(manualDre?.despesas_infraestrutura ?? 0),
+    ebit,
+    ebitda,
+    depreciacao_amortizacao: depreciacao,
+    despesas_financeiras: despesasFin,
+    irpj_csll: 0,
+    outros_tributos: tributos,
+    tributos,
+    lucro_antes_ir: lucroAntesIr,
+    lucro_liquido: lucroLiquido,
+    margem_bruta_val: lucroBruto,
+    margem_bruta_pct: pct(lucroBruto),
+    margem_ebitda_val: ebitda,
+    margem_ebitda_pct: pct(ebitda),
+    margem_liquida_val: lucroLiquido,
+    margem_liquida_pct: pct(lucroLiquido),
+    // aliases retro-compat
+    receitas: receitaLiquida,
+    receita_operacional: receitaLiquida,
+    custo_operacional: cmv,
+    custo_total: cmv,
+    despesa_op: despesasOp,
+    despesa_fin: despesasFin,
+    receita: receitaLiquida,
+  };
+}
+
+
 export async function POST(req: Request) {
   const guard = await checkAdminFromRequest(req);
   if (!guard.ok) return NextResponse.json({ error: guard.reason, auth_status: guard.status }, { status: guard.status });
@@ -32,6 +132,12 @@ export async function POST(req: Request) {
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: 500 });
 
   const now  = ctx.now;
+
+  // === OVERRIDE: DRE derivada do Cash Flow (8 receita_financeira_manual anual é insuficiente) ===
+  (ctx.now as any).dre = deriveDreFromCashflow(
+    (ctx.now as any).cashflow,
+    (ctx.now as any).dre
+  ) as any;
   const insights: Insight[] = [];
   const suggestions: Sug[]  = [];
 
