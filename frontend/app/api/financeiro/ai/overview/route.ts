@@ -6,7 +6,9 @@ import {
 
 export const runtime = "nodejs";
 
-type Insight = { modulo: string; titulo: string; severidade: "baixa"|"media"|"alta"; detalhe: string; acao?: string };
+type Insight = { modulo: string; titulo: string; severidade: "baixa"|"media"|"alta"; detalhe: string };
+type Sug =     { modulo: string; acao: string; impacto: string };
+type Cen =     { nome: string; receita: number; custos: number; lucro: number };
 
 export async function POST(req: Request) {
   const guard = await checkAdminFromRequest(req);
@@ -19,112 +21,186 @@ export async function POST(req: Request) {
   const year  = Number(body?.year)  || now.getUTCFullYear();
   const month = Number(body?.month) || (now.getUTCMonth() + 1);
 
-  const ctx  = await loadFinanceContextFull(year, month);
-  const ctxP = await loadFinanceContextFull(year, month === 1 ? month + 1 : month - 1);
+  const ctx   = await loadFinanceContextFull(year, month);
+  const dre: any = ctx.now.dre;
+  const cf: any   = ctx.now.cashflow;
+  const cust: any[]  = ctx.now.costs;
+  const loans: any  = ctx.now.loans;
+  const plan: any[]  = ctx.now.planning;
 
-  const cf   = ctx.now.cashflow;
-  const cfP  = ctxP.now.cashflow;
-  const dre  = ctx.now.dre;
-  const dreP = ctxP.now.dre;
-  const cust = ctx.now.costs;
-  const plan = ctx.now.planning;
-  const loans = ctx.now.loans;
+  // ---- campos do DRETotals ----
+  const receita     = Number(dre.receitas           || 0);
+  const custoOp     = Number(dre.custo_operacional  || 0);
+  const despOp      = Number(dre.desp_operacional   || 0);
+  const despFin     = Number(dre.desp_financeira    || 0);
+  const totalDesp   = Number(dre.despesas           || 0);
+  const margens = calcMargins(receita, custoOp, despOp, despFin);
 
   const insights: Insight[] = [];
-  const suggestions: { modulo: string; acao: string; impacto: string }[] = [];
-  const cenarios: { nome: string; receita: number; custos: number; lucro: number }[] = [];
+  const suggestions: Sug[] = [];
+  const cenarios: Cen[] = [];
 
-  // ---- FLUXO DE CAIXA ----
-  if (cf.saldo > 0) {
-    insights.push({ modulo: "fluxo_caixa", titulo: "Fluxo de caixa positivo no período", severidade: "baixa",
-      detalhe: `Saldo: R$ ${cf.saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Entradas: R$ ${cf.receita.toFixed(2)} · Saídas: R$ ${cf.despesa.toFixed(2)}` });
-  } else if (cf.saldo < 0) {
-    insights.push({ modulo: "fluxo_caixa", titulo: "Saldo negativo no fluxo de caixa", severidade: "alta",
-      detalhe: `Saldo: R$ ${cf.saldo.toFixed(2)} · revisar recebíveis e despesas do mês.` });
-  } else {
-    insights.push({ modulo: "fluxo_caixa", titulo: "Fluxo zerado no período", severidade: "media",
-      detalhe: "Sem movimentações reconhecidas — verifique tipos de lançamento." });
+  // ============ FLUXO DE CAIXA ============
+  insights.push({
+    modulo: "fluxo_caixa",
+    titulo: `Saldo do período`,
+    severidade: cf.saldo > 0 ? "baixa" : cf.saldo < 0 ? "alta" : "media",
+    detalhe: `Saldo: R$ ${Number(cf.saldo).toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+             ` · Entradas: R$ ${Number(cf.receita).toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+             ` · Saídas: R$ ${Number(cf.despesa).toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+             ` · Lançamentos: ${cf.count}`
+  });
+
+  // anomalia estatística
+  if (ctx.historico.cashflow.length >= 4) {
+    const ultimos = ctx.historico.cashflow.slice(-6).map((m:any) => m.receita);
+    const a = anomalia(Number(cf.receita), ultimos);
+    if (a) insights.push({
+      modulo: "anomalias",
+      titulo: "Anomalia detectada nas entradas",
+      severidade: a.severidade,
+      detalhe: a.mensagem
+    });
   }
 
-  // ---- DRE / Margens ----
-  const margens = calcMargins(dre.receita_total || 0, dre.custo_total || 0, dre.despesa_op || 0, dre.despesa_fin || 0);
-  if (dre.receita_total > 0 || dre.custo_total > 0) {
+  // ============ DRE / MARGENS ============
+  if (receita > 0 || totalDesp > 0) {
+    const liqPct = margens.margem_liquida_pct ?? 0;
     insights.push({
-      modulo: "dre", titulo: "Margem Líquida no mês", severidade: margens.margemLiquida >= 0.10 ? "baixa" : margens.margemLiquida >= 0 ? "media" : "alta",
-      detalhe: `Bruta: ${(margens.margemBruta * 100).toFixed(1)}% · EBITDA: ${(margens.margemEbitda * 100).toFixed(1)}% · Líquida: ${(margens.margemLiquida * 100).toFixed(1)}%`
+      modulo: "dre",
+      titulo: "Resultado (DRE + Margens)",
+      severidade: liqPct >= 10 ? "baixa" : liqPct >= 0 ? "media" : "alta",
+      detalhe: `Receita: R$ ${receita.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · Despesa: R$ ${totalDesp.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · Líquido: R$ ${margens.margem_liquida_val.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · Bruta: ${(margens.margem_bruta_pct ?? 0).toFixed(1)}%` +
+               ` · EBITDA: ${(margens.ebitda_pct ?? 0).toFixed(1)}%` +
+               ` · Margem Líquida: ${liqPct.toFixed(1)}%`
     });
   } else {
-    insights.push({ modulo: "dre", titulo: "DRE sem lançamentos do mês", severidade: "media",
-      detalhe: "Cadastre receitas e despesas para calcular margens e EBITDA." });
+    insights.push({
+      modulo: "dre",
+      titulo: "DRE sem lançamentos reconhecidos",
+      severidade: "media",
+      detalhe: "A tabela finance_dre_manual_entries precisa ter coluna 'section' = 'revenue' ou 'expense' — verifique cadastros."
+    });
   }
 
-  // ---- CUSTOS ----
-  const custoTotalMes = cust.reduce((acc, c) => acc + (Number(c.amount) || Number(c.valor) || 0), 0);
+  // ============ CUSTOS ============
+  const custoTotalMes = cust.reduce(
+    (a: number, c: any) => a + (Number(c.amount) || Number(c.valor) || Number(c.monthly_value) || 0), 0
+  );
   if (custoTotalMes > 0) {
     insights.push({
-      modulo: "custos", titulo: "Custo total do mês", severidade: custoTotalMes > dre.receita_total * 0.7 ? "alta" : "baixa",
-      detalhe: `R$ ${custoTotalMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${cust.length} lançamento(s).`
+      modulo: "custos",
+      titulo: "Custo total do mês",
+      severidade: custoTotalMes > receita * 0.7 ? "alta" : "baixa",
+      detalhe: `R$ ${custoTotalMes.toLocaleString("pt-BR",{minimumFractionDigits:2})} em ${cust.length} lançamento(s).`
     });
-    suggestions.push({ modulo: "custos", acao: "Revisar centros de custo acima de 70% da receita.", impacto: "Redução média de 8-15% do custo operacional." });
-  } else {
-    insights.push({ modulo: "custos", titulo: "Sem custos fixos ativos cadastrados", severidade: "media",
-      detalhe: "Cadastre custos para projeção mensal confiável." });
-  }
-
-  // ---- PLANEJAMENTO ----
-  const metaReceita = plan.reduce((a, p) => a + (Number(p.revenue_target) || Number(p.meta_receita) || 0), 0);
-  if (metaReceita > 0) {
-    const atingimento = dre.receita_total / metaReceita;
-    insights.push({
-      modulo: "planejamento", titulo: "Atingimento da meta de receita", severidade: atingimento >= 0.9 ? "baixa" : atingimento >= 0.7 ? "media" : "alta",
-      detalhe: `Meta: R$ ${metaReceita.toLocaleString("pt-BR")} · Realizado: ${(atingimento * 100).toFixed(1)}%`
-    });
-  } else {
-    insights.push({ modulo: "planejamento", titulo: "Planejamento sem metas cadastradas", severidade: "media",
-      detalhe: "Defina metas para acompanhar atingimento mensal." });
-  }
-
-  // ---- EMPRÉSTIMOS ----
-  if (loans.count > 0) {
-    const indicadorDSCR = dscr(cf.receita, loans.parcela_total || 0);
-    insights.push({
-      modulo: "emprestimos", titulo: `${loans.count} empréstimo(s) cadastrado(s)`, severidade: "media",
-      detalhe: `Parcela mensal total: R$ ${(loans.parcela_total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Saldo devedor: R$ ${(loans.saldo_devedor || 0).toLocaleString("pt-BR")} · DSCR: ${indicadorDSCR ? indicadorDSCR.toFixed(2) : "n/d"}`
-    });
-    if (indicadorDSCR !== null && indicadorDSCR < 1.2) {
-      suggestions.push({ modulo: "emprestimos", acao: "Avaliar refinanciamento dos contratos com taxa > 1,1% a.m.", impacto: "Redução potencial de até R$ 98 mil/ano em custo financeiro." });
+    if (custoTotalMes > receita * 0.6 && receita > 0) {
+      suggestions.push({
+        modulo: "custos",
+        acao: "Custo operacional > 60% da receita — revisar fornecedores e contratos.",
+        impacto: "Recuperação potencial de 8-15% do custo."
+      });
     }
   } else {
-    insights.push({ modulo: "emprestimos", titulo: "Sem empréstimos ativos", severidade: "baixa", detalhe: "Cadastre contratos para cálculo de CET e DSCR." });
+    insights.push({
+      modulo: "custos",
+      titulo: "Sem custos fixos ativos cadastrados",
+      severidade: "media",
+      detalhe: "Cadastre custos (finance_cost_entries) com coluna 'amount' ou 'valor' para projeção mensal."
+    });
   }
 
-  // ---- PROJEÇÃO 60/90 DIAS ----
-  const medEntradas = mean(ctx.historico.cashflow.slice(-3).map((m:any) => m.receita));
-  const medSaidas   = mean(ctx.historico.cashflow.slice(-3).map((m:any) => m.despesa));
-  const proj60 = projecaoCaixa(cf.saldo, medEntradas, medSaidas, 2);
-  const proj90 = projecaoCaixa(cf.saldo, medEntradas, medSaidas, 3);
-  if (cf.saldo !== 0 || medEntradas !== 0 || medSaidas !== 0) {
+  // ============ PLANEJAMENTO ============
+  const metaReceita = plan.reduce(
+    (a: number, p: any) => a + (Number(p.revenue_target) || Number(p.meta_receita) || Number(p.target_amount) || 0), 0
+  );
+  if (metaReceita > 0) {
+    const ating = receita / metaReceita;
     insights.push({
-      modulo: "projecoes", titulo: "Projeção de caixa 60/90 dias", severidade: (proj60.saldoFinal < 0 || proj90.saldoFinal < 0) ? "alta" : "baixa",
-      detalhe: `60d: R$ ${proj60.saldoFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · 90d: R$ ${proj90.saldoFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      modulo: "planejamento",
+      titulo: "Atingimento da meta de receita",
+      severidade: ating >= 0.9 ? "baixa" : ating >= 0.7 ? "media" : "alta",
+      detalhe: `Meta: R$ ${metaReceita.toLocaleString("pt-BR")} · Realizado: ${(ating*100).toFixed(1)}%`
+    });
+  } else {
+    insights.push({
+      modulo: "planejamento",
+      titulo: "Planejamento sem metas cadastradas",
+      severidade: "media",
+      detalhe: "Defina metas em finance_planning_goals (campos: revenue_target / meta_receita / target_amount)."
+    });
+  }
+
+  // ============ EMPRÉSTIMOS ============
+  // LoanTotals já é processado pelo sumLoans
+  if (loans.total > 0) {
+    const ds = dscr(Number(cf.receita) || 0, Number(loans.parcela_mes) || 0);
+    insights.push({
+      modulo: "emprestimos",
+      titulo: `${loans.ativos} de ${loans.total} empréstimo(s) ativos`,
+      severidade: loans.ativos > 0 ? "media" : "baixa",
+      detalhe: `Parcela mensal total: R$ ${Number(loans.parcela_mes).toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · Saldo devedor total: R$ ${Number(loans.saldo_total).toLocaleString("pt-BR")}` +
+               ` · CET médio anual: ${Number(loans.cet_medio_anual).toFixed(2)}%` +
+               ` · DSCR: ${ds !== null ? ds.toFixed(2) : "n/d (sem caixa)"}`
+    });
+    if (Number(loans.cet_medio_anual) > 12) {
+      suggestions.push({
+        modulo: "emprestimos",
+        acao: "CET médio anual > 12% — avaliar refinanciamento com taxa ≤ 1,1% a.m.",
+        impacto: "Redução potencial de até R$ 98 mil/ano em custo financeiro."
+      });
+    }
+  } else {
+    insights.push({
+      modulo: "emprestimos",
+      titulo: "Sem empréstimos cadastrados",
+      severidade: "baixa",
+      detalhe: "Cadastre contratos (finance_loan_contracts) para cálculo automático de CET e DSCR."
+    });
+  }
+
+  // ============ PROJEÇÕES 60/90 ============
+  const medEnt = mean(ctx.historico.cashflow.slice(-3).map((m:any) => m.receita));
+  const medSai = mean(ctx.historico.cashflow.slice(-3).map((m:any) => m.despesa));
+  const proj60 = projecaoCaixa(Number(cf.saldo), Number(medEnt), Number(medSai), 2);
+  const proj90 = projecaoCaixa(Number(cf.saldo), Number(medEnt), Number(medSai), 3);
+  if (Number(cf.saldo) !== 0 || medEnt !== 0 || medSai !== 0) {
+    insights.push({
+      modulo: "projecoes",
+      titulo: "Projeção de caixa 60/90 dias",
+      severidade: (proj60.saldoFinal < 0 || proj90.saldoFinal < 0) ? "alta" : "baixa",
+      detalhe: `60d: R$ ${proj60.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · 90d: R$ ${proj90.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · Base: média 3 meses (entradas R$ ${medEnt.toFixed(2)} / saídas R$ ${medSai.toFixed(2)})`
     });
     if (proj60.saldoFinal < 0) {
-      suggestions.push({ modulo: "projecoes", acao: "Antecipar recebíveis dos próximos 30 dias.", impacto: "Evita déficit projetado em 60 dias." });
+      suggestions.push({
+        modulo: "projecoes",
+        acao: "Antecipar recebíveis dos próximos 30 dias.",
+        impacto: "Evita saldo negativo projetado em 60 dias."
+      });
     }
   }
 
-  // ---- CENÁRIOS ----
-  if (dre.receita_total > 0) {
-    cenarios.push({ nome: "Otimista (+15% receita)",   ...simularCenario(dre.receita_total, dre.custo_total, 0.15, -0.05) });
-    cenarios.push({ nome: "Realista (base)",           ...simularCenario(dre.receita_total, dre.custo_total, 0, 0) });
-    cenarios.push({ nome: "Pessimista (-15% receita)", ...simularCenario(dre.receita_total, dre.custo_total, -0.15, 0.10) });
+  // ============ CENÁRIOS DRE ============
+  if (receita > 0) {
+    cenarios.push({ nome: "Otimista (+15% receita, -5% custo)",
+                    ...simularCenario(receita, custoOp, 0.15, -0.05) } as any);
+    cenarios.push({ nome: "Realista (base)",
+                    ...simularCenario(receita, custoOp, 0, 0) } as any);
+    cenarios.push({ nome: "Pessimista (-15% receita, +10% custo)",
+                    ...simularCenario(receita, custoOp, -0.15, 0.10) } as any);
   }
 
   await logFinanceAiEvent({
     user_email: guard.user.email,
     user_id: guard.user.id,
-    action: "overview_v2",
-    period_ref: `${year}-${String(month).padStart(2, "0")}`,
+    action: "overview_v3_fields_ok",
+    period_ref: `${year}-${String(month).padStart(2,"0")}`,
     responseSummary: `insights=${insights.length} suggestions=${suggestions.length} cenarios=${cenarios.length}`,
     modules_used: ["fluxo_caixa","dre","custos","planejamento","emprestimos","projecoes"]
   });
@@ -137,12 +213,13 @@ export async function POST(req: Request) {
     cenarios,
     margem: margens,
     projecoes: { sessenta_dias: proj60, noventa_dias: proj90 },
-    brutto: {
+    bruto: {
       fluxo_caixa: cf,
-      dre: { receita_total: dre.receita_total, custo_total: dre.custo_total, despesa_op: dre.despesa_op, despesa_fin: dre.despesa_fin },
+      dre: { receita, custoOp, despOp, despFin, totalDesp,
+            receita_operacional: dre.receita_operacional, receita_financeira: dre.receita_financeira, resultado: dre.resultado },
       custos_total: custoTotalMes,
-      planejamento_metas: metaReceita,
-      emprestimos: { count: loans.count, parcela_total: loans.parcela_total, saldo_devedor: loans.saldo_devedor }
+      meta_receita: metaReceita,
+      emprestimos: loans
     }
   });
 }
