@@ -6,23 +6,7 @@ import {
 
 export const runtime = "nodejs";
 
-const SYS = `Você é um CFO virtual da Expert Energy com acesso simultâneo aos 5 módulos financeiros:
-  1) FLUXO DE CAIXA    2) DRE (margem/EBITDA)    3) CUSTOS    4) PLANEJAMENTO/ORÇAMENTO    5) EMPRÉSTIMOS/FINANCIAMENTOS
-
-REGRAS OBRIGATÓRIAS:
-- Use SOMENTE os números do CONTEXTO_JSON abaixo. Se faltar dado, declare explicitamente.
-- SEMPRE investigue TODOS os 5 módulos antes de responder perguntas sobre "lucro", "caixa", "custos", "financiamento", "previsão" ou "análise geral".
-- Perguntas temporais ("últimos 12 meses", "este ano") → use historico_12m.
-- Perguntas futuras ("como ficará", "próximos 90 dias") → use projecoes e cenarios.
-- Cite valores em R$ e % sempre que possível.
-
-FORMATO DA RESPOSTA (português-BR, tom executivo):
-1) SUMÁRIO EXECUTIVO — 3-4 frases com o quadro geral.
-2) POR MÓDULO — análise curta de cada módulo relevante (cite R$ e %).
-3) COMPARATIVO — variação atual vs anterior quando aplicável.
-4) SUGESTÕES DE GESTÃO — 2-4 ações concretas com impacto financeiro estimado.
-5) OPORTUNIDADES — 1-3 melhorias vinculadas aos dados.
-6) RISCOS / ALERTAS — DSCR<1.2, projeção negativa, anomalia estatística detectada.`;
+const SYS = `Voce e o Copiloto Financeiro da Expert Energy. Recebe o CONTEXTO completo (Fluxo de Caixa + DRE + Custos Fixos/variaveis + Planejamento + Emprestimos + Margens + Cenarios + Projecoes 60/90d). Responda em portugues, direto, com numeros em R$, % e datas dd/mm/aaaa. NAO invente dados — use apenas o que esta no contexto. Estrutura obrigatoria: 1) Sumario executivo (1 paragrafo) 2) Analise por modulo (com numeros) 3) Comparativo historico 4) Sugestoes praticas 5) Oportunidades 6) Riscos.`;
 
 function detectarAgentes(pergunta: string): { nome: string; ativo: boolean }[] {
   const p = pergunta.toLowerCase();
@@ -67,16 +51,16 @@ export async function POST(req: Request) {
   const contexto = {
     periodo: { year, month, label: `${year}-${String(month).padStart(2,"0")}` },
     fluxo_caixa: ctx.now.cashflow,
-    dre: { receita: recTot, custo: cusTot, desp_op: dOp, desp_fin: dFin,
-           receita_operacional: ctx.now.dre.receita_operacional,
+    dre: {  custo: cusTot, desp_op: dOp, desp_fin: dFin,
+           
            custo_operacional:   ctx.now.dre.custo_operacional,
            desp_operacional:    ctx.now.dre.desp_operacional,
            desp_financeira:     ctx.now.dre.desp_financeira },
-    margens: { bruta: margem.margemBruta, ebitda: margem.margemEbitda, liquida: margem.margemLiquida, lucro_liquido: margin ? margin.lucroLiquido : (recTot - cusTot - dOp - dFin) },
-    custos_mes: ctx.now.costs.length,
-    planejamento: ctx.now.planning.length,
-    emprestimos: { count: ctx.now.loans.count, parcela_total: ctx.now.loans.parcela_total, saldo_devedor: ctx.now.loans.saldo_devedor },
-    projecoes: { sessenta_dias: proj60.saldoFinal },
+    margens: { bruta_val: margem.margem_bruta_val, bruta_pct: margem.margem_bruta_pct, ebitda_val: margem.ebitda_val, ebitda_pct: margem.ebitda_pct, liquida_val: margem.margem_liquida_val ?? (recTot - cusTot - dOp - dFin), liquida_pct: margem.margem_liquida_pct },
+    custos_mes: ((ctx.now.costs as any)?.count ?? (ctx.now.costs as any)?.items?.length ?? 0),
+    planejamento: ((ctx.now.planning as any)?.count ?? (ctx.now.planning as any)?.items?.length ?? 0),
+    emprestimos: { count: ((ctx.now.loans as any)?.count ?? 0), parcela_total: ((ctx.now.loans as any)?.parcela_mes ?? (ctx.now.loans as any)?.parcela_total ?? 0), saldo_devedor: ((ctx.now.loans as any)?.saldo_dev ?? (ctx.now.loans as any)?.saldo_devedor ?? 0) },
+    projecoes: { sessenta_dias: proj60.saldo_futuro },
     cenarios: { realista: cenReal },
     historico_12m: ctx.historico
   };
@@ -89,8 +73,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       resposta: `[FALLBACK] OPENAI_API_KEY ausente. Módulos ativos: ${agentesAtivos.join(", ") || "copy"}. ` +
                 `Dados do período ${contexto.periodo.label}: Saldo R$ ${ctx.now.cashflow.saldo.toLocaleString("pt-BR",{minimumFractionDigits:2})}; ` +
-                `Receitas R$ ${ctx.now.dre.receita_total.toLocaleString("pt-BR")}; Empréstimos ${ctx.now.loans.count}; ` +
-                `Parcela mensal R$ ${(ctx.now.loans.parcela_total||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}.`,
+                `Receitas R$ ${recTot.toLocaleString("pt-BR")}; Empréstimos ${((ctx.now.loans as any)?.count ?? 0)}; ` +
+                `Parcela mensal R$ ${(((ctx.now.loans as any)?.parcela_mes ?? (ctx.now.loans as any)?.parcela_total ?? 0)||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}.`,
       modulos_ativos: agentesAtivos
     });
   }
@@ -103,9 +87,15 @@ export async function POST(req: Request) {
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
         temperature: 0.3,
         messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: `PERGUNTA: ${pergunta}\n\nMÓDULOS DETECTADOS: ${agentesAtivos.join(", ") || "todos"}\n\nCONTEXTO_JSON: ${JSON.stringify(contexto, null, 2)}` }
-        ]
+          { role: "system", content: `${SYS}
+
+CONTEXTO FINANCEIRO ATUAL:
+${JSON.stringify(ctx, null, 2)}` },
+          { role: "user", content: `PERGUNTA: ${pergunta}
+
+MODULOS DETECTADOS: ${agentesAtivos.length ? agentesAtivos.join(", ") : "todos"}
+
+CONTEXTO_JSON: ${JSON.stringify(contexto, null, 2)}` }]
       })
     });
     const data = await resp.json();

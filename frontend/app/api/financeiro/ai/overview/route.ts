@@ -24,9 +24,9 @@ export async function POST(req: Request) {
   const ctx   = await loadFinanceContextFull(year, month);
   const dre: any = ctx.now.dre;
   const cf: any   = ctx.now.cashflow;
-  const cust: any[]  = ctx.now.costs;
+  const cust: any[] = ((ctx.now.costs as any)?.items ?? (Array.isArray(ctx.now.costs) ? ctx.now.costs : []));
   const loans: any  = ctx.now.loans;
-  const plan: any[]  = ctx.now.planning;
+  const plan: any[] = ((ctx.now.planning as any)?.items ?? (Array.isArray(ctx.now.planning) ? ctx.now.planning : []));
 
   // ---- campos do DRETotals ----
   const receita     = Number(dre.receitas           || 0);
@@ -58,10 +58,10 @@ export async function POST(req: Request) {
     if (a) insights.push({
       modulo: "anomalias",
       titulo: "Anomalia detectada nas entradas",
-      severidade: a.severidade,
-      detalhe: a.mensagem
+      severidade: ((a as any).severidade ?? (a.is_anomalia ? ((Number(a.desvio) > 1.5) ? "alta" : "media") : "baixa")),
+      detalhe: ((a as any).mensagem ?? (a.is_anomalia ? `Desvio estatistico relevante: media R$ ${Number(a.media).toLocaleString("pt-BR",{minimumFractionDigits:2})}, limite superior R$ ${Number(a.limite_sup).toLocaleString("pt-BR",{minimumFractionDigits:2})}, desvio ${Number(a.desvio).toFixed(2)}` : ""))
     });
-  }
+  };
 
   // ============ DRE / MARGENS ============
   if (receita > 0 || totalDesp > 0) {
@@ -172,12 +172,12 @@ export async function POST(req: Request) {
     insights.push({
       modulo: "projecoes",
       titulo: "Projeção de caixa 60/90 dias",
-      severidade: (proj60.saldoFinal < 0 || proj90.saldoFinal < 0) ? "alta" : "baixa",
-      detalhe: `60d: R$ ${proj60.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
-               ` · 90d: R$ ${proj90.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+      severidade: (proj60.saldo_futuro < 0 || proj90.saldo_futuro < 0) ? "alta" : "baixa",
+      detalhe: `60d: R$ ${proj60.saldo_futuro.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · 90d: R$ ${proj90.saldo_futuro.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
                ` · Base: média 3 meses (entradas R$ ${medEnt.toFixed(2)} / saídas R$ ${medSai.toFixed(2)})`
     });
-    if (proj60.saldoFinal < 0) {
+    if (proj60.saldo_futuro < 0) {
       suggestions.push({
         modulo: "projecoes",
         acao: "Antecipar recebíveis dos próximos 30 dias.",
@@ -215,8 +215,8 @@ export async function POST(req: Request) {
     projecoes: { sessenta_dias: proj60, noventa_dias: proj90 },
     bruto: {
       fluxo_caixa: cf,
-      dre: { receita, custoOp, despOp, despFin, totalDesp,
-            receita_operacional: dre.receita_operacional, receita_financeira: dre.receita_financeira, resultado: dre.resultado },
+      dre: { receita: (receita ?? 0), custo: custoOp, desp_operacional: despOp, desp_financeira: despFin, total_desp: totalDesp,
+            receita_alias: (dre.receitas ?? 0), receita_financeira: ((dre as any).receita_financeira ?? 0), resultado: ((dre as any).resultado ?? (dre.lucro_liquido ?? 0)) },
       custos_total: custoTotalMes,
       meta_receita: metaReceita,
       emprestimos: loans

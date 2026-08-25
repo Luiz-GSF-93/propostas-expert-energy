@@ -72,54 +72,100 @@ export function sumCF(rows: any[]): CFTotals {
 }
 
 export type DRETotals = {
-  receitas: number; despesas: number; resultado: number; linhas: number;
-  receita_operacional: number; receita_financeira: number;
-  custo_operacional: number; desp_operacional: number; desp_financeira: number;
+  receitas: number;
+  custo_operacional: number;
+  desp_operacional: number;
+  desp_financeira: number;
+  tributos: number;
+  outros: number;
+  lucro_liquido: number;
+  ebitda: number;
+  margem_bruta_pct: number | null;
+  margem_ebitda_pct: number | null;
+  margem_liquida_pct: number | null;
+  count: number;
+  items: any[];
 };
+
 export function sumDRE(rows: any[]): DRETotals {
   const t: DRETotals = {
-    receitas: 0, despesas: 0, resultado: 0, linhas: rows.length,
-    receita_operacional: 0, receita_financeira: 0,
-    custo_operacional: 0, desp_operacional: 0, desp_financeira: 0
+    receitas: 0, custo_operacional: 0, desp_operacional: 0,
+    desp_financeira: 0, tributos: 0, outros: 0,
+    lucro_liquido: 0, ebitda: 0,
+    margem_bruta_pct: null, margem_ebitda_pct: null, margem_liquida_pct: null,
+    count: rows.length,
+    items: rows.slice(0, 30),
+  };
+  const SEC: Record<string, "receitas"|"custo_operacional"|"desp_operacional"|"desp_financeira"|"tributos"|"outros"> = {
+    receitas:"receitas", receita:"receitas", vendas:"receitas",
+    custo_operacional:"custo_operacional", custos_operacionais:"custo_operacional",
+    cmv:"custo_operacional", custos:"custo_operacional",
+    despesa_operacional:"desp_operacional", despesas_operacionais:"desp_operacional",
+    despesas:"desp_operacional", administrativo:"desp_operacional",
+    comercial:"desp_operacional", operacional:"desp_operacional",
+    despesa_financeira:"desp_financeira", despesas_financeiras:"desp_financeira",
+    juros:"desp_financeira", financeiro:"desp_financeira",
+    tributos:"tributos", impostos:"tributos",
+    irpj:"tributos", csll:"tributos", pis:"tributos",
+    cofins:"tributos", iss:"tributos", icms:"tributos",
   };
   for (const r of rows) {
+    if (!r) continue;
+    if (r.active === false) continue; // só filtra explicitamente inativos
+    const sec = String(r.section ?? r.secao ?? "").trim().toLowerCase();
+    const bucket = SEC[sec] ?? "outros";
+    const op = String(r.operator ?? r.operador ?? "add").trim().toLowerCase();
+    const sign = (op === "subtract" || op === "-" || op === "sub") ? -1 : 1;
     const amt = Number(r.amount ?? r.valor ?? 0);
-    const sec = normDreSec(r.section ?? r.secao ?? r.seção);
-    const lk = String(r.line_key ?? r.lineKey ?? "").toLowerCase();
-    const isFin = lk.includes("financ") || lk.includes("juro") || lk.includes("rend");
-    const isCust = lk.includes("custo") || lk.includes("cmv") || lk.includes("produto") || lk.includes("insumo");
-    if (sec === "revenue") {
-      t.receitas += amt;
-      if (isFin) t.receita_financeira += amt; else t.receita_operacional += amt;
-    } else if (sec === "expense") {
-      t.despesas += amt;
-      if (isFin) t.desp_financeira += amt;
-      else if (isCust) t.custo_operacional += amt;
-      else t.desp_operacional += amt;
-    }
+    if (!Number.isFinite(amt)) continue;
+    // @ts-ignore — bucket é uma das chaves numéricas de DRETotals
+    t[bucket] += sign * amt;
   }
-  t.resultado = t.receitas - t.despesas;
+  t.lucro_liquido = t.receitas - t.custo_operacional - t.desp_operacional - t.desp_financeira - t.tributos;
+  t.ebitda = t.lucro_liquido + t.desp_financeira; // aproximação conservadora
+  if (t.receitas > 0) {
+    t.margem_bruta_pct   = ((t.receitas - t.custo_operacional) / t.receitas) * 100;
+    t.margem_ebitda_pct  = ((t.lucro_liquido + t.desp_financeira) / t.receitas) * 100;
+    t.margem_liquida_pct = (t.lucro_liquido / t.receitas) * 100;
+  }
   return t;
 }
 
+export type CostTotals = {
+  fixos: number;
+  variaveis: number;
+  total_mensal: number;
+  por_categoria: Record<string, number>;
+  por_cost_type: Record<string, number>;
+  count: number;
+  items: any[];
+};
+
 export function sumCosts(rows: any[]) {
-  const t = {
-    total: 0, fixos: 0, variaveis: 0,
-    por_categoria: {} as Record<string, number>,
-    por_status: {} as Record<string, number>,
-    count: rows.length, items: rows.slice(0, 30)
+  const t: CostTotals = {
+    fixos: 0, variaveis: 0, total_mensal: 0,
+    por_categoria: {}, por_cost_type: {},
+    count: rows.length, items: rows.slice(0, 30),
+  };
+  const CAT: Record<string, "fixos"|"variaveis"> = {
+    fixo:"fixos", fixa:"fixos", fixos:"fixos",
+    variavel:"variaveis", variaveis:"variaveis",
   };
   for (const r of rows) {
+    if (!r) continue;
+    if (r.active === false || r.status === "inativo" || r.status === "cancelado") continue;
+    const catRaw = String(r.category ?? r.categoria ?? "").trim().toLowerCase();
+    const bucket = CAT[catRaw] ?? "fixos";
     const amt = Number(r.monthly_amount ?? r.amount ?? r.valor ?? 0);
-    const ct = String(r.cost_type ?? "").toLowerCase();
-    const cat = String(r.category ?? "outros").trim() || "outros";
-    const st  = String(r.status ?? "active");
-    t.total += amt;
-    if (ct.includes("fix") || ct === "f") t.fixos += amt;
-    else if (ct.includes("var") || ct === "v") t.variaveis += amt;
+    if (!Number.isFinite(amt)) continue;
+    // @ts-ignore
+    t[bucket] += amt;
+    const cat = catRaw || "outros";
     t.por_categoria[cat] = (t.por_categoria[cat] ?? 0) + amt;
-    t.por_status[st]       = (t.por_status[st]  ?? 0) + amt;
+    const ct = String((r as any).cost_type ?? (r as any).tipo ?? "outros").trim().toLowerCase() || "outros";
+    t.por_cost_type[ct] = (t.por_cost_type[ct] ?? 0) + amt;
   }
+  t.total_mensal = t.fixos + t.variaveis;
   return t;
 }
 
@@ -274,7 +320,7 @@ export async function loadHistorico12m(tabs: { cashflow: string; dre: string; co
     dreRows.filter((r: any) => Number(r.year) === m.year && Number(r.month) === m.month)
   ));
   const cust = sumCosts(costsRows);
-  const custos_mensais = meses.map(() => cust.total);
+  const custos_mensais = meses.map(() => cust.total_mensal);
   return { cashflow: cf, dre, custos_mensais, labels: meses.map(m => m.label) };
 }
 
