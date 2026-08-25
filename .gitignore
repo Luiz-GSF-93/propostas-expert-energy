@@ -10,3 +10,20 @@ npm-debug.log*
 *.bak-*
 *.bak
 backup-hotfix-*/
+
+# Backups locais (patch scripts e emergency saves)
+*.bak-*-conflict
+*.bak-*-diag
+*.bak-*-dbg*
+*.bak-*-mod*
+*.bak-*-norm
+*.bak-*-ts-fix
+*.bak-*-typepos*
+*.bak-*-uiclean
+*.bak-*-extract*
+*.bak-*-reativo*
+*.bak-*-tutorial*
+backup-hotfix-*/
+
+# Build artifacts locais (não commit)
+.DS_Store

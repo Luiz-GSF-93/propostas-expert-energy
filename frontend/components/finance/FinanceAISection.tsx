@@ -27,8 +27,8 @@ const moduloIcon: Record<string, string> = {
 };
 
 async function postJson(path: string, payload: Record<string, unknown>) {
-  const { data: s } = await supabase.auth.getSession();
-  const token = s.session?.access_token || "";
+  const { data: sessData } = await supabase.auth.getSession();
+  const token = sessData?.session?.access_token || "";
   const r = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -63,7 +63,7 @@ export default function FinanceAISection() {
     (async () => {
       try {
         const { data: sess } = await supabase.auth.getSession();
-        if (!sess.session?.access_token) { setAllowed(false); return; }
+        if (!sessData?.session?.access_token) { setAllowed(false); return; }
         const { data: prof } = await supabase.from("profiles").select("role").maybeSingle();
         setAllowed(String(prof?.role || "").toLowerCase() === "admin");
       } catch { setAllowed(false); }
