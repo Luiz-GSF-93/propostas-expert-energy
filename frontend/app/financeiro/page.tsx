@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 import FinanceModuleShell from "@/components/finance/FinanceModuleShell";
+import FinanceAISection from "@/components/finance/FinanceAISection";
 
 type FinanceBootstrap = {
   module?: {
@@ -243,6 +244,8 @@ export default function FinanceiroPage() {
           </div>
         </section>
       </section>
+
+      <FinanceAISection />
     </FinanceModuleShell>
   );
 }
