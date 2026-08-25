@@ -124,11 +124,28 @@ export function sumCosts(rows: any[]) {
 }
 
 export function sumPlanning(rows: any[]) {
-  const t = { count: rows.length, metas_total: 0, realizado_total: 0, items: rows.slice(0, 30) };
+  const t = {
+    count: rows.length,
+    metas_total: 0,
+    realizado_total: 0,
+    atingimento_pct: 0,
+    por_tipo: {} as Record<string, { meta: number; realizado: number; qtd: number }>,
+    items: rows.slice(0, 30)
+  };
   for (const r of rows) {
-    t.metas_total     += Number(r.target ?? r.goal ?? r.meta ?? 0);
-    t.realizado_total += Number(r.actual ?? r.realized ?? r.realizado ?? 0);
+    const meta = Number(r.goal_amount ?? r.target ?? r.goal ?? r.meta ?? 0);
+    const realizado = Number(r.actual_amount ?? r.actual ?? r.realized ?? r.realizado ?? 0);
+    const tipo = String(r.goal_type ?? r.tipo ?? "(geral)");
+
+    t.metas_total     += meta;
+    t.realizado_total += realizado;
+
+    if (!t.por_tipo[tipo]) t.por_tipo[tipo] = { meta: 0, realizado: 0, qtd: 0 };
+    t.por_tipo[tipo].meta      += meta;
+    t.por_tipo[tipo].realizado += realizado;
+    t.por_tipo[tipo].qtd       += 1;
   }
+  t.atingimento_pct = t.metas_total > 0 ? (t.realizado_total / t.metas_total) * 100 : 0;
   return t;
 }
 
@@ -296,7 +313,7 @@ export function buildTabs() {
     cashflow: env("FINANCE_AI_CASHFLOW_TABLE", "finance_cash_flow_entries"),
     dre:      env("FINANCE_AI_DRE_TABLE",      "finance_dre_manual_entries"),
     costs:    env("FINANCE_AI_COSTS_TABLE",    "finance_cost_entries"),
-    planning: env("FINANCE_AI_PLANNING_TABLE", "finance_planning_goals"),
+    planning: env("FINANCE_AI_PLANNING_TABLE", "planejamento_meta_comercial"),
     loans:    env("FINANCE_AI_LOANS_TABLE",    "finance_loan_contracts")
   };
 }
