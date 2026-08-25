@@ -24,9 +24,9 @@ export async function POST(req: Request) {
   const ctx   = await loadFinanceContextFull(year, month);
   const dre: any = ctx.now.dre;
   const cf: any   = ctx.now.cashflow;
-  const cust: any  = ctx.now.costs;
+  const cust: any[]  = ctx.now.costs;
   const loans: any  = ctx.now.loans;
-  const plan: any  = ctx.now.planning;
+  const plan: any[]  = ctx.now.planning;
 
   // ---- campos do DRETotals ----
   const receita     = Number(dre.receitas           || 0);
@@ -55,14 +55,11 @@ export async function POST(req: Request) {
   if (ctx.historico.cashflow.length >= 4) {
     const ultimos = ctx.historico.cashflow.slice(-6).map((m:any) => m.receita);
     const a = anomalia(Number(cf.receita), ultimos);
-          if (a && a.is_anomalia) insights.push({
+    if (a) insights.push({
       modulo: "anomalias",
       titulo: "Anomalia detectada nas entradas",
-      severidade: a.desvio > 1.5 ? "alta" : "media",
-      detalhe: `Entrada: R$ ${Number(cf.receita).toLocaleString("pt-BR",{minimumFractionDigits:2})} ` +
-               `· Media: R$ ${Number(a.media).toLocaleString("pt-BR",{minimumFractionDigits:2})} ` +
-               `· Desvio: ${Number(a.desvio).toFixed(2)} sigmas ` +
-               `· Limite superior: R$ ${Number(a.limite_sup).toLocaleString("pt-BR",{minimumFractionDigits:2})}`
+      severidade: a.severidade,
+      detalhe: a.mensagem
     });
   }
 
@@ -90,13 +87,15 @@ export async function POST(req: Request) {
   }
 
   // ============ CUSTOS ============
-  const custoTotalMes = ((cust?.fixos ?? 0) + (cust?.variaveis ?? 0));
+  const custoTotalMes = cust.reduce(
+    (a: number, c: any) => a + (Number(c.amount) || Number(c.valor) || Number(c.monthly_value) || 0), 0
+  );
   if (custoTotalMes > 0) {
     insights.push({
       modulo: "custos",
       titulo: "Custo total do mês",
       severidade: custoTotalMes > receita * 0.7 ? "alta" : "baixa",
-      detalhe: `R$ ${custoTotalMes.toLocaleString("pt-BR",{minimumFractionDigits:2})} em ${(cust?.items?.length ?? cust?.count ?? 0)} lançamento(s).`
+      detalhe: `R$ ${custoTotalMes.toLocaleString("pt-BR",{minimumFractionDigits:2})} em ${cust.length} lançamento(s).`
     });
     if (custoTotalMes > receita * 0.6 && receita > 0) {
       suggestions.push({
@@ -115,7 +114,9 @@ export async function POST(req: Request) {
   }
 
   // ============ PLANEJAMENTO ============
-  const metaReceita = (plan?.total_receita_meta ?? 0);
+  const metaReceita = plan.reduce(
+    (a: number, p: any) => a + (Number(p.revenue_target) || Number(p.meta_receita) || Number(p.target_amount) || 0), 0
+  );
   if (metaReceita > 0) {
     const ating = receita / metaReceita;
     insights.push({
@@ -171,12 +172,12 @@ export async function POST(req: Request) {
     insights.push({
       modulo: "projecoes",
       titulo: "Projeção de caixa 60/90 dias",
-      severidade: (proj60.saldo_futuro < 0 || proj90.saldo_futuro < 0) ? "alta" : "baixa",
-      detalhe: `60d: R$ ${proj60.saldo_futuro.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
-               ` · 90d: R$ ${proj90.saldo_futuro.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+      severidade: (proj60.saldoFinal < 0 || proj90.saldoFinal < 0) ? "alta" : "baixa",
+      detalhe: `60d: R$ ${proj60.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
+               ` · 90d: R$ ${proj90.saldoFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})}` +
                ` · Base: média 3 meses (entradas R$ ${medEnt.toFixed(2)} / saídas R$ ${medSai.toFixed(2)})`
     });
-    if (proj60.saldo_futuro < 0) {
+    if (proj60.saldoFinal < 0) {
       suggestions.push({
         modulo: "projecoes",
         acao: "Antecipar recebíveis dos próximos 30 dias.",
