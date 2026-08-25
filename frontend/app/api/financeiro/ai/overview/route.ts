@@ -193,6 +193,7 @@ export async function POST(req: Request) {
   
   
   // === FIX-V3-DRE-MAPEAMENTO-COST-TYPE ===
+  // === FIX-V3-CASTS ===
   try {
     const cf: any = (ctx.now as any).cashflow;
     const dre: any = (ctx.now as any).dre || {};
@@ -266,14 +267,14 @@ export async function POST(req: Request) {
       const ativos = (costs ?? []).filter((c: any) => c.status === "ativo");
       for (const c of ativos) {
         const ct = String(c.cost_type ?? "").toLowerCase().trim();
-        let target = MAPA[ct];
+        let target = (MAPA as any)[ct];
         if (!target) {
           for (const [k, v] of Object.entries(MAPA)) {
-            if (ct.includes(k)) { target = v; break; }
+            if (ct.includes(k)) { target = (v as string); break; }
           }
         }
         if (!target) target = "despesas_administrativas";
-        despesasOps[target] += NUM(c.monthly_amount);
+        (despesasOps as any)[target] += NUM(c.monthly_amount);
       }
     } catch (e) {}
 
