@@ -60,19 +60,13 @@ export async function POST(req: Request) {
   const medEnt = mean(ctx.historico.cashflow.slice(-3).map((m:any)=>m.receita));
   const medSai = mean(ctx.historico.cashflow.slice(-3).map((m:any)=>m.despesa));
   const proj60 = projecaoCaixa(ctx.now.cashflow.saldo, medEnt, medSai, 2);
-  const recTotSafe = recTot > 0 ? recTot : 1;
-  const cusTotSafe = cusTot > 0 ? cusTot : 0;
-  const cenReal = simularCenario(recTotSafe, cusTotSafe, 0, 0);
+  const cenReal = simularCenario(ctx.now.dre.receita_total || 1, ctx.now.dre.custo_total || 0, 0, 0);
 
   const contexto = {
     periodo: { year, month, label: `${year}-${String(month).padStart(2,"0")}` },
     fluxo_caixa: ctx.now.cashflow,
-    dre: { receita: recTot, custo: cusTot, desp_op: dOp, desp_fin: dFin,
-           receita_operacional: ctx.now.dre.receita_operacional,
-           custo_operacional:   ctx.now.dre.custo_operacional,
-           desp_operacional:    ctx.now.dre.desp_operacional,
-           desp_financeira:     ctx.now.dre.desp_financeira },
-    margens: { bruta: margem.margemBruta, ebitda: margem.margemEbitda, liquida: margem.margemLiquida, lucro_liquido: margin ? margin.lucroLiquido : (recTot - cusTot - dOp - dFin) },
+    dre: { receita_total: ctx.now.dre.receita_total, custo_total: ctx.now.dre.custo_total, despesa_op: ctx.now.dre.despesa_op, despesa_fin: ctx.now.dre.despesa_fin },
+    margens: { bruta: margem.margemBruta, ebitda: margem.margemEbitda, liquida: margem.margemLiquida, lucro_liquido: margin ? margin.lucroLiquido : (ctx.now.dre.receita_total - ctx.now.dre.custo_total - ctx.now.dre.despesa_op - ctx.now.dre.despesa_fin) },
     custos_mes: ctx.now.costs.length,
     planejamento: ctx.now.planning.length,
     emprestimos: { count: ctx.now.loans.count, parcela_total: ctx.now.loans.parcela_total, saldo_devedor: ctx.now.loans.saldo_devedor },
