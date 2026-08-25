@@ -5,3 +5,8 @@ node_modules/
 backend/.env
 frontend/.env.local
 npm-debug.log*
+
+# Backups locais
+*.bak-*
+*.bak
+backup-hotfix-*/
