@@ -51,12 +51,10 @@ export async function POST(req: Request) {
 
   // Contexto enriquecido dos 5 módulos
   const ctx = await loadFinanceContextFull(year, month);
-  const dreAny: any = ctx.now.dre;
-  const recTot = Number(dreAny.receitas          ?? dreAny.receita         ?? dreAny.receita_total ?? 0);
-  const cusTot = Number(dreAny.custo_operacional ?? dreAny.custos          ?? dreAny.custo_total   ?? 0);
-  const dOp    = Number(dreAny.desp_operacional  ?? dreAny.despesas        ?? dreAny.despesa_op    ?? 0);
-  const dFin   = Number(dreAny.desp_financeira   ?? dreAny.financeiro      ?? dreAny.despesa_fin   ?? 0);
-  const margem = calcMargins(recTot, cusTot, dOp, dFin);
+  const margem = calcMargins(
+    ctx.now.dre.receita_total || 0, ctx.now.dre.custo_total || 0,
+    ctx.now.dre.despesa_op || 0, ctx.now.dre.despesa_fin || 0
+  );
   const medEnt = mean(ctx.historico.cashflow.slice(-3).map((m:any)=>m.receita));
   const medSai = mean(ctx.historico.cashflow.slice(-3).map((m:any)=>m.despesa));
   const proj60 = projecaoCaixa(ctx.now.cashflow.saldo, medEnt, medSai, 2);
