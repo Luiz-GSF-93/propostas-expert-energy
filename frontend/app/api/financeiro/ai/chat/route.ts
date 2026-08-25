@@ -2,13 +2,36 @@ import { NextResponse } from "next/server";
 import {
   checkAdminFromRequest, loadFinanceContext, logFinanceAiEvent
 } from "@/lib/financeiro/ai/server";
+
 export const runtime = "nodejs";
 
 const SYS = "Você é um analista financeiro sênior. Use SOMENTE os números do contexto Supabase. Se faltar dado, diga explicitamente. Tom executivo, português do Brasil, até 6 bullets ou 1 parágrafo curto.";
 
 export async function POST(req: Request) {
   const guard = await checkAdminFromRequest(req);
-  if (!guard.ok) return NextResponse.json({ error: guard.reason }, { status: guard.status });
+  if (!guard.ok) {
+    const envUrl = typeof process !== "undefined"
+      ? (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "(empty)")
+      : "(undefined)";
+    const hasSR   = typeof process !== "undefined" && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const hasAnon = typeof process !== "undefined" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const openai  = typeof process !== "undefined" && Boolean(process.env.OPENAI_API_KEY);
+    const authH   = req.headers.get("authorization") || "";
+    const m       = authH.match(/^Bearer\s+(.+)$/i);
+    const tok30   = m ? m[1].slice(0, 30) + "..." : "(sem bearer)";
+    return NextResponse.json({
+      error: guard.reason,
+      auth_status: guard.status,
+      dbg: {
+        env_supabase_url: envUrl,
+        has_service_role: hasSR,
+        has_anon_key: hasAnon,
+        has_openai_key: openai,
+        auth_header_present: Boolean(authH),
+        token_prefix_30: tok30
+      }
+    }, { status: guard.status });
+  }
 
   const body = await req.json().catch(() => ({}));
   const pergunta = String(body?.prompt || "").trim();
@@ -30,11 +53,11 @@ export async function POST(req: Request) {
       planejamento: ctx.data.planning.length
     },
     amostras: {
-      cashflow: ctx.data.cashflow.slice(0,20),
-      dre:      ctx.data.dre.slice(0,20),
-      costs:    ctx.data.costs.slice(0,20),
-      loans:    ctx.data.loans.slice(0,5),
-      planning: ctx.data.planning.slice(0,10)
+      cashflow: ctx.data.cashflow.slice(0, 20),
+      dre:      ctx.data.dre.slice(0, 20),
+      costs:    ctx.data.costs.slice(0, 20),
+      loans:    ctx.data.loans.slice(0, 5),
+      planning: ctx.data.planning.slice(0, 10)
     }
   };
 
@@ -48,7 +71,7 @@ export async function POST(req: Request) {
         temperature: 0.2,
         messages: [
           { role: "system", content: SYS },
-          { role: "user", content: `CONTEXTO (Supabase, somente leitura):\n${JSON.stringify(resumo).slice(0,28000)}\n\nPERGUNTA DO ADMIN:\n${pergunta}` }
+          { role: "user", content: `CONTEXTO (Supabase, somente leitura):\n${JSON.stringify(resumo).slice(0, 28000)}\n\nPERGUNTA DO ADMIN:\n${pergunta}` }
         ]
       })
     });
@@ -58,15 +81,15 @@ export async function POST(req: Request) {
     await logFinanceAiEvent({
       userId: guard.user.id, userEmail: guard.user.email,
       action: "error", period: ctx.periodo, prompt: pergunta,
-      meta: { stage: "openai_call", error: String(e?.message||e) }
+      meta: { stage: "openai_call", error: String(e?.message || e) }
     });
-    return NextResponse.json({ error: "openai_call_failed", detail: String(e?.message||e) }, { status: 502 });
+    return NextResponse.json({ error: "openai_call_failed", detail: String(e?.message || e) }, { status: 502 });
   }
 
   await logFinanceAiEvent({
     userId: guard.user.id, userEmail: guard.user.email,
     action: "chat", period: ctx.periodo, prompt: pergunta,
-    responseSummary: resposta.slice(0,500),
+    responseSummary: resposta.slice(0, 500),
     modulesUsed: Object.keys(ctx.tables)
   });
 
