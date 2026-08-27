@@ -1,3 +1,5 @@
+// === CHAT-V11-RESOLVE-CONFLITS-IMPOSTOS-RANGE ===
+// === CHAT-V10.0-SUPPRESS-FRAG-AND-FIX-IMPOSTOS-RANGE ===
 import { NextResponse } from "next/server";
 import {
   checkAdminFromRequest, loadFinanceContextFull, logFinanceAiEvent, supabaseAdmin,
@@ -719,7 +721,7 @@ export async function POST(req: Request) {
     const data = await resp.json();
     const resposta = data?.choices?.[0]?.message?.content || "[sem resposta da OpenAI]";
     let respostaFinal = resposta;
-    if (!__supV && (ehCategoria || respostaFinal.includes("—") || respostaFinal.includes("NUNCA inventar"))) {
+    if (!__supV && !(ctx as any)?.__noFrag && (ehCategoria || respostaFinal.includes("—") || respostaFinal.includes("NUNCA inventar"))) {
       respostaFinal = respostaFinal + await fragmentarPorCategoria(ctx, prompt, targetYear, targetMonth);
     }
     await logFinanceAiEvent({ user_email: guard.user.email, user_id: guard.user.id, action: "chat_v8_7", period_ref: `${year}-${String(month).padStart(2,"0")}`, prompt, response: `[modulos: ${agentes.join(",")}] ${respostaFinal}` });
@@ -806,18 +808,37 @@ function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked, dreA
       ]).join("\n").trim() + "\n";
     }
     if (__impR && !__catR) {
-      const __rows = (cashflowAsked?.raw || []).filter((r: any) =>
-        String(r.type||"").toLowerCase()==="despesa" &&
-        /imposto|simples|das|iss|icms|irpj|csll|pis|cofins|tributo/i.test(String(r.category||"") + " " + String(r.description||""))
+      // V10: detecta range no prompt (ex.: "janeiro a agosto") e agrega por mes
+      const MESES_MAP: Array<[number, string]> = [
+        [1, "janeiro|jan"], [2, "fevereiro|fev"], [3, "mar[cç]o|mar"], [4, "abril|abr"],
+        [5, "maio|mai"], [6, "junho|jun"], [7, "julho|jul"], [8, "agosto|ago"],
+        [9, "setembro|set"], [10, "outubro|out"], [11, "novembro|nov"], [12, "dezembro|dez"],
+      ];
+      const __pl = String(prompt || "").toLowerCase();
+      const __msM = MESES_MAP.filter(([_, re]) => new RegExp(re, "i").test(__pl)).map(([m]) => m);
+      const __isAno = /(ano|anual|todos\s+os\s+meses|inteiro)/i.test(__pl);
+      const __rowsAll = (cashflowAsked?.raw || []).filter((r: any) =>
+        String(r.type || "").toLowerCase() === "despesa" &&
+        /imposto|simples|das|iss|icms|irpj|csll|pis|cofins|tributo/i.test(String(r.category || "") + " " + String(r.description || ""))
       );
-      const __totR = __rows.reduce((s: number, r: any) => s + Number(r.amount||0), 0);
+      let __rows: any[], __titulo: string;
+      if (__msM.length >= 2 || __isAno) {
+        const usar: number[] = __isAno ? Array.from({ length: 12 }, (_, i) => i + 1) : __msM;
+        __rows = __rowsAll.filter((r: any) => usar.includes(Number(r.month)));
+        const total = __rows.reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        const label = __isAno ? ("ano de " + askPeriod.year) : usar.map((m: number) => String(m).padStart(2, "0") + "/" + askPeriod.year).join(", ");
+        __titulo = "**Impostos de " + label + ": R$ " + BRL(total) + "**";
+      } else {
+        __rows = __rowsAll.filter((r: any) => Number(r.month) === askPeriod.month && Number(r.year || askPeriod.year) === askPeriod.year);
+        const total = __rows.reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        __titulo = "**Impostos em " + periodLabel + ": R$ " + BRL(total) + "**";
+      }
       return L.concat([
-        `\n**Impostos em ${periodLabel}: R$ ${BRL(__totR)}**`,
-        `Fonte: finance_cash_flow_entries (${__rows.length} lancamentos com type='despesa').`,
-        ...(__rows.length ? __rows.slice(0, 8).map((r: any) =>
-          `  • ${r.description || "(sem descricao)"}: R$ ${BRL(Number(r.amount||0))}`
-        ) : ["  (sem lancamentos de impostos neste periodo)"]),
-        ...(__rows.length > 8 ? [`  • (+${__rows.length - 8} outros)`] : []),
+        "\n" + __titulo,
+        "Fonte: finance_cash_flow_entries (" + __rows.length + " lancamentos com type='despesa').",
+        ...(__rows.slice(0, 12).map((r: any) =>
+          "  • " + String(r.month).padStart(2, "0") + "/" + askPeriod.year + " - " + (r.description || "(sem descricao)") + ": R$ " + BRL(Number(r.amount || 0))
+        )),
       ]).join("\n").trim() + "\n";
     }
   } catch { /* fluxo verboso abaixo */ }
@@ -891,3 +912,4 @@ function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked, dreA
 // === CHAT-V8.9-FIM -- FOCO-RAPIDO/FALLBACK-OBJETIVO ===
 // === CHAT-V9.2-DRE-ANUAL-FIM ===
 // === CHAT-V9.3-METAS-FIM ===
+// === CHAT-V11-RESOLVE-CONFLITS-FIM ===
