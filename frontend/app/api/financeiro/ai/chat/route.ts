@@ -1,3 +1,4 @@
+// === CHAT-V16-IMPOSTOS-COST-ENTRIES-MONTHLY-AMOUNT ===
 // === CHAT-V14-FIX-TS1064-PROMISE-STRING ===
 // === CHAT-V11-RESOLVE-CONFLITS-IMPOSTOS-RANGE ===
 // === CHAT-V10.0-SUPPRESS-FRAG-AND-FIX-IMPOSTOS-RANGE ===
@@ -733,6 +734,43 @@ return NextResponse.json({ resposta: respostaFinal, modulos_ativos: agentes, con
   }
 }
 
+// === CHAT-V16-HELPER-IMPOSTOS-COST-ENTRIES-MONTHLY-AMOUNT ===
+// finance_cost_entries NAO tem year / month / amount — usa monthly_amount (custo recorrente).
+// Para um range de N meses, total = monthly_amount * N.
+async function carregarImpostosCostEntriesPorRange(year: number, meses: number[], supabaseAdmin: any): Promise<any[]> {
+  if (!supabaseAdmin || !meses?.length) return [];
+  const out: any[] = [];
+  try {
+    const lookup = await supabaseAdmin.from("finance_cost_entries")
+      .select("cost_type,category,description,monthly_amount,status")
+      .eq("status", "ativo")
+      .then((x: any) => x?.data || []);
+    for (const r of (lookup || [])) {
+      const ct = String(r.cost_type || "").toLowerCase().trim();
+      const desc = String(r.description || "").toLowerCase();
+      const match =
+        ct === "impostos" || ct === "imposto" || ct === "tax" || ct === "tributo" || ct === "tributos" ||
+        /imposto|simples|das|iss|icms|irpj|csll|pis|cofins|tributo/i.test(ct + " " + desc);
+      if (!match) continue;
+      const monthly = Number(r.monthly_amount || 0);
+      if (!monthly) continue;
+      // 1 linha por mês do range -> repetimos o mesmo monthly_amount
+      for (const m of meses) {
+        out.push({
+          year, month: m, type: "despesa",
+          category: String(r.category || r.cost_type || "impostos"),
+          description: r.description || ct,
+          amount: monthly,
+          _source_table: "finance_cost_entries",
+        });
+      }
+    }
+  } catch (e) {
+    console.log("[V16 carregarImpostosCostEntries] erro:", String((e as any)?.message || e).slice(0,160));
+  }
+  return out;
+}
+
 async function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked, dreAsked, extras }: {
   ctx: any; prompt: string; agentes: string[]; askPeriod: { year: number; month: number };
   cashflowAsked: any; dreAsked: any; extras: any;
@@ -818,10 +856,21 @@ async function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked
       const __pl = String(prompt || "").toLowerCase();
       const __msM = MESES_MAP.filter(([_, re]) => new RegExp(re, "i").test(__pl)).map(([m]) => m);
       const __isAno = /(ano|anual|todos\s+os\s+meses|inteiro)/i.test(__pl);
-      const __rowsAll = (cashflowAsked?.raw || []).filter((r: any) =>
+      // === CHAT-V16-FALLBACK-COST-ENTRIES-MONTHLY-AMOUNT ===
+      // 1a fonte: cashflowAsked (finance_cash_flow_entries) -- mais comum ter dados preenchidos
+      const __rowsFromCashflow = (cashflowAsked?.raw || []).filter((r: any) =>
         String(r.type || "").toLowerCase() === "despesa" &&
         /imposto|simples|das|iss|icms|irpj|csll|pis|cofins|tributo/i.test(String(r.category || "") + " " + String(r.description || ""))
       );
+      // 2a fonte: se vazio, busca em finance_cost_entries (monthly_amount * meses)
+      let __rowsFromCosts: any[] = [];
+      if (__rowsFromCashflow.length === 0) {
+        const __mesesParaFallback: number[] = (__msM.length >= 2 || __isAno)
+          ? (__isAno ? Array.from({ length: 12 }, (_, i) => i + 1) : __msM)
+          : [askPeriod.month];
+        __rowsFromCosts = await carregarImpostosCostEntriesPorRange(askPeriod.year, __mesesParaFallback, supabaseAdmin);
+      }
+      const __rowsAll = __rowsFromCashflow.length ? __rowsFromCashflow : __rowsFromCosts;
       let __rows: any[], __titulo: string;
       if (__msM.length >= 2 || __isAno) {
         const usar: number[] = __isAno ? Array.from({ length: 12 }, (_, i) => i + 1) : __msM;
@@ -836,7 +885,7 @@ async function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked
       }
       return L.concat([
         "\n" + __titulo,
-        "Fonte: finance_cash_flow_entries (" + __rows.length + " lancamentos com type='despesa').",
+        "Fonte: " + (__rows.length > 0 && __rows[0]?._source_table === 'finance_cost_entries' ? 'finance_cost_entries (monthly_amount * meses)' : 'finance_cash_flow_entries') + " (" + __rows.length + " lancamentos com type='despesa').",
         ...(__rows.slice(0, 12).map((r: any) =>
           "  • " + String(r.month).padStart(2, "0") + "/" + askPeriod.year + " - " + (r.description || "(sem descricao)") + ": R$ " + BRL(Number(r.amount || 0))
         )),
