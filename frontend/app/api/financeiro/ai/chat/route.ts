@@ -1,3 +1,4 @@
+// === CHAT-V14-FIX-TS1064-PROMISE-STRING ===
 // === CHAT-V11-RESOLVE-CONFLITS-IMPOSTOS-RANGE ===
 // === CHAT-V10.0-SUPPRESS-FRAG-AND-FIX-IMPOSTOS-RANGE ===
 import { NextResponse } from "next/server";
@@ -697,7 +698,7 @@ export async function POST(req: Request) {
   }
 
   if (!apiKey) {
-    const fb = formatarFallback({
+    const fb = await formatarFallback({
       ctx, prompt, agentes, askPeriod, cashflowAsked, dreAsked,
       extras: { dre_manual_year: dreManualYear, loans_future: loansFuture, planning_year: planningYear, future_proj: futureProj },
     });
@@ -732,10 +733,10 @@ return NextResponse.json({ resposta: respostaFinal, modulos_ativos: agentes, con
   }
 }
 
-function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked, dreAsked, extras }: {
+async function formatarFallback({ ctx, prompt, agentes, askPeriod, cashflowAsked, dreAsked, extras }: {
   ctx: any; prompt: string; agentes: string[]; askPeriod: { year: number; month: number };
   cashflowAsked: any; dreAsked: any; extras: any;
-}): string {
+}): Promise<string> {
   const BRL = (n: number) => Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const L: string[] = [];
   const now = ctx.now || {};
