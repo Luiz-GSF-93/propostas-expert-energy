@@ -36,6 +36,10 @@ const SYS = "Voce e o Copiloto Financeiro da Expert Energy. Recebe o CONTEXTO FI
   + "- costs: fixos, variaveis (% x receita estimada), total_mensal_estimado, by_cost_type (funcionarios_salarios, aluguel_condominio, marketing_publicidade, comissoes, energia_utilities, infraestrutura_capex, outros). Lista detalhada em costs.items[] (finance_cost_entries).\n"
   + "- planning: meta_total, realizado_total, gap, atingimento_percent (planejamento_metas_mensais em reference_year/reference_month).\n"
   + "- loans: principal, parcelas a_pagar/pagas, saldo, cet, iof, juros (finance_loan_contracts + finance_loan_installments).\n"
+  + "- DRE acumulado do ANO: contexto.dre_manual_year <- finance_dre_manual_entries (line_key + operator + amount).\n"
+  + "- Parcelas a pagar futuras: contexto.loans_future <- finance_loan_installments (status != pago, due_date >= hoje, ate 36 proximas).\n"
+  + "- Metas vs realizado: contexto.planning_year <- planejamento_metas_mensais (reference_year=year, reference_month 1..12, meta+realizado+gap).\n"
+  + "- Cenarios futuros ANUAIS: contexto.future_proj <- planejamento_projecoes (base_year=year, projection_year>year). Quando a pergunta for mensal, dividir revenue_amount/12.\n"
   + "- passado: contexto.financeiro.historico_12m -> [{label, receita, despesa, saldo}].\n";
 
 const agenteRegex: Array<[string, RegExp]> = [
@@ -208,16 +212,64 @@ export async function POST(req: Request) {
 
   const agentes = detectarAgentes(prompt);
   const contextoResumido = montarContextoResumido(ctx, agentes);
-  const contextoJSON = JSON.stringify(contextoResumido, null, 2);
+
+  // ===== V8.2 ENRIQUECIMENTO (passado + futuro, todas tabelas Gestao Financeira) =====
+  // Le em paralelo 4 tabelas complementares que o restante do sistema ja consulta:
+  //   - finance_dre_manual_entries   (DRE acumulado do ANO)
+  //   - finance_loan_installments   (calendario futuro de parcelas a pagar)
+  //   - planejamento_metas_mensais  (meta vs realizado mensais)
+  //   - planejamento_projecoes      (cenarios anuais futuros)
+  let dreManualYear: any[] = [];
+  let loansFuture:   any[] = [];
+  let planningYear:  any[] = [];
+  let futureProj:    any[] = [];
+  if (supabaseAdmin) {
+    try {
+      const [dm, lo, pl, pp] = await Promise.all([
+        supabaseAdmin.from("finance_dre_manual_entries")
+          .select("section,line_key,operator,description,amount,year,month")
+          .eq("year", year),
+        supabaseAdmin.from("finance_loan_installments")
+          .select("contract_id,due_date,amount,principal,interest,status")
+          .neq("status", "pago")
+          .gte("due_date", year + "-" + String(month).padStart(2, "0") + "-01")
+          .order("due_date").limit(36),
+        supabaseAdmin.from("planejamento_metas_mensais")
+          .select("reference_year,reference_month,meta_amount,realized_amount,gap_amount")
+          .eq("reference_year", year)
+          .order("reference_month"),
+        supabaseAdmin.from("planejamento_projecoes")
+          .select("base_year,projection_year,revenue_amount,net_profit_amount,net_margin_percent,monthly_fixed_cost,employee_count,working_capital_amount,notes")
+          .eq("base_year", year)
+          .gt("projection_year", year)
+          .order("projection_year"),
+      ]);
+      dreManualYear = (dm.data || []) as any[];
+      loansFuture   = (lo.data || []) as any[];
+      planningYear  = (pl.data || []) as any[];
+      futureProj    = (pp.data || []) as any[];
+    } catch (e: any) {
+      console.log("[V8.2 enriquecimento] erro:", String(e?.message || e).slice(0, 160));
+    }
+  }
+  const contextoResumidoExt = {
+    ...contextoResumido,
+    historico_12m:   ((ctx as any)?.historico_12m || []),  // ja vinha do server.ts
+    dre_manual_year: dreManualYear,
+    loans_future:    loansFuture,
+    planning_year:   planningYear,
+    future_proj:     futureProj,
+  };
+  const contextoJSON = JSON.stringify(contextoResumidoExt, null, 2);
   const ehCategoria = ehPerguntaCategoria(prompt);
 
   const apiKey = process.env.OPENAI_API_KEY || "";
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   if (!apiKey) {
-    const fb = formatarFallback({ ctx, prompt, agentes });
+    const fb = formatarFallback({ ctx, prompt, agentes, extras: { dre_manual_year: dreManualYear, loans_future: loansFuture, planning_year: planningYear, future_proj: futureProj } });
     const frag = await fragmentarPorCategoria(ctx, prompt, year, month);
-    return NextResponse.json({ resposta: fb + frag, modulos_ativos: agentes, context: contextoResumido, fallback: true });
+    return NextResponse.json({ resposta: fb + frag, modulos_ativos: agentes, context: contextoResumidoExt, fallback: true });
   }
 
   try {
@@ -244,11 +296,19 @@ export async function POST(req: Request) {
   }
 }
 
-function formatarFallback({ ctx, prompt, agentes }: { ctx: any; prompt: string; agentes: string[] }): string {
+function formatarFallback({ ctx, prompt, agentes, extras }: { ctx: any; prompt: string; agentes: string[]; extras?: any }): string {
   const now = ctx.now;
   const BRL = (n: number) => Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const L: string[] = [];
   L.push(`[FALLBACK] OPENAI indisponivel — resposta direta do banco.`);
+  const dm = extras?.dre_manual_year || [];
+  const lf = extras?.loans_future    || [];
+  const py = extras?.planning_year   || [];
+  const fp = extras?.future_proj     || [];
+  if (dm.length) L.push(`DRE manual do ANO (${Array.from(new Set(dm.map((x:any)=>x.section))).join(", ")}): ${dm.length} entradas (line_key+operator).`);
+  if (lf.length) L.push(`Emprestimos a pagar: ${lf.length} parcelas futuras a partir de ${now?.label || ""}.`);
+  if (py.length) L.push(`Planejamento anual: ${py.length} meses com meta e realizado.`);
+  if (fp.length) for (const f of fp) L.push(`Projecao futura ${f.projection_year}: receita R$ ${Number(f.revenue_amount||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/ano | lucro liquido R$ ${Number(f.net_profit_amount||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/ano | custo fixo mensal R$ ${Number(f.monthly_fixed_cost||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})} | colaboradores ${f.employee_count ?? "-"}.`);
   L.push(`"${prompt}" | ${agentes.join(", ")} | ${now.label}`);
   if (agentes.includes("dre")) {
     const d = now.dre;
