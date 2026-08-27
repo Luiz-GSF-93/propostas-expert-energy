@@ -1,5 +1,8 @@
 "use client";
 
+// === CHAT-V11-FORCE-DYNAMIC-CONTATOS ===
+export const dynamic = "force-dynamic";
+
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
