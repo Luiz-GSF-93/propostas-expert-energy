@@ -89,6 +89,7 @@ const COST_TYPE_OPTIONS = [
   "comissão finder",
   "outros variáveis",
   "outros fixos",
+  "impostos",
 ];
 
 const EMPTY_FORM: CostForm = {
