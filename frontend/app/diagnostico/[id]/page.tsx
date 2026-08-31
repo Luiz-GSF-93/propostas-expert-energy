@@ -161,6 +161,176 @@ type EnergiaUiApi = {
   refresh?: () => void;
 };
 
+
+/* === DIAG-BLOCO-A-HELPERS v1 === */
+function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
+  if (!summaryRecord) return "";
+  const s = summaryRecord as Record<string, any>;
+  const empresa         = String(s.companyName || "Empresa nao informada");
+  const demanda         = Number(s.demandKw || 0);
+  const consumoMensal   = Number(s.monthlyConsumptionKwh || 0);
+  const consumoAnualKwh = Math.round(consumoMensal * 12);
+  const savingMensal    = Number(s.estimatedSavingsValue || 0);
+  const savingAnual     = savingMensal * 12;
+  const savingsPct      = Number(s.estimatedSavingsPercent || 0);
+  const paybackMeses    = Number(s.paybackMonths || 0);
+  const paybackAnos     = paybackMeses > 0 ? paybackMeses / 12 : 0;
+  const totalAnual      = Number(s.potentialGainAnnual || 0);
+  const porte =
+    demanda > 500 ? "grande porte" :
+    demanda > 100 ? "medio porte" : "pequeno porte";
+  const volume =
+    consumoMensal > 100000 ? "alto volume" :
+    consumoMensal > 10000  ? "volume moderado" :
+    consumoMensal > 0      ? "baixo volume"   : "nao informado";
+
+  const fmt2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+  const brl  = (v: number) => "R$ " + fmt2.format(Number(v || 0));
+  const num0 = (v: number) => fmt0.format(Number(v || 0));
+  const pct  = (v: number) => totalAnual > 0
+    ? ((Number(v || 0) / totalAnual) * 100).toFixed(1).replace(".", ",") + "%"
+    : "-";
+
+  const diagCode    = recordAny?.code || recordAny?.id || "N/A";
+  const diagVersion = recordAny?.versionLabel || "-";
+  const diagStatus  = recordAny?.status || "-";
+
+  const lines: string[] = [];
+  lines.push("# DADOS DO DIAGNOSTICO - " + empresa);
+  lines.push("");
+  lines.push("> Origem: Diagnostico " + diagCode + " | Versao: " + diagVersion + " | Status: " + diagStatus);
+  lines.push("");
+  lines.push("## 1. Perfil operacional");
+  lines.push("| Metrica | Valor |");
+  lines.push("|---|---|");
+  lines.push("| Empresa | " + empresa + " |");
+  lines.push("| Demanda contratada | " + num0(demanda) + " kW |");
+  lines.push("| Porte (autoclassificado) | " + porte + " |");
+  lines.push("| Consumo mensal | " + num0(consumoMensal) + " kWh/mes |");
+  lines.push("| Volume mensal (autoclassificado) | " + volume + " |");
+  lines.push("| Consumo anual estimado | " + num0(consumoAnualKwh) + " kWh/ano |");
+  lines.push("");
+  lines.push("## 2. Cenario-base tarifario e economia");
+  lines.push("| Metrica | Valor |");
+  lines.push("|---|---|");
+  lines.push("| Economia mensal estimada | " + brl(savingMensal) + " |");
+  lines.push("| Economia anualizada | " + brl(savingAnual) + " |");
+  lines.push("| Economia em % | " + savingsPct.toFixed(1).replace(".", ",") + "% |");
+  lines.push("| Payback estimado | " + num0(paybackMeses) + " meses (" + paybackAnos.toFixed(1).replace(".", ",") + " anos) |");
+  lines.push("");
+  lines.push("## 3. Decomposicao do potencial de ganho/ano");
+  lines.push("Total anual projetado: **" + brl(totalAnual) + "**");
+  lines.push("");
+  lines.push("| Origem do ganho | Valor anual (R$) | % do total |");
+  lines.push("|---|---|---|");
+  lines.push("| Linha de base tarifaria | " + brl(s.baselineScenarioAnnual) + " | " + pct(s.baselineScenarioAnnual) + " |");
+  lines.push("| Reducao termica | " + brl(s.thermalReductionAnnual) + " | " + pct(s.thermalReductionAnnual) + " |");
+  lines.push("| Otimizacao de demanda | " + brl(s.demandOptimizationAnnual) + " | " + pct(s.demandOptimizationAnnual) + " |");
+  lines.push("| QEE / reativo / THD | " + brl(s.powerQualityAnnual) + " | " + pct(s.powerQualityAnnual) + " |");
+  lines.push("");
+  if (s.loadProfileGainText) {
+    lines.push("Observacao de perfil de carga (do simulador): " + s.loadProfileGainText);
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+async function buildReportPdf(args: {
+  report: string;
+  summary: Record<string, any>;
+  generatedAt: string;
+}): Promise<{ fileName: string } | null> {
+  const mod: any = await import("jspdf").catch(() => null);
+  if (!mod) return null;
+  const jsPDF: any = mod.jsPDF || mod.default;
+  if (!jsPDF) return null;
+
+  const s = args.summary || {};
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const innerW = pageW - 2 * margin;
+  const companyName = String(s.companyName || "Empresa nao informada");
+  let y = margin;
+
+  const drawFooter = () => {
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(
+      "EnergiaPro - Expert Energy Performance | " +
+      new Date(args.generatedAt).toLocaleString("pt-BR") +
+      " | pagina " + doc.getCurrentPageInfo().pageNumber + " de " + doc.getNumberOfPages(),
+      pageW / 2, pageH - margin / 2, { align: "center" }
+    );
+    doc.setTextColor(0);
+    doc.setFontSize(11);
+  };
+  const ensureSpace = (h: number) => {
+    if (y + h > pageH - margin - 24) { drawFooter(); doc.addPage(); y = margin; }
+  };
+  const writeHeading = (text: string, size: number = 14) => {
+    ensureSpace(size + 6);
+    doc.setFontSize(size);
+    doc.setTextColor(15, 100, 80);
+    doc.text(text, margin, y);
+    doc.setTextColor(0);
+    doc.setFontSize(11);
+    y += size + 4;
+  };
+  const writeLine = (text: string) => {
+    const lines = doc.splitTextToSize(text, innerW);
+    for (const line of lines) {
+      ensureSpace(14);
+      doc.text(line, margin, y);
+      y += 14;
+    }
+  };
+
+  doc.setFontSize(11);
+  doc.setTextColor(15, 100, 80);
+  doc.text("EnergiaPro - Expert Energy Performance", margin, y);
+  doc.setTextColor(0);
+  doc.setFontSize(20);
+  y += 26;
+  doc.text("Relatorio Analitico de Diagnostico", margin, y);
+  y += 28;
+  doc.setFontSize(11);
+  doc.text("Cliente: " + companyName, margin, y);
+  y += 14;
+  doc.text("Gerado em: " + new Date(args.generatedAt).toLocaleString("pt-BR"), margin, y);
+  y += 14;
+  drawFooter();
+
+  writeHeading("Perfil operacional e economia");
+  writeLine("Empresa: " + companyName);
+  writeLine("Demanda contratada: " + Number(s.demandKw || 0).toLocaleString("pt-BR") + " kW");
+  writeLine("Consumo medio mensal: " + Number(s.monthlyConsumptionKwh || 0).toLocaleString("pt-BR") + " kWh");
+  writeLine("Fator de carga atual: " + String(s.loadFactorBefore || "nao informado") + " %");
+  writeLine("Fator de carga projetado: " + String(s.loadFactorAfter || "nao informado") + " %");
+  writeLine("Economia mensal estimada: R$ " + Number(s.estimatedSavingsValue || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  writeLine("Payback estimado: " + Number(s.paybackMonths || 0) + " meses");
+  writeLine("Potencial de ganho anual: R$ " + Number(s.potentialGainAnnual || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  if (s.loadProfileGainText) writeLine("Observacao do simulador: " + String(s.loadProfileGainText));
+
+  writeHeading("Interpretacao analitica (IA)");
+  const clean = String(args.report || "")
+    .replace(/###\s*/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/`/g, "")
+    .replace(/\n{3,}/g, "\n\n");
+  writeLine(clean);
+
+  drawFooter();
+  const slug = companyName.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase().replace(/^-|-$/g, "");
+  const ts = new Date(args.generatedAt).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const fileName = "diagnostico-" + (slug || "s-nome") + "-" + ts + ".pdf";
+  doc.save(fileName);
+  return { fileName };
+}
+/* === fim DIAG-BLOCO-A-HELPERS v1 === */
+
 function getEnergiaUiApi(iframe: HTMLIFrameElement | null): EnergiaUiApi | null {
   const energiaWindow = iframe?.contentWindow as (Window & {
     __ENERGIAPRO_UI__?: EnergiaUiApi;
@@ -345,6 +515,55 @@ export default function DiagnosticoDetalhePage() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [record, setRecord] = useState<DiagnosticApiRecord | null>(null);
+  // === DIAG-BLOCO-B-STATE-HANDLER v1 ===
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [lastReport, setLastReport] = useState<{ fileName: string } | null>(null);
+
+  async function handleGenerateReport() {
+    if (!summary || generatingReport) return;
+    try {
+      setGeneratingReport(true);
+      setReportError("");
+      setLastReport(null);
+
+      let token = "";
+      try {
+        const sessionRes: any = await (supabase.auth.getSession as any)();
+        token = sessionRes?.data?.session?.access_token || "";
+      } catch (_) { /* sem sessao -> ok */ }
+
+      const prompt = buildAnalyticalPrompt(summary as any, record as any);
+      const idStr = String(record?.id || "");
+      const res = await fetch("/api/diagnosticos/" + encodeURIComponent(idStr) + "/ai-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: "Bearer " + token } : {}),
+        },
+        body: JSON.stringify({ prompt }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((json && (json.message || json.error)) || "Falha ao gerar relatorio (HTTP " + res.status + ")");
+      }
+      const report = String((json && json.report) || "").trim();
+      const generatedAt = String((json && json.generatedAt) || new Date().toISOString());
+      if (!report) throw new Error("Resposta da IA vazia.");
+
+      const pdfResult = await buildReportPdf({ report, summary, generatedAt });
+      if (!pdfResult) throw new Error("Biblioteca jsPDF nao esta disponivel. Rode: npm install jspdf.");
+      setLastReport({ fileName: pdfResult.fileName });
+    } catch (err: any) {
+      console.error("[diag] gerar relatorio IA erro:", err);
+      setReportError(err?.message || "Erro desconhecido ao gerar relatorio.");
+    } finally {
+      window.setTimeout(() => setGeneratingReport(false), 250);
+    }
+  }
+  // === fim DIAG-BLOCO-B-STATE-HANDLER v1 ===
+
+
   const [message, setMessage] = useState('Carregando diagnóstico...');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -614,7 +833,30 @@ export default function DiagnosticoDetalhePage() {
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900">Resumo</h2>
+              <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-bold text-slate-900">Resumo</h2>
+                  <button
+                    type="button"
+                    onClick={handleGenerateReport}
+                    disabled={!summary || generatingReport}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Gera PDF automatico via OpenAI + jsPDF (download direto)"
+                  >
+                    {generatingReport ? (
+                      <>
+                        <span aria-hidden="true" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+                        Gerando PDF...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
+                        </svg>
+                        Gerar relatorio IA
+                      </>
+                    )}
+                  </button>
+                </div>
 
               <div className="mt-4 space-y-3 text-sm text-slate-700">
                 <div className="flex items-center justify-between gap-4">
@@ -671,6 +913,42 @@ export default function DiagnosticoDetalhePage() {
                 </div>
               </div>
             </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm" data-diag-ai-report="container">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-bold text-slate-900">Relatorio analitico (PDF)</h2>
+                  {lastReport?.fileName ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
+                      PDF gerado
+                    </span>
+                  ) : null}
+                </div>
+                {generatingReport ? (
+                  <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    <span aria-hidden="true" className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+                    <span>Gerando PDF via OpenAI + jsPDF no servidor... pode levar 5 a 30 segundos.</span>
+                  </div>
+                ) : null}
+                {reportError ? (
+                  <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                    <strong>Nao foi possivel gerar o PDF. </strong>
+                    {reportError}
+                    <p className="mt-2 text-xs text-rose-600">Verifique <code>OPENAI_API_KEY</code> no Vercel (Secret, nos 3 environments) e se <code>npm install jspdf</code> foi rodado.</p>
+                  </div>
+                ) : null}
+                {lastReport?.fileName ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <strong>PDF gerado com sucesso. </strong>
+                    Arquivo: <code>{lastReport.fileName}</code>.
+                    O download foi iniciado automaticamente pelo seu navegador.
+                  </div>
+                ) : null}
+                {!generatingReport && !lastReport && !reportError ? (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Clique em <strong>&quot;Gerar relatorio IA&quot;</strong> no topo do card Resumo. O sistema chama a OpenAI no servidor (API key segura), gera um PDF com capa, dados do cliente e a interpretacao analitica, e dispara o download automaticamente.
+                  </p>
+                ) : null}
+              </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-lg font-bold text-slate-900">Ações de status</h2>
