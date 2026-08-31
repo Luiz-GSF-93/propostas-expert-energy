@@ -541,7 +541,12 @@ export default function DiagnosticoDetalhePage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: "Bearer " + token } : {}),
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt,
+          // ecoa dados ja carregados: server NAO precisa consultar o banco
+          summary,
+          diagnostic: record,
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
