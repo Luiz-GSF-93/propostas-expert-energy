@@ -4,6 +4,7 @@
 // === CHAT-V11-RESOLVE-CONFLITS-IMPOSTOS-RANGE ===
 // === CHAT-V10.0-SUPPRESS-FRAG-AND-FIX-IMPOSTOS-RANGE ===
 // === CHAT-V18-FIX-TS2339-CATCH-PROMISELIKE ===
+// === CHAT-V19-RESPOSTA-DIRETA-NATURAL-DETALHADA ===
 import { NextResponse } from "next/server";
 import {
   checkAdminFromRequest, loadFinanceContextFull, logFinanceAiEvent, supabaseAdmin,
@@ -49,7 +50,15 @@ const SYS = "Voce e o Copiloto Financeiro da Expert Energy. Recebe o CONTEXTO FI
   + "- Parcelas a pagar futuras: contexto.loans_future <- finance_loan_installments (status != pago, due_date >= hoje, ate 36 proximas).\n"
   + "- Metas vs realizado: contexto.planning_year <- planejamento_metas_mensais (reference_year=year, reference_month 1..12, meta+realizado+gap).\n"
   + "- Cenarios futuros ANUAIS: contexto.future_proj <- planejamento_projecoes (base_year=year, projection_year>year). Quando a pergunta for mensal, dividir revenue_amount/12.\n"
-  + "- passado: contexto.financeiro.historico_12m -> [{label, receita, despesa, saldo}].\n";
+  + "- passado: contexto.financeiro.historico_12m -> [{label, receita, despesa, saldo}].\n"
+  + "\nFORMATO DE SAIDA OBRIGATORIO (V19):\n"
+  + "- Quando o usuario pedir valores agregados de um MODULO (custos, planejamento, dre, fluxo_caixa, emprestimos) ou usar palavras-chaves /detalhes/, /lista/, /tabela/, /mes a mes/, /mensal/, /categoria/, /anual/, /completo/, voce DEVE entregar uma tabela com os 12 meses (Jan..Dez) ou o range solicitado.\n"
+  + "- Cada linha deve conter pelo menos: identificador (descricao/categoria/linha), valor em R$ (numerico, NUNCA texto vazio quando o valor existe), fonte (qual tabela Supabase).\n"
+  + "- Termine SEMPRE com: (a) linha TOTAL explicita em **R$ ...**; (b) linha FONTE listando tabelas consultadas; (c) UMA frase em linguagem natural resumindo o achado.\n"
+  + "- Para perguntas RANGE (janeiro a agosto, ate junho, etc), detalhe CADA mes do range em uma linha propria -- NUNCA consolide em uma linha so.\n"
+  + "- NUNCA escreva apenas 0 se puder explicar a falta do dado (sem lancamentos ou -); quando o cadastro existe mas o valor mensal e zero, escreva: cadastro corporativo encontrado, mas com monthly_amount=0,00 -- revisar.\n"
+  + "- Use ** para destacar totais, | em colunas de tabela markdown, e pt-BR (R$ 1.234,56).\n"
+  + "- Lembre o usuario de que voce NAO inventa valores -- quando nao houver dado, retorne literalmente - ou a mensagem sem lancamentos.\n";
 
 const agenteRegex: Array<[string, RegExp]> = [
   ["dre", /(lucro|receita|receit|despesa|imposto|cmv|custo|funcionari|pessoal|folha|aluguel|marketing|comissao|ebitda|ebit|margem|dre|demonstr|resultado)/i],
@@ -90,6 +99,13 @@ function detectarAgentes(p: string): string[] {
 
 function detectarCategorias(prompt: string): string[] {
   const lower = prompt.toLowerCase();
+  // V19: gatilhos genericos - se o usuario pedir tabela/lista/detalhe
+  // de custo/despesa/gasto/categoria, fragmenta TODAS as categorias.
+  const GENERIC_TRIGGERS = /\b(tabela|lista|detalhe|detalhes|detalhado|detalhada|mostrar|mostre|complete|completo|categoria|categorias|mensal|mensalmente|mes a mes|por categoria|por mes|anual|anualmente|grafico|relatorio|relat[oó]rio|breakdown|detalhamento)\b/i;
+  const GENERIC_WORDS   = /\b(custo|custos|despesa|despesas|gasto|gastos|spend|expense|cash out)\b/i;
+  if (GENERIC_TRIGGERS.test(lower) && GENERIC_WORDS.test(lower)) {
+    return CATEGORIA_REGEX.map(([key]) => key);
+  }
   return CATEGORIA_REGEX.filter(([, rx]) => rx.test(lower)).map(([key]) => key);
 }
 
@@ -767,16 +783,59 @@ export async function POST(req: Request) {
         }
       }
 
+      // V19: 3a fonte - finance_dre_manual_entries com description/line_key
+      // contendo "imposto" / "tributo" / "tax".
+      let infoBlankCostEntries: number = 0;
+      if (finalRows.length === 0) {
+        try {
+          const dreRows: any[] = ((await supabaseAdmin.from("finance_dre_manual_entries")
+            .select("section,line_key,operator,description,amount,year,month")
+            .eq("year", targetYear)
+            .in("month", __taxMonths)) as any)?.data || [];
+          const dreImpostos = (dreRows || []).filter((r: any) =>
+            /imposto|tributo|tax/i.test(String(r.description || "") + " " + String(r.line_key || ""))
+          );
+          if (dreImpostos.length > 0) {
+            for (const r of dreImpostos) {
+              finalRows.push({
+                year: targetYear, month: r.month || targetMonth, type: "despesa",
+                category: "impostos",
+                description: "DRE manual: " + (r.description || r.line_key || "impostos"),
+                amount: Math.abs(Number(r.amount || 0)),
+              });
+            }
+            fonte = "finance_dre_manual_entries (impostos manual)";
+          }
+        } catch { /* silencio: cai no fallback informativo */ }
+      }
+      if ((cfRows || []).length === 0) {
+        try {
+          const allCost: any[] = ((await supabaseAdmin.from("finance_cost_entries")
+            .select("cost_type,monthly_amount")
+            .eq("status", "ativo")) as any)?.data || [];
+          infoBlankCostEntries = (allCost || []).filter((r: any) =>
+            /imposto/i.test(String(r.cost_type || "")) && Number(r.monthly_amount || 0) === 0
+          ).length;
+        } catch { infoBlankCostEntries = 0; }
+      }
+      // V19: responde SEMPRE (mesmo com total=0), com nota informativa
+      const total = finalRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const BRLV17 = (n: number) => Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const label = __taxMonths.map((m: number) => String(m).padStart(2, "0") + "/" + targetYear).join(", ");
+      let resposta =
+        `**Impostos de ${label}: R$ ${BRLV17(total)}**\n\n` +
+        `Fonte: ${fonte} (${finalRows.length} lancamento(s)).\n`;
       if (finalRows.length > 0) {
-        const total = finalRows.reduce((s, r) => s + Number(r.amount || 0), 0);
-        const BRLV17 = (n: number) => Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const label = __taxMonths.map((m: number) => String(m).padStart(2, "0") + "/" + targetYear).join(", ");
-        const resposta =
-          `**Impostos de ${label}: R$ ${BRLV17(total)}**\n\n` +
-          `Fonte: ${fonte} (${finalRows.length} lancamentos com type='despesa').\n` +
-          finalRows.slice(0, 12).map((r: any) =>
-            `  • ${String(r.month).padStart(2, "0")}/${targetYear} - ${r.description || "(sem descricao)"}: R$ ${BRLV17(Number(r.amount || 0))}`
-          ).join("\n");
+        resposta += "\nDetalhamento:\n" + finalRows.slice(0, 12).map((r: any) =>
+          `  • ${String(r.month).padStart(2, "0")}/${targetYear} - ${r.description || "(sem descricao)"}: R$ ${BRLV17(Number(r.amount || 0))}`
+        ).join("\n");
+      }
+      if (total === 0 && infoBlankCostEntries > 0) {
+        resposta += `\nObservacao: existem ${infoBlankCostEntries} cadastro(s) em finance_cost_entries com cost_type=impostos mas com monthly_amount=0,00. Preencha o valor mensal para que o calculo apareca nas consultas.`;
+      }
+      if (total === 0 && infoBlankCostEntries === 0 && finalRows.length === 0) {
+        resposta += `\nObservacao: nao ha lancamentos confirmados em finance_cash_flow_entries, finance_cost_entries ou finance_dre_manual_entries para o periodo. Para popular os dados, importe os valores mensais em qualquer um desses modulos.`;
+      }
 
         await logFinanceAiEvent({
           user_email: guard.user.email, user_id: guard.user.id,
@@ -785,7 +844,6 @@ export async function POST(req: Request) {
           prompt, response: resposta,
         });
         return NextResponse.json({ resposta, modulos_ativos: agentes, context: contextoResumidoExt });
-      }
     } catch (e: any) {
       console.log("[V17 early-return impostos] erro:", String(e?.message || e).slice(0, 160));
       // cai no fluxo OpenAI normal ou fallback
@@ -818,7 +876,10 @@ export async function POST(req: Request) {
     const data = await resp.json();
     const resposta = data?.choices?.[0]?.message?.content || "[sem resposta da OpenAI]";
     let respostaFinal = resposta;
-    if (!__supV && !(ctx as any)?.__noFrag && (ehCategoria || respostaFinal.includes("—") || respostaFinal.includes("NUNCA inventar"))) {
+    // V19: sempre concatena fragmentarPorCategoria() - a funcao em si
+    // retorna "" se nao houver categoria detectada, entao nao polui
+    // respostas meta. Mantem __noFrag como unica excepcao explicita.
+    if (!(ctx as any)?.__noFrag) {
       respostaFinal = respostaFinal + await fragmentarPorCategoria(ctx, prompt, targetYear, targetMonth);
     }
     await logFinanceAiEvent({ user_email: guard.user.email, user_id: guard.user.id, action: "chat_v8_7", period_ref: `${year}-${String(month).padStart(2,"0")}`, prompt, response: `[modulos: ${agentes.join(",")}] ${respostaFinal}` });
