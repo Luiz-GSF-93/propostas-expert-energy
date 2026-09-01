@@ -290,6 +290,7 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("  '### 3. Economia e payback'   (justificar o payback mesmo quando <= 2 meses)");
   lines.push("  '### 4. Recomendacoes priorizadas' (lista numerada 1, 2, 3 com: ACAO + RACIONAL + IMPACTO EM R$)");
   lines.push("  '### 5. Limitacoes e proximos passos' (1 paragrafo curto seguido de 3 a 5 bullets com foco em GESTAO ATIVA + PLATAFORMA ENERGY LINK + CONSULTORIA ESPECIALIZADA. Estrutura obrigatoria: (a) 1 paragrafo inicial DESTACANDO as vantagens concretas de investir em solucoes de eficiencia energetica - cite blindagem tarifaria, retorno financeiro crescente, sustentabilidade, modernizacao operacional, conformidade regulatoria e ganho competitivo. Deixar claro que eficiencia energetica nao e despesa, e investimento com payback e upside. (b) Bullet sobre a PLATAFORMA ENERGY LINK DO BRASIL - apresentar como o software de gestao energetica que sustenta a consultoria da Expert Energy: monitoramento em tempo real, alertas automaticos, indicadores de performance (KPIs), historico consultivo, integracao com a equipe tecnica, comparacao de cenarios. Posicionar a Plataforma como o destaque tecnologico da Expert Energy. (c) Bullet sobre a IMPORTANCIA DA GESTAO ATIVA - reforcar que instalar a solucao nao basta: e a gestao ativa dos indicadores que transforma o potencial do diagnostico em economia realizada e sustentada. Sem gestao ativa os numeros voltam ao baseline. (d) Bullet APRESENTANDO A CONSULTORIA ESPECIALIZADA DA EXPERT ENERGY como o caminho para executar as recomendacoes deste diagnostico com acompanhamento continuo via Plataforma Energy Link. (e) Bullet listando o que NAO esta no escopo deste diagnostico preliminar - investimentos em infraestrutura especifica, obras civis em andamento, projetos executivos detalhados, medicoes in loco - e propondo os proximos passos: contratacao da consultoria Expert Energy + onboard na Plataforma Energy Link do Brasil + gestao ativa dos indicadores.)");
+  lines.push("- ORTOGRAFIA OBRIGATORIA EM PORTUGUES BRASILEIRO (PT-BR): todo o texto que voce gerar - paragrafos, bullets, secoes, recomendacoes - DEVE estar corretamente acentuado, com todos os acentos graficos proprios do portugues do Brasil. Use os acentos proprios como: é, ã, ç, ó, í, ú, á, ê, ô, õ, à, entre outros, sempre que a palavra exigir. NAO escreva palavras sem acento apenas por seguranca tecnica. Exemplos corretos: \"diagnóstico\" (e nao \"diagnostico\"), \"análise\" (e nao \"analise\"), \"característica\", \"recomendação\". NUNCA pule, simplifique ou omita acentos proprios do portugues. Isso e um requisito inegociael de qualidade editorial do relatorio.");
   lines.push("- Forneca justificativas causais para CADA recomendacao (ex: 'substituir sistema de iluminacao porque fator de carga caiu de 87% para 92% somente com variacao de setpoint, indicando excesso de iluminacao em horario de baixo consumo').");
   lines.push("- Use bullet points com '-' e separacao por '\n'. Cada bullet em sua linha propria.");
   lines.push("- Quando citar economia use 'R$ X.XXX,XX' (formato brasileiro, 2 casas).");
@@ -348,16 +349,33 @@ async function buildReportPdf(args: {
   const COLOR_BLUE_BG = [238, 245, 252] as [number, number, number];
   const COLOR_GREENBG = [233, 247, 239] as [number, number, number];
 
+  // Cache para re-escrever o rodape com numero total correto depois da renderizacao.
+  const footerY = pageH - margin / 2;
+  const footerText = (pageNum: number, total: number) =>
+    "EnergiaPro - Expert Energy Performance  |  " +
+    new Date(args.generatedAt).toLocaleString("pt-BR") +
+    "  |  Pagina " + pageNum + " de " + total +
+    "  |  Confidencial - uso interno";
   const drawFooter = () => {
+    const cur = doc.getCurrentPageInfo().pageNumber;
     doc.setFontSize(8);
     doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-    doc.text(
-      "EnergiaPro - Expert Energy Performance  |  " +
-      new Date(args.generatedAt).toLocaleString("pt-BR") +
-      "  |  Pagina " + doc.getCurrentPageInfo().pageNumber + " de " + doc.getNumberOfPages() +
-      "  |  Confidencial - uso interno",
-      pageW / 2, pageH - margin / 2, { align: "center" }
-    );
+    doc.text(footerText(cur, doc.getNumberOfPages()), pageW / 2, footerY, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+  };
+  // Re-escreve o rodape de CADA pagina com o total definitivo. Corrige o erro
+  // de exibir "Pagina X de 1" no meio do relatorio (jsPDF soh sabe o total depois).
+  const patchFootersWithTotal = () => {
+    const total = doc.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p);
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, footerY - 6, pageW, 12, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+      doc.text(footerText(p, total), pageW / 2, footerY, { align: "center" });
+    }
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
   };
@@ -590,11 +608,6 @@ async function buildReportPdf(args: {
   writeLine("- Os dados utilizados neste relatorio foram coletados junto ao cliente ou seu responsavel, em entrevistas, visitas tecnicas, levantamento de campo e analise de documentos operacionais.", {});
   writeLine("- Todas as informacoes tecnicas e de mercado sao baseadas em dados de datasheet de fabricantes e tabelas de mercado reconhecidas pelo setor.", {});
   writeLine("- Os valores, referencias e cruzamentos foram validados pelo especialista da empresa Expert Energy, garantindo coerencia com a operacao real do cliente.", {});
-  writeLine("- Dados primarios do cliente: registros do Supabase em `finance_*` e `diagnosticos` (campos `summary.*`).", {});
-  writeLine("- Modelo de IA: GPT-4o-mini (ou variante configurada via OPENAI_MODEL). Temperatura 0.3.", {});
-  writeLine("- Determinismo: o endpoint NAO consulta banco em runtime. O payload vem do client, garantindo que a IA interprete exatamente o que o usuario esta vendo.", {});
-  writeLine("- PDF: gerado no browser via jsPDF (dynamic import) para nao inflar o bundle inicial.", {});
-  writeLine("- Parsing de perfil: regex em `parseLoadProfile()` separa 'Média / Pico / Vale / FC antes / FC depois / Oscilação' do texto bruto do simulador.", {});
   y += 8;
   writeH2("Limitacoes conhecidas");
   writeLine("- O relatorio NAO caracteriza uma proposta formal: serve como indicador de viabilidade tecnica e economica para apoio a decisao.", {});
@@ -607,6 +620,7 @@ async function buildReportPdf(args: {
   writeLine("", {});
   drawFooter();
 
+  patchFootersWithTotal(); // corrige "Pagina X de 1" -> "X de N" em todas as paginas
   const slug = String(s.companyName || "cliente")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
