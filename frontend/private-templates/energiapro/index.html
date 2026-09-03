@@ -965,8 +965,7 @@ function renderEquipTable(d){var h=$("termAlts");if(!h)return;h.innerHTML="";
   var hd=+($("hd")&&$("hd").value)||16,dm=+($("dm")&&$("dm").value)||25;
   function cardHTML(e,t,ti){var custo_h=+((t&&t.custo_h)||((t&&t.cons||0)*(t&&t.custo||0)))||0;var base=custo_h*hd*dm*12;var ganho=(t&&t.custo_h!==undefined)?base*e.g:base*0.30;
     return "<h4>&#128260; "+e.nome+" &mdash; "+e.fab+" "+e.modelo+"</h4><div><b>Tecnologia:</b> "+e.perf+"</div><div><b>Capacidade:</b> "+e.cap+"</div><div><b>Referência:</b> "+e.preco+"</div><div><b>Substitui:</b> "+((t&&t.nome)||("Equipamento "+(ti+1)))+" ("+(t&&t.tipo||"vapor")+")</div><div><b>Desempenho baseline:</b> "+mo(base)+"/ano</div><div><b>Economia estimada:</b> "+(Math.round(e.g*100))+"% &middot; "+mo(ganho)+"/ano</div><div class='src'>&#128270; Aplicação similar: "+e.fonte+"</div>";}
-  TERMICAS.forEach(function(t,ti){var tipo=(t&&t.tipo)||"vapor";var seenT={};
-    cat.forEach(function(e){if(e.tipo!==tipo)return;if(seenT[e.key])return;seenT[e.key]=1;var c=document.createElement("div");c.className="alt-card";c.innerHTML=cardHTML(e,t,ti);h.appendChild(c)})});
+  // v17plus-C-fix: cards duplicados removidos - biblioteca abaixo mostra catalogo completo
   var __selTipos=new Set();try{TERMICAS.forEach(function(t){if(t&&t.tipo)__selTipos.add(t.tipo);});}catch(e){}
   var title=document.createElement("div");title.className="eq-title";title.innerHTML="<b>&#128295; Biblioteca de tecnologia</b> — substituição, desempenho e economia (caldeiras, compressores parafuso, chillers, secadores, bombas de calor)";h.appendChild(title);
   __effCat=cat.map(function(e){var o=LIB_OVERRIDES&&LIB_OVERRIDES[e.key];return o?Object.assign({},e,o):e;});__effCat.forEach(function(e){var sel=__selTipos.has(e.tipo);var c=document.createElement("div");c.className="alt-card lib"+(sel?" selected":"");c.setAttribute("data-lib-key",e.key);c.innerHTML=cardHTML(e,null,0)+"\u270E";var b=document.createElement("button");b.type="button";b.className="lib-edit-btn";b.textContent="\u270E Editar";b.addEventListener("click",function(ev){ev.stopPropagation();openLibEdit(e);});c.appendChild(b);h.appendChild(c)});
@@ -3189,7 +3188,29 @@ setTimeout(function(){ window.__epcBoot(); },500);
     }
   }
 
-  function nextStep(delta){
+  function ensureOpenLibButton(){
+  var btnAdd = $("btnAddTerm"); if(!btnAdd) return;
+  if($("btnOpenLib")) return;
+  var sib = btnAdd.parentNode;
+  var b = document.createElement("button");
+  b.type = "button";
+  b.id = "btnOpenLib";
+  b.className = btnAdd.className || "";
+  b.textContent = "Abrir biblioteca de tecnologia";
+  b.style.marginLeft = "8px";
+  b.style.background = "#0b6bcb";
+  b.style.color = "#fff";
+  b.addEventListener("click", function(){
+    var t = $("termAlts");
+    if(!t) return;
+    try{ t.scrollIntoView({behavior:"smooth", block:"start"}); }catch(_){}
+    t.style.transition = "box-shadow .4s ease";
+    t.style.boxShadow = "0 0 0 4px rgba(11,107,203,.45)";
+    setTimeout(function(){ t.style.boxShadow = ""; }, 1800);
+  });
+  sib.appendChild(b);
+}
+function nextStep(delta){
     var total = SECTION_MAP.length;
     state.activeIndex = Math.max(0, Math.min(total - 1, state.activeIndex + delta));
     renderTutorial();
@@ -3197,7 +3218,7 @@ setTimeout(function(){ window.__epcBoot(); },500);
     setOpen(true);
   }
 
-  function ensureFieldHelpButtons(){
+  function ensureFieldHelpButtons(){try{ensureOpenLibButton();}catch(e){}
     Object.keys(FIELD_HELP).forEach(function(key){
       var input = document.getElementById(key);
       if(!input) return;
