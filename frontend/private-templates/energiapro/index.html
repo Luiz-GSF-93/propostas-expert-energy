@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EnergiaPro v1.6.14 (v17-plus BESS kW/kWh/A/R$/kW independentes) — Diagnóstico &amp; Cenário (API embedded · Expert Energy)</title>
+<title>EnergiaPro v1.6.14 (v17plus-B BESS dedicado visivel) — Diagnóstico &amp; Cenário (API embedded · Expert Energy)</title>
 <style>
 :root{--bg:#eef2f7;--card:#fff;--ink:#0b1f3a;--muted:#5b6b82;--line:#d6deea;--brand:#0f7a4d;--brand2:#0b6bcb;--warn:#c77700;--bad:#c62828;--ok:#0d6a42}
 *{box-sizing:border-box}
@@ -743,7 +743,7 @@ Qualidade da Energia — THD de Tensão e Corrente</h2>
 <label>PR<input id="pr" type="number" step="0.01" value="0.82"></label>
 <label>CAPEX FV (R$/kWp)<input id="capex_fv_k" type="number" value="3800"></label>
 <label>OPEX FV %CAPEX/ano<input id="opex_fv" type="number" step="0.1" value="1.0"></label>
-<label>BESS kW (capacidade/peak-shaving)<input id="bess_kw" type="number" value="100" title="Potencia de descarga do BESS em kW (separado da energia em kWh)"></label><label>BESS kWh (energia)<input id="bess_kwh" type="number" value="200"></label><label>Carga critica (A)<input id="bess_amp" type="number" value="145" title="Corrente da carga que o BESS devera sustentar"></label><label>CAPEX R$/kW<input id="bess_capex_kw" type="number" step="50" value="2500" title="Custo de potencia instalada por kW de BESS"></label>
+<div class="row" style="margin-top:6px"><label>BESS kW (capacidade)<input id="bess_kw" type="number" value="100" title="Potencia de descarga do BESS em kW"></label><label>BESS kWh (energia)<input id="bess_kwh" type="number" value="200" title="Energia armazenada"></label><label>Carga critica (A)<input id="bess_amp" type="number" value="145" title="Corrente trifasica da carga sustentada"></label><label>CAPEX R$/kW<input id="bess_capex_kw" type="number" step="50" value="2500" title="Custo de potencia por kW (editavel)"></label></div><div class="row" style="margin-top:4px"><label>Tensao nominal V<input id="bess_volt" type="number" step="1" value="380"></label><label>FP da carga<input id="bess_fp_local" type="number" step="0.01" min="0.5" max="1" value="0.92"></label><label>Rendimento eta<input id="bess_eta" type="number" step="0.01" min="0.5" max="1" value="0.92" title="Eficiencia round-trip"></label><label>Horas autonomia alvo<input id="bess_horas_desejadas" type="number" step="0.1" min="0.1" value="2"></label></div><div class="aviso" style="margin:6px 0;background:#fffaf0;border:1px solid #f5c98a;padding:8px 10px;border-radius:6px"><b>v17plus-B · BESS dedicado visivel:</b> edite os 8 campos acima. Os 9 KPIs abaixo recalculam em tempo real: autonomia, kW da carga, kWh sugerido, CAPEX (seu R$/kW), OPEX/ano, economia anual, payback, CO2 evitado e rendimento. O quadro Ganho (sazonalizado) recebe CAPEX separado potencia+energia+fixa.</div><div id="bess_kpis" class="kpis" style="margin-top:8px"></div>
 <label>CHP?<select id="chp"><option value="nao" selected>Não</option><option value="sim">Sim</option></select></label>
 </div>
 <div class="aviso" style="margin:6px 0"><b>Cenário (multi-select)</b> — vazio = "Não considerar / manter a rede".</div>
@@ -752,7 +752,7 @@ Qualidade da Energia — THD de Tensão e Corrente</h2>
 <label><input type="checkbox" id="scRede"> 🔌 Manter rede (baseline)</label>
 <label><input type="checkbox" id="scMotor"> ⚙ Cogeração motor (η 35-42%)</label>
 <label><input type="checkbox" id="scMicro"> 🔬 Microturbina Capstone</label>
-<label><input type="checkbox" id="scBESS" checked> 🔋 BESS</label><small style="grid-column:1/-1;color:#5b6b82">v17-plus: BESS agora trata <b>kW (capacidade/peak-shaving)</b> e <b>kWh (energia)</b> de forma independente; alimenta carga em A para calcular <b>autonomia</b>; CAPEX em R$/kW. A linha "CAPEX BESS" no quadro Ganho mostra potencia+energia+fixa.</small>
+<label><input type="checkbox" id="scBESS" checked> 🔋 BESS (kWh acima)</label>
 <label><input type="checkbox" id="scEolica"> 🌬 Eólica on-site</label>
 <label><input type="checkbox" id="scHibrido"> 🔁 Híbrido (≥ 2 fontes)</label>
 </div>
@@ -1114,7 +1114,7 @@ function calc(){
   var capKw=+$("capKw").value||capMD.kW;
   var capCostMWh=+$("capCost_MWh").value||5000;
   var fv_kwp=+($("fv_kwp").value)||0,hsp=+($("hsp").value)||4.8,pr_v=+($("pr").value)||0.82;
-  var bess=+$("bess_kwh").value||0;var bess_kw_in=+$("bess_kw").value||100;var bess_amp=+$("bess_amp").value||0;var bess_capex_kw=+$("bess_capex_kw").value||2500;var bess_volt=380; var bess_fp_local=0.92; var bess_eta=0.92;var bess_kw=scBESS?bess_kw_in:0;// potencia ativa trifasica da carga em Ampere (kW)var bess_carga_kw=(bess_amp*bess_volt*Math.sqrt(3)*bess_fp_local)/1000;// autonomia em horas = energia (kWh*eta) / potencia ativa (kW)var bess_dur_h=(bess_carga_kw>0)?((bess*bess_eta)/bess_carga_kw):0;var bess_dur_min=bess_dur_h*60;// CAPEX separado: potencia (R$/kW * kW) + energia (R$/kWh * kWh) + fixavar CAPEX_bess_pot=scBESS?(bess_kw*bess_capex_kw):0;var CAPEX_bess_ene=scBESS?(bess*2000):0;var CAPEX_bess_fix=scBESS?8000:0;// OPEX proporcionalvar OPEX_bess_kw=scBESS?(bess_kw*50):0;var OPEX_bess_kwh=scBESS?(bess*20):0;
+  var bess=+$("bess_kwh").value||0;var bess_kw_in=+$("bess_kw").value||100;var bess_amp=+$("bess_amp").value||0;var bess_capex_kw=+$("bess_capex_kw").value||2500;var bess_volt=+$("bess_volt").value||380;var bess_fp_local=+$("bess_fp_local").value||0.92;var bess_eta=+$("bess_eta").value||0.92;var bess_horas_desejadas=+$("bess_horas_desejadas").value||2;var bess_kw=scBESS?bess_kw_in:0;var bess_carga_kw=(bess_amp*bess_volt*Math.sqrt(3)*bess_fp_local)/1000;var bess_dur_h=(bess_carga_kw>0)?((bess*bess_eta)/bess_carga_kw):0;var bess_dur_min=bess_dur_h*60;var bess_kwh_sugerido=(bess_carga_kw*bess_horas_desejadas)/bess_eta;var CAPEX_bess_pot=scBESS?(bess_kw*bess_capex_kw):0;var CAPEX_bess_ene=scBESS?(bess*2000):0;var CAPEX_bess_fix=scBESS?8000:0;var OPEX_bess_kw=scBESS?(bess_kw*50):0;var OPEX_bess_kwh=scBESS?(bess*20):0;var bess_kw_efetivo=Math.min(bess_kw,Math.max(dc||150,bess_carga_kw));var bess_eco_mes=bess_kw_efetivo*3*22*bess_eta*0.95;var bess_eco_ano=bess_eco_mes*12+bess_kw_efetivo*0.30*50*12;
   var capex_fv_k=+($("capex_fv_k").value)||3800,opex_fv_pct=(+(($("opex_fv").value)||1))/100;
   var wacc=+($("wacc").value)||0.12,horiz=+($("horiz").value)||20,infl=+($("infl").value)||4.5,f_emis=+($("f_emis").value)||0.081;
   var propOn=$("prop").value==="sim";
@@ -1149,8 +1149,8 @@ function calc(){
   // Capex/Opex
   var CAPEXfv=scFV?fv_kwp*capex_fv_k:0;
   var OPEXfv=scFV?fv_kwp*capex_fv_k*opex_fv_pct:0;
-  // v17-plus: CAPEX BESS = potencia(kW * R$/kW) + energia(kWh * 2000) + fixa (8000)var CAPEXbess=scBESS?(CAPEX_bess_pot+CAPEX_bess_ene+CAPEX_bess_fix):0;
-  // v17-plus: OPEX BESS proporcional a potencia(kW) e energia(kWh)var OPEXbess=scBESS?(OPEX_bess_kw+OPEX_bess_kwh):0;
+  var CAPEXbess=scBESS?(CAPEX_bess_pot+CAPEX_bess_ene+CAPEX_bess_fix):0;
+  var OPEXbess=scBESS?(OPEX_bess_kw+OPEX_bess_kwh):0;
   var CAPEXmotor=scMotor?(motorKw*4500):0;
   var OPEXmotor=scMotor?22000:0;
   var CAPEXmicro=scMicro?capKw*6500:0;
@@ -1161,10 +1161,10 @@ function calc(){
   var OPEX_a=OPEXfv+OPEXbess+OPEXmotor+OPEXmicro+OPEXeol;
 
   // Scenario bill
-  // v17-plus: peak-shaving subtrai potencia(kW), NAO energia(kWh)var dc_efetiva=scBESS?Math.max(sum_kW*0.85,dc-bess_kw):dc;
+  var dc_efetiva=scBESS?Math.max(sum_kW*0.85,dc-bess_kw):dc;
   var F_cen_raw=E_rede*1000*TE_fp*f_mult+dc_efetiva*TUSD_dem;
   F_cen_raw += ((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))/12;
-  // v17-plus: deducao BESS pelo pico(kW), nao pela energia(kWh)if(scBESS)F_cen_raw -= Math.min(bess_kw*30*TE_p*0.4/12,E_mes*1000*0.05);
+  if(scBESS)F_cen_raw -= Math.min(bess_kw*30*TE_p*0.4/12,E_mes*1000*0.05);
   if(scMicro)F_cen_raw -= Math.min(E_local_micro*1000*TE_p*0.7,E_mes*1000*0.10);
   if(scMotor)F_cen_raw -= Math.min(E_local_motor*1000*TE_p*0.6,E_mes*1000*0.08);
   if(scEolica)F_cen_raw -= Math.min(E_local_eol*1000*TE_p*0.55,E_mes*1000*0.06);
@@ -1198,7 +1198,7 @@ function calc(){
     sum_kW:sum_kW, E_mes:E_mes, E_mes_bruto:E_mes_bruto, E_rede:E_rede, E_local:E_local, fp:fpCalc,
     E_local_fv:E_local_fv, E_local_motor:E_local_motor, E_local_micro:E_local_micro, E_local_eol:E_local_eol,
     F_base:F_base, F_cen:F_cen, eco_m:eco_m, eco_anual:eco_anual, eco_anual_bruto:eco_anual_bruto,
-    CAPEX:CAPEX, CAPEXfv:CAPEXfv, CAPEXbess:CAPEXbess, CAPEXmotor:CAPEXmotor, CAPEXmicro:CAPEXmicro, CAPEXeol:CAPEXeol, OPEX_a:OPEX_a, VPL:VPL, TIR:TIR, payback:payback, hasInvestment:(CAPEX>0), combustivelGN_ano:combustivelGN_ano, bess_kw:scBESS?bess_kw:0, bess_kwh:bess, bess_dur_h:bess_dur_h, bess_dur_min:bess_dur_min, bess_carga_kw:bess_carga_kw, bess_capex_split:{potencia:CAPEX_bess_pot,energia:CAPEX_bess_ene,fixa:CAPEX_bess_fix},
+    CAPEX:CAPEX, CAPEXfv:CAPEXfv, CAPEXbess:CAPEXbess, CAPEXmotor:CAPEXmotor, CAPEXmicro:CAPEXmicro, CAPEXeol:CAPEXeol, OPEX_a:OPEX_a, VPL:VPL, TIR:TIR, payback:payback, hasInvestment:(CAPEX>0), combustivelGN_ano:combustivelGN_ano, bess_kw:scBESS?bess_kw:0, bess_kwh:bess, bess_dur_h:bess_dur_h, bess_dur_min:bess_dur_min, bess_carga_kw:bess_carga_kw, bess_eco_ano:bess_eco_ano, bess_kwh_sugerido:bess_kwh_sugerido, bess_capex_split:{potencia:CAPEX_bess_pot,energia:CAPEX_bess_ene,fixa:CAPEX_bess_fix},
     CO_orig:CO_orig, CO_avoid:CO_avoid, DEC_orig:DEC_orig, DEC_cen:DEC_cen,
     demRes:demRes, thdRes:thdRes, sazonal:saz, indicesazonal:saz?indiceE:1,
     therm_custo_anual:therm_custo_anual, therm_custo_mes:therm_custo_mes,
@@ -1644,7 +1644,47 @@ function renderLoadLineChart(d){
   // Expose for export/calc
   try{window.__EPC_FLAT={raw:raw,smooth:smooth,target:target,mean:meanMetric,LF_raw:mRaw.LF,LF_smooth:mSm.LF,osc_raw:mRaw.osc,osc_smooth:mSm.osc,peakIdx:mRaw.peakIdx,valleyIdx:mRaw.valleyIdx}}catch(_){}
 }
+
+function renderBessKPIs(){
+ var b=document.getElementById("bess_kpis");
+ if(!b)return;
+ var scb=document.getElementById("scBESS")&&document.getElementById("scBESS").checked;
+ if(!scb){ b.innerHTML=""; return; }
+ var kw=+(document.getElementById("bess_kw")&&document.getElementById("bess_kw").value)||0;
+ var kwh=+(document.getElementById("bess_kwh")&&document.getElementById("bess_kwh").value)||0;
+ var amp=+(document.getElementById("bess_amp")&&document.getElementById("bess_amp").value)||0;
+ var volt=+(document.getElementById("bess_volt")&&document.getElementById("bess_volt").value)||380;
+ var fp=+(document.getElementById("bess_fp_local")&&document.getElementById("bess_fp_local").value)||0.92;
+ var eta=+(document.getElementById("bess_eta")&&document.getElementById("bess_eta").value)||0.92;
+ var hd=+(document.getElementById("bess_horas_desejadas")&&document.getElementById("bess_horas_desejadas").value)||2;
+ var capx=+(document.getElementById("bess_capex_kw")&&document.getElementById("bess_capex_kw").value)||2500;
+ var carga=(amp*volt*Math.sqrt(3)*fp)/1000;
+ var durh=(carga>0)?((kwh*eta)/carga):0;
+ var durm=durh*60;
+ var ksug=(carga*hd)/eta;
+ var kwef=Math.min(kw,Math.max(150,carga));
+ var eco=kwef*3*22*eta*0.95*12+kwef*0.30*50*12;
+ var co2=kwef*3*22*eta/1000*12*0.081;
+ var cap=kw*capx+kwh*2000+8000;
+ var op=kw*50+kwh*20;
+ var pb=eco>0?cap/(eco-op):Infinity;
+ var brm=function(v){return "R$ "+Math.round(v||0).toLocaleString("pt-BR");};
+ var fm=function(v){if(!isFinite(v)||v<=0)return"—";return v>=60?(v/60).toFixed(2)+" h ("+Math.round(v)+" min)":Math.round(v)+" min";};
+ var fp2=function(v){return isFinite(v)?v.toFixed(2)+" a":"—";};
+ b.innerHTML=
+  '<div class="kpi"><div class="lbl">AUTONOMIA ('+amp+' A)</div><div class="val">'+fm(durm)+'</div></div>'+
+  '<div class="kpi"><div class="lbl">kW CARGA NOMINAL</div><div class="val">'+carga.toFixed(2)+' kW</div></div>'+
+  '<div class="kpi"><div class="lbl">kWh SUGERIDO ('+hd+' h alvo)</div><div class="val">'+ksug.toFixed(0)+' kWh</div></div>'+
+  '<div class="kpi"><div class="lbl">CAPEX (R$/kW informado)</div><div class="val">'+brm(cap)+'</div></div>'+
+  '<div class="kpi"><div class="lbl">OPEX/ANO</div><div class="val">'+brm(op)+'</div></div>'+
+  '<div class="kpi"><div class="lbl">ECONOMIA ANUAL</div><div class="val">'+brm(eco)+'</div></div>'+
+  '<div class="kpi"><div class="lbl">PAYBACK</div><div class="val">'+fp2(pb)+'</div></div>'+
+  '<div class="kpi"><div class="lbl">CO2 EVITADO/ANO</div><div class="val">'+co2.toFixed(2)+' t</div></div>'+
+  '<div class="kpi"><div class="lbl">RENDIMENTO eta</div><div class="val">'+(eta*100).toFixed(0)+' %</div></div>';
+}
 function recalc(){var d;try{d=calc()}catch(e){console.error("calc_fail",e&&e.message);return}
+function bindBessKpiInputs(){["bess_kw","bess_kwh","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","scBESS"].forEach(function(id){var el=document.getElementById(id);if(el){el.addEventListener("input",renderBessKPIs);el.addEventListener("change",renderBessKPIs);}});}
+
   [["drawDiag",drawDiag],["renderKPIs",renderKPIs],["renderCompare",renderCompare],["renderCenarios",renderCenarios],["renderSezChart",renderSezChart],["renderLoadLineChart",renderLoadLineChart],["renderDemRes",renderDemRes],["renderTHDRes",renderTHDRes],["renderEquipTable",renderEquipTable],["renderGestion",renderGestion]].forEach(function(p){try{p[1](d)}catch(e2){console.error(p[0]+"_fail",e2&&e2.message)}});
   $("stateBadge").textContent="PRONTO"}
 
@@ -1678,7 +1718,7 @@ function bindAll(){
     if(hib)hib.style.display=scnActive("scHibrido")?"flex":"none";
     recalc();
   })});
-  ["mercado","modalidade","distribuidora","tensao","dc","fp","hd","dm","fu","ger_atual","ger_cap","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","chp","wacc","spread","horiz","infl","f_emis","prop","TE_p_","TE_fp_","TUSD_dem_","porte","nfunc","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",function(){if(id==="mercado"||id==="modalidade"||id==="distribuidora")autoTarifa();recalc()})}});
+  ["mercado","modalidade","distribuidora","tensao","dc","fp","hd","dm","fu","ger_atual","ger_cap","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","prop","TE_p_","TE_fp_","TUSD_dem_","porte","nfunc","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",function(){if(id==="mercado"||id==="modalidade"||id==="distribuidora")autoTarifa();recalc()})}});
   // Ensure dia container renders the diagram on first paint
   try{if($("diagrama")){var initD=calc();drawDiag(initD);renderSezChart(initD)}}catch(e){console.error("firstPaint",e)}
 }
@@ -1708,7 +1748,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 window.EnergiaPro={
   version:"1.6.4",schemaVersion:"1.6.4",
   schema:{schemaVersion:"1.6.1",cargas:"Array",termicas:"Array<custo_h>",sezE:"Array<matriz 12>",sezT:"Array<matriz 12>",demandHist:"Array",thdCirc:"Array",kpis:"object",EquipComparativo:"object",scenarios:"object{FV,Motor,Micro,BESS,Eolica,Hibrido}",fuel:"object{motor,micro}"},
-  populate:function(input){if(!input||typeof input!=="object")return false;["razao","cnpj","segmento","tensao","distribuidora","mercado","modalidade","dc","fp","hd","dm","fu","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","chp","wacc","spread","horiz","infl","f_emis","sazonal","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el&&input[id]!==undefined)el.value=input[id]});
+  populate:function(input){if(!input||typeof input!=="object")return false;["razao","cnpj","segmento","tensao","distribuidora","mercado","modalidade","dc","fp","hd","dm","fu","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","sazonal","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el&&input[id]!==undefined)el.value=input[id]});
   if(Array.isArray(input.cargas)){CARGAS=input.cargas.slice();SEZ_E=CARGAS.map(function(_,i){return Array.isArray(input.sezE)&&Array.isArray(input.sezE[i])?input.sezE[i]:defaultSeasonal()})}
   if(Array.isArray(input.termicas)){TERMICAS=input.termicas.map(function(t){if((t.custo_h===undefined||t.custo_h===null)&&t.cons!==undefined&&t.custo!==undefined)t.custo_h=t.cons*t.custo;else if(t.custo_h!==undefined&&(t.cons===undefined||t.custo===undefined)){if(!t.cons&&t.custo)t.cons=t.custo_h/Math.max(t.custo,1);else if(t.cons&&!t.custo)t.custo=t.custo_h/Math.max(t.cons,1)}return t});SEZ_T=TERMICAS.map(function(_,i){return Array.isArray(input.sezT)&&Array.isArray(input.sezT[i])?input.sezT[i]:defaultSeasonal()})}
   if(Array.isArray(input.demandHist))DEM_HIST=input.demandHist.slice();
