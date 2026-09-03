@@ -1074,7 +1074,7 @@ function calc(){
   var sum_kW=0;CARGAS.forEach(function(c){sum_kW+=(+c.kW||0)*(+c.fd||0.85)});
   var E_dia_bruto=CARGAS.reduce(function(s,c){return s+(+c.kW||0)*(+c.fd||0.85)*(+c.horas||16)},0);
   var E_mes_bruto=E_dia_bruto*fu*dm/1000;
-  var horasMes=hd*dm;
+  var horasMes=hd*dm;var horasMesGer=(scMotor||scMicro)?(24*30):horasMes;
 
   // Seasonality index
   var indiceE=saz?seasonalFactor(SEZ_E[0]||[]):1;
@@ -1125,13 +1125,13 @@ function calc(){
   var motorConsGN=+$("motorConsGN").value||10.2;
   var motorKw=+$("motorKw").value||180;
   var motorElecEff=(motorFuel==="BIO")?0.42:0.36;
-  var motorFuelRS=(motorFuel==="BIO")?0:(motorConsGN*motorGN_Rm3*horasMes);
+  var motorFuelRS=(motorFuel==="BIO")?0:(motorConsGN*motorGN_Rm3*horasMesGer);
   var motorFuelLabel=(motorFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+motorGN_Rm3.toFixed(2)+"/m³";
 
   var microFuel=$("microFuel")&&$("microFuel").value||"GN";
   var microGN_Rm3=+$("microGN_Rm3").value||3.85;
   var microConsGN=+$("microConsGN").value||12.4;
-  var microFuelRS=(microFuel==="BIO")?0:(microConsGN*microGN_Rm3*horasMes);
+  var microFuelRS=(microFuel==="BIO")?0:(microConsGN*microGN_Rm3*horasMesGer);
   var microFuelLabel=(microFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+microGN_Rm3.toFixed(2)+"/m³";
 
   var eolicaKw=+$("eolicaKw").value||50;
@@ -1140,18 +1140,18 @@ function calc(){
   // Scenario energy contributions
   var E_fv_break=scFV?fv_kwp*hsp*30.4*pr_v/1000:0;
   var E_local_fv=Math.min(E_fv_break,E_mes*0.95);
-  var E_local_motor=scMotor?(motorKw*horasMes*motorElecEff/1000):0; // MWh/mês
-  var E_local_micro=scMicro?(capKw*horasMes*capMD.eta/1000):0;
+  var E_local_motor=scMotor?(motorKw*horasMesGer*motorElecEff/1000):0;
+  var E_local_micro=scMicro?(capKw*horasMesGer*capMD.eta/1000):0;
   var E_local_eol=scEolica?(eolicaKw*eolicaFC*horasMes*30.4/24/1000):0;
   var E_local=E_local_fv+E_local_motor+E_local_micro+E_local_eol;
-  var E_rede=Math.max(E_mes-E_local_fv-E_local_micro-E_local_motor-E_local_eol,0);var E_ativa_kWh_cen=Math.max(E_rede*1000,0);var kwh_reativo_exced_cen=E_ativa_kWh_cen*fatorReativoExced;var multaReativo_cen_mes=kwh_reativo_exced_cen*tReativa;var multaReativo_cen_ano=multaReativo_cen_mes*12;var eco_reativo_ano=Math.max(multaReativo_ano-multaReativo_cen_ano,0); var combustivelGN_ano=Math.max(((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))*12,0);
+  var E_rede=Math.max(E_mes-E_local_fv-E_local_micro-E_local_motor-E_local_eol,0);var E_ativa_kWh_cen=Math.max(E_rede*1000,0);var kwh_reativo_exced_cen=E_ativa_kWh_cen*fatorReativoExced;var multaReativo_cen_mes=kwh_reativo_exced_cen*tReativa;var multaReativo_cen_ano=multaReativo_cen_mes*12;var eco_reativo_ano=multaReativo_ano; var combustivelGN_ano=Math.max(((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))*12,0);
 
   // Capex/Opex
   var CAPEXfv=scFV?fv_kwp*capex_fv_k:0;
   var OPEXfv=scFV?fv_kwp*capex_fv_k*opex_fv_pct:0;
   var CAPEXbess=scBESS?(bess*4500+8000):0;
   var OPEXbess=scBESS?bess*120:0;
-  var CAPEXmotor=scMotor?380000:0;
+  var CAPEXmotor=scMotor?(motorKw*4500):0;
   var OPEXmotor=scMotor?22000:0;
   var CAPEXmicro=scMicro?capKw*6500:0;
   var OPEXmicro=scMicro?capKw*100:0;
@@ -3465,6 +3465,7 @@ setTimeout(function(){ window.__epcBoot(); },500);
 </script>
 
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
