@@ -2,6 +2,7 @@
 // GET ?lat=X&lon=Y -> nearest grid point do Atlas Eolico CEPEL (1 km)
 import { NextRequest, NextResponse } from 'next/server';
 import { nearestGridPoint } from '@/lib/atlas';
+import { nearestMunicipio } from '@/lib/municipios';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';   // precisa de Node para @supabase/supabase-js server-side
@@ -26,5 +27,19 @@ export async function GET(req: NextRequest) {
   if (!result.ok) {
     return NextResponse.json(result, { status: 200 }); // 200 sem dados > 500 do servico
   }
-  return NextResponse.json(result);
+  let info: Record<string, unknown> = {};
+  try {
+    const mun = await nearestMunicipio(lat, lon);
+    if (mun) {
+      info = {
+        uf: mun.uf,
+        capital: mun.capital,
+        municipio_ibge: mun.codigo_ibge,
+        municipio_nome: mun.nome,
+        municipio_distance_km: mun.distance_km,
+        localidade: mun.nome + ', ' + mun.uf + ' (cod. IBGE ' + mun.codigo_ibge + ', ' + mun.distance_km + ' km)',
+      };
+    }
+  } catch (_) { /* sem municipios, segue */ }
+  return NextResponse.json({ ...result, ...info });
 }
