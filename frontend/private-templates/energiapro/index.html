@@ -1962,10 +1962,10 @@ function buscarAtlas(){
     .then(function(j){
       if(!j||!j.ok){var tag=$("eol_atlas_src"); if(tag) tag.textContent=" " + ((j&&j.error)||"sem dados"); return;}
       _eolSet("eol_v50", j.v_50); _eolSet("eol_v80", j.v_80); _eolSet("eol_v100", j.v_100); _eolSet("eol_v120", j.v_120);
-      _eolSet("eol_k", j.fator_k); _eolSet("eol_c", j.fator_c);
+      _eolSet("eol_k", j.k); _eolSet("eol_c", j.c);
       var dirEl=$("eol_dir"); if(dirEl) dirEl.value = j.direcao_predominante || "";
-      var pdEl=$("eol_pd"); if(pdEl) pdEl.value = j.power_density_W_m2 || "";
-      var tag=$("eol_atlas_src"); if(tag) tag.textContent="Fonte: "+(j.fonte||"Atlas")+". Dist: "+(j.distance_m||"-")+" m. Regiao: "+(j.regiao||"-")+".";
+  if(j.v_100>0){var pdEl=$("eol_pd"); if(pdEl) pdEl.value = (0.5*1.225*j.v_100*j.v_100*j.v_100).toFixed(0);}
+            var tag=$("eol_atlas_src"); if(tag) tag.textContent="Fonte: "+(j.fonte||"Atlas")+". Dist: "+(j.distance_m||"-")+" m. Regiao: "+(j.fonte_regiao||"-")+".";
       renderEolic();
     })
     .catch(function(e){var tag=$("eol_atlas_src"); if(tag) tag.textContent="Erro: "+e.message;});
