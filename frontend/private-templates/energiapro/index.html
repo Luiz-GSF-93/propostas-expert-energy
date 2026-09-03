@@ -1274,21 +1274,24 @@ function calc(){
   var perdas_tot_eol = (eol.loss_e+eol.loss_a+eol.loss_t+eol.loss_env)/100;
   if(perdas_tot_eol>0.5) perdas_tot_eol=0.5;
   var aep_liq_kWh_eol = scEolica ? aep_bruto_kWh_eol*(1-perdas_tot_eol) : 0;
+  // ====== PATCH 3.1 · bridge runtime ======
+  try {
+    window.__eolic_runtime = {
+      aep_bruto_kWh_eol: aep_bruto_kWh_eol,
+      aep_liq_kWh_eol:   aep_liq_kWh_eol,
+      FC_pct_eol:        FC_pct_eol,
+      CAPEXeol_v17:      CAPEXeol_v17,
+      OPEXeol_v17:       OPEXeol_v17,
+      eol_c: eol_c, eol_k: eol_k, eol_v100: eol_v100,
+      eol_dir: eol_dir, eol_pd: eol_pd,
+      tarifa_media_R_kWh: (typeof tarifa_media_R_kWh !== 'undefined') ? tarifa_media_R_kWh : 0,
+      economia_R_ano:     (typeof eco_eol_an !== 'undefined') ? eco_eol_an : 0
+    };
+  } catch(_){ }
+  // ====== FIM 3.1 ======
   var FC_pct_eol = scEolica && eolicaKw_calc>0 ? (aep_liq_kWh_eol/(eolicaKw_calc*eol.n_turb*8760)*100) : 0;
   var CAPEXeol_v17 = scEolica ? (eol.cap_gen*eolicaKw_calc + eol.cap_eng + eol.cap_conex + eol.cap_obra + eol.cap_sub) : 0;
   var OPEXeol_v17  = scEolica ? eol.cap_opex : 0;
-  // v17runtime: bridge para renderEolicDet enxergar valores locais de calc()
-  try { window.__eolic_runtime = {
-    aep_bruto_kWh_eol: aep_bruto_kWh_eol,
-    aep_liq_kWh_eol:   aep_liq_kWh_eol,
-    FC_pct_eol:        FC_pct_eol,
-    CAPEXeol_v17:      CAPEXeol_v17,
-    OPEXeol_v17:       OPEXeol_v17,
-    eol_c:             eol.c,
-    eol_k:             eol.k,
-    eol_v100:          eol.v100
-  }; } catch(_e) {}
-
   // ============================================================================
 
   var eolicaKw=+$("eolicaKw").value||50;
@@ -1987,18 +1990,49 @@ function buscarAtlas(){
 function renderEolic(){ if(typeof recalc==="function") recalc(); }
 function _eolDiv(parent, cls, txt){var d=document.createElement("div"); if(cls) d.className=cls; if(txt!=null) d.textContent=txt; parent.appendChild(d); return d;}
 function _eolSpan(parent, txt, style){var s=document.createElement("span"); if(txt!=null) s.textContent=txt; if(style) s.setAttribute("style", style); parent.appendChild(s); return s;}
+// ====== PATCH 4 · AUTO-RERUN EOLICO ======
+(function attachEolicAutoRerun(){
+  function reRun(){
+    try { if(typeof calc === 'function') calc(); }
+    catch(e){ console.warn('[P4] calc:', e && e.message); }
+    try { if(typeof renderEolicDet === 'function') renderEolicDet(); }
+    catch(e){ console.warn('[P4] renderEolicDet:', e && e.message); }
+  }
+  function isEolicTarget(el){
+    if(!el) return false;
+    var p = document.getElementById('eolPanel');
+    return !!(p && p.contains(el));
+  }
+  ['input','change','blur'].forEach(function(ev){
+    document.addEventListener(ev, function(e){
+      if(isEolicTarget(e.target)) reRun();
+    }, true);
+  });
+  // primeira carga: garante cards preenchidos
+  setTimeout(function(){ try { reRun(); } catch(_){} }, 300);
+})();
+// ====== FIM PATCH 4 ======
+// ====== PATCH 3.2 · bridge leitura ======
+function _eolicRT() {
+  return (typeof window !== 'undefined' && window.__eolic_runtime) ? window.__eolic_runtime : {};
+}
+// ====== FIM 3.2 prelude ======
 function renderEolicDet(d){
+  var rt = _eolicRT();
+  var _m = function(k, fallback){
+    if(typeof rt[k] !== 'undefined' && rt[k] !== null) return rt[k];
+    return fallback;
+  };
   var h=$("eolicDet"); if(!h) return;
   var eKw = (d && d.cap_kw && d.cap_kw.eolica) ? d.cap_kw.eolica : (($("eolicaKw")&&+$("eolicaKw").value)||50);
   var temAtlas = !!(($("eol_v100") && +$("eol_v100").value>0) || ($("eol_k") && +$("eol_k").value>0));
   var badge = temAtlas ? (window.__eolicBadge||"🟢") : "⚪";
   var txtBadge = temAtlas ? "Pré-viabilidade (Atlas + coords)" : "Sem Atlas – preencher manualmente";
-  var rt = (typeof window!=='undefined' && window.__eolic_runtime) || {};
-  var fcPct = ((typeof FC_pct_eol!=='undefined' && FC_pct_eol>0) ? FC_pct_eol : (rt.FC_pct_eol || 0));
-  var aepBruto = ((typeof aep_bruto_kWh_eol!=='undefined' && aep_bruto_kWh_eol>0) ? aep_bruto_kWh_eol : (rt.aep_bruto_kWh_eol || 0));
-  var aepLiq = ((typeof aep_liq_kWh_eol!=='undefined' && aep_liq_kWh_eol>0) ? aep_liq_kWh_eol : (rt.aep_liq_kWh_eol || 0));
-  var capexTot = ((typeof CAPEXeol_v17!=='undefined' && CAPEXeol_v17>0) ? CAPEXeol_v17 : (rt.CAPEXeol_v17>0 ? rt.CAPEXeol_v17 : eKw*7500));
-  var opexAnual = ((typeof OPEXeol_v17!=='undefined' && OPEXeol_v17>0) ? OPEXeol_v17 : (rt.OPEXeol_v17>0 ? rt.OPEXeol_v17 : eKw*120));
+  var fcPct = (typeof FC_pct_eol!=="undefined" && FC_pct_eol) ? FC_pct_eol : 0;
+  var aepBruto = (typeof aep_bruto_kWh_eol!=="undefined" && aep_bruto_kWh_eol) ? aep_bruto_kWh_eol : 0;
+  var aepLiq = (typeof aep_liq_kWh_eol!=="undefined" && aep_liq_kWh_eol) ? aep_liq_kWh_eol : 0;
+  var capexTot = (typeof CAPEXeol_v17!=="undefined" && CAPEXeol_v17) ? CAPEXeol_v17 : eKw*7500;
+  var opexAnual = (typeof OPEXeol_v17!=="undefined" && OPEXeol_v17) ? OPEXeol_v17 : eKw*120;
   var tarifaMedia = (d && d.tarifa_media_R_kWh) ? d.tarifa_media_R_kWh : 0.85;
   var eMensal = (aepLiq/12);
   var ecoAnual = eMensal*12*tarifaMedia;
