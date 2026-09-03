@@ -2011,6 +2011,13 @@ function renderEolicDet(d){
   card("Economia /ano", "R$ "+ecoAnual.toFixed(0).toLocaleString("pt-BR"), "var(--ok)");
   card("Payback", payBack+(payBack!=="—"?" a":""), "var(--"+payClass+")");
   card("P nominal", eKw+" kW", "");
+  // v17diag: aviso quando AEP=0 mesmo com scEolica ligado (Atlas ainda nao consultado / eol.c vazio)
+  if(aepLiq<=0){
+    var aviso=document.createElement("div");
+    aviso.style.cssText="grid-column:span 4;background:#fff7d6;border:1px solid #fbbf24;padding:7px 10px;border-radius:6px;font-size:11.5px;color:#7a4f00;line-height:1.45;margin-top:4px";
+    aviso.innerHTML="⚠ <b>AEP bruto/líquido = 0</b>: o cálculo Weibull exige o Atlas (v100, k, c) ou preenchimento manual. <i>Clique em <b>🔍 Buscar Atlas</b> com lat/lon preenchidos (ex.: −23.5, −46.6), ou digite V(100), k e c Weibull e clique em <b>🔄 Recalcular Eólica</b>. O cálculo só roda quando <code>#eol_c &gt; 0</code> e o cenário Eólica on-site está marcado.</i>";
+    grid.appendChild(aviso);
+  }
   // curva de potencia (resumo)
   var det1=document.createElement("details"); var sm1=document.createElement("summary"); sm1.innerHTML="<b>📈 Curva de potência (resumo)</b>"; det1.appendChild(sm1);
   var cutIn=+($("eol_cutIn")&&$("eol_cutIn").value)||3;
@@ -2026,12 +2033,40 @@ function renderEolicDet(d){
     var tr=document.createElement("tr"); var td1=document.createElement("td"); td1.textContent=v; var td2=document.createElement("td"); td2.textContent=p.toFixed(0); tr.appendChild(td1); tr.appendChild(td2); tbody.appendChild(tr);
   }
   tbl.appendChild(tbody); det1.appendChild(tbl); h.appendChild(det1);
-  // sensibilidade
+  // sensibilidade (runtime: 3 cenarios recalculados a partir de AEP, CAPEX, tarifa, OPEX)
   var det2=document.createElement("details"); det2.style.marginTop="6px";
-  var sm2=document.createElement("summary"); sm2.innerHTML="<b>🧪 Sensibilidade (Pessimista / Base / Otimista)</b>"; det2.appendChild(sm2);
-  var txt=document.createElement("div"); txt.style.cssText="font-size:11.5px;line-height:1.5;margin-top:4px";
-  txt.innerHTML="· <b>Pessimista</b>: vento −10%, tarifa −10%, CAPEX +10% → payback aumenta.<br>· <b>Base</b>: parâmetros atuais do Atlas.<br>· <b>Otimista</b>: vento +10%, tarifa +10%, CAPEX −5% → payback reduz.";
-  det2.appendChild(txt); h.appendChild(det2);
+  var sm2=document.createElement("summary"); sm2.innerHTML="<b>🧪 Sensibilidade (Pessimista / Base / Otimista) — fatores aplicados em runtime</b>"; det2.appendChild(sm2);
+  var wSens=document.createElement("div"); wSens.style.cssText="font-size:11.5px;line-height:1.5;margin-top:6px";
+  var fatBox=document.createElement("div");
+  fatBox.style.cssText="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;margin-bottom:6px;font-size:10.5px;color:#334155;line-height:1.45";
+  fatBox.innerHTML="<b>Fatores aplicados em runtime sobre os valores-base do Atlas:</b> vento (V↑↓) modula AEP líquido (proxy cúbico); tarifa modula economia anual; CAPEX modula investimento. Payback = CAPEX_esc / (Economia_esc − OPEX).";
+  wSens.appendChild(fatBox);
+  function calcSens(fV,fT,fCAPEX,label,bg,border){
+    var modVento=(1+3*fV);                  // proxy cúbico do vento sobre a produção anual
+    var aepLiq_scn=aepLiq*modVento;
+    var tar_scn=tarifaMedia*(1+fT);
+    var cap_scn=capexTot*(1+fCAPEX);
+    var eco_scn=aepLiq_scn*tar_scn;
+    var pb_scn=(cap_scn>0 && (eco_scn-opexAnual)>0)?(cap_scn/(eco_scn-opexAnual)):NaN;
+    var dEconomia=eco_scn-ecoAnual;
+    var card=document.createElement("div");
+    card.style.cssText="margin:5px 0;padding:8px 10px;border-radius:6px;background:"+bg+";border:1px solid "+border+";font-size:11px";
+    card.innerHTML=
+      '<div style="font-weight:700;font-size:12px;margin-bottom:3px">'+label+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px">'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">AEP líquido</div><div style="font-weight:700;font-size:13px">'+(aepLiq_scn/1000).toFixed(1)+' MWh/ano</div></div>'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">Tarifa efetiva</div><div style="font-weight:700;font-size:13px">R$ '+tar_scn.toFixed(2)+'/kWh</div></div>'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">Economia /ano</div><div style="font-weight:700;font-size:13px">R$ '+Math.round(eco_scn).toLocaleString("pt-BR")+'</div></div>'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">CAPEX</div><div style="font-weight:700;font-size:13px">R$ '+Math.round(cap_scn/1000).toLocaleString("pt-BR")+' k</div></div>'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">Δ Economia</div><div style="font-weight:700;font-size:13px;color:'+(dEconomia>=0?'#0d6a42':'#8b3030')+'">'+(dEconomia>=0?'+':'')+Math.round(dEconomia).toLocaleString("pt-BR")+' R$/ano</div></div>'+
+        '<div><div style="font-size:9.5px;color:#475569;text-transform:uppercase;letter-spacing:.04em">Payback</div><div style="font-weight:700;font-size:13px">'+((isFinite(pb_scn)&&pb_scn>0)?pb_scn.toFixed(1)+' a':"—")+'</div></div>'+
+      '</div>';
+    wSens.appendChild(card);
+  }
+  calcSens(-0.10,-0.10,+0.10,"🟥 Pessimista · vento −10%, tarifa −10%, CAPEX +10%","#fef2f2","#fca5a5");
+  calcSens(0,0,0,"🟦 Base · parâmetros atuais do Atlas","#eff6ff","#93c5fd");
+  calcSens(+0.10,+0.10,-0.05,"🟩 Otimista · vento +10%, tarifa +10%, CAPEX −5%","#f0fdf4","#86efac");
+  det2.appendChild(wSens); h.appendChild(det2);
 
   h.style.display = "block";
 }
@@ -3792,6 +3827,7 @@ function nextStep(delta){
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
