@@ -815,6 +815,7 @@ Qualidade da Energia — THD de Tensão e Corrente</h2>
       <label>Weibull c m/s<input id="eol_c" type="number" step="0.01" placeholder="auto"></label>
       <label>Direção pred.<input id="eol_dir" type="text" readonly placeholder="auto"></label>
       <label>Densidade W/m²<input id="eol_pd" type="number" step="0.1" readonly placeholder="auto"></label>
+      <label>Localidade (IBGE)<input id="eol_loc" type="text" readonly placeholder="auto" style="grid-column:span 2"></label>
       <small id="eol_atlas_src" style="grid-column:span 2">💡 Preencha lat/lon e clique em <b>Buscar Atlas</b> ou digite manualmente. Fonte: CEPEL Atlas Eólico 2013 + Global Wind Atlas.</small>
       <button type="button" id="btnEolAtlas" class="btn primary" onclick="buscarAtlas()" style="grid-column:span 2">🔍 Buscar Atlas</button>
     </div>
@@ -1965,6 +1966,7 @@ function buscarAtlas(){
       _eolSet("eol_k", j.k); _eolSet("eol_c", j.c);
       var dirEl=$("eol_dir"); if(dirEl) dirEl.value = j.direcao_predominante || "";
   if(j.v_100>0){var pdEl=$("eol_pd"); if(pdEl) pdEl.value = (0.5*1.225*j.v_100*j.v_100*j.v_100).toFixed(0);}
+            var locEl=$("eol_loc"); if(locEl) locEl.value = j.localidade || (j.municipio_nome? (j.municipio_nome + ", " + (j.uf||"-") + " · IBGE " + (j.municipio_ibge||"-") + " · " + (j.municipio_distance_km||"-") + " km") : "-");
             var tag=$("eol_atlas_src"); if(tag) tag.textContent="Fonte: "+(j.fonte||"Atlas")+". Dist: "+(j.distance_m||"-")+" m. Regiao: "+(j.fonte_regiao||"-")+".";
       renderEolic();
     })
