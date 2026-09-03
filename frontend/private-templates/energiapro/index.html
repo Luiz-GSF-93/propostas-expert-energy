@@ -799,7 +799,73 @@ Qualidade da Energia — THD de Tensão e Corrente</h2>
   <label style="grid-column:span 2"><b>🌬 Eólica on-site · FC 30%</b></label>
   <label>Potência instalada (kW)<input id="eolicaKw" type="number" value="50"></label>
   <label>CAPEX (R$/kW) ≈ 7 500 <small>somatório entra no CAPEX total</small></label>
+
+  <details id="eol_atlas" open><summary><b>🌍 Atlas Eólico Brasileiro (grade 1 km)</b></summary>
+    <div class="row" style="background:#fff;border:1px dashed #93c5fd;padding:6px;margin-top:4px">
+      <label>Lat °<input id="eol_lat" type="number" step="0.0001" placeholder="-23.5"></label>
+      <label>Lon °<input id="eol_lon" type="number" step="0.0001" placeholder="-46.6"></label>
+      <label>Altitude m<input id="eol_alt" type="number" value="760"></label>
+      <label>Área útil m²<input id="eol_area" type="number" value="20000"></label>
+      <label>Crescimento consumo %/a<input id="eol_grow" type="number" step="0.1" value="2"></label>
+      <label>V(50 m) m/s<input id="eol_v50" type="number" step="0.01" placeholder="auto"></label>
+      <label>V(80 m) m/s<input id="eol_v80" type="number" step="0.01" placeholder="auto"></label>
+      <label>V(100 m) m/s<input id="eol_v100" type="number" step="0.01" placeholder="auto"></label>
+      <label>V(120 m) m/s<input id="eol_v120" type="number" step="0.01" placeholder="auto"></label>
+      <label>Weibull k<input id="eol_k" type="number" step="0.01" placeholder="auto"></label>
+      <label>Weibull c m/s<input id="eol_c" type="number" step="0.01" placeholder="auto"></label>
+      <label>Direção pred.<input id="eol_dir" type="text" readonly placeholder="auto"></label>
+      <label>Densidade W/m²<input id="eol_pd" type="number" step="0.1" readonly placeholder="auto"></label>
+      <small id="eol_atlas_src" style="grid-column:span 2">💡 Preencha lat/lon e clique em <b>Buscar Atlas</b> ou digite manualmente. Fonte: CEPEL Atlas Eólico 2013 + Global Wind Atlas.</small>
+      <button type="button" id="btnEolAtlas" class="btn primary" onclick="buscarAtlas()" style="grid-column:span 2">🔍 Buscar Atlas</button>
+    </div>
+  </details>
+
+  <details id="eol_turbina"><summary><b>⚙ Turbina & curva de potência</b></summary>
+    <div class="row" style="background:#fff;border:1px dashed #93c5fd;padding:6px;margin-top:4px">
+      <label>Modelo
+        <select id="eol_modelo" onchange="aplicarCurva()">
+          <option value="WEG_W250_30">WEG W250-30 (250 kW, rot 30 m, h 80 m)</option>
+          <option value="Vestas_V120_2000">Vestas V120-2.0 (2,0 MW, rot 120 m, h 120 m)</option>
+          <option value="Nordex_N131_3300">Nordex N131-3.3 (3,3 MW, rot 131 m, h 120 m)</option>
+          <option value="custom">Personalizado</option>
+        </select>
+      </label>
+      <label>nº turbinas<input id="eol_n" type="number" min="1" value="1" onchange="renderEolic()"></label>
+      <label>Cut-in m/s<input id="eol_cutIn" type="number" step="0.1" value="3" oninput="renderEolic()"></label>
+      <label>Nominal m/s<input id="eol_vNom" type="number" step="0.1" value="12" oninput="renderEolic()"></label>
+      <label>Cut-out m/s<input id="eol_cutOut" type="number" step="0.1" value="25" oninput="renderEolic()"></label>
+      <label>Rotor m<input id="eol_rotor" type="number" step="0.1" value="30" oninput="renderEolic()"></label>
+      <label>Hub m<input id="eol_hub" type="number" step="0.1" value="80" oninput="renderEolic()"></label>
+      <label>ρ ar kg/m³<input id="eol_rhoA" type="number" step="0.001" value="1.225" oninput="renderEolic()"></label>
+      <small style="grid-column:span 2">Curva padrão: cúbica entre cut-in e nominal, plateau até cut-out.</small>
+    </div>
+  </details>
+
+  <details id="eol_capex"><summary><b>💰 CAPEX granular (entra no CAPEX da proposta)</b></summary>
+    <div class="row" style="background:#fff;border:1px dashed #93c5fd;padding:6px;margin-top:4px">
+      <label>Geração R$/kW<input id="eol_cap_gen" type="number" value="7500"></label>
+      <label>Engenharia R$<input id="eol_cap_eng" type="number" value="120000"></label>
+      <label>Conexão R$<input id="eol_cap_conex" type="number" value="180000"></label>
+      <label>Civil/Obras R$<input id="eol_cap_obra" type="number" value="90000"></label>
+      <label>Subestação R$<input id="eol_cap_sub" type="number" value="150000"></label>
+      <label>Opex anual R$/a<input id="eol_cap_opex" type="number" value="18000"></label>
+      <small style="grid-column:span 2">CAPEX_eólica = geração·kW + engenharia + conexão + obras + subestação.</small>
+    </div>
+  </details>
+
+  <details id="eol_perdas"><summary><b>📉 Perdas & cenários de sensibilidade</b></summary>
+    <div class="row" style="background:#fff;border:1px dashed #93c5fd;padding:6px;margin-top:4px">
+      <label>Perdas elétricas %<input id="eol_loss_e" type="number" step="0.1" value="2"></label>
+      <label>Indisponibilidade %<input id="eol_loss_a" type="number" step="0.1" value="3"></label>
+      <label>Turbulência %<input id="eol_loss_t" type="number" step="0.1" value="3"></label>
+      <label>Ambiental/sujeira %<input id="eol_loss_env" type="number" step="0.1" value="2"></label>
+      <small style="grid-column:span 2">AEP_líquido = AEP_bruto · (1 − perdas_totais). FC = AEP_líquido / (P_nom·8760).</small>
+    </div>
+  </details>
+
 </div>
+
+<div id="eolicDet" class="row" style="display:none;margin-top:6px;background:#fbf7e6;border:1px solid #fbbf24;padding:8px;border-radius:5px"></div>
 <div id="hibridoPanel" class="row" style="display:none;margin-top:6px;background:#f0fff4;border:1px solid #86efac;padding:6px;border-radius:5px">
   <label style="grid-column:span 2"><b>🔁 Híbrido</b> ≥ 2 fontes marcadas — soma CAPEX, soma MWh local, economia média ponderada.</label>
 </div>
@@ -1161,6 +1227,57 @@ function calc(){
   var microFuelRS=(microFuel==="BIO")?0:(microConsGN*microGN_Rm3*horasMesGer);
   var microFuelLabel=(microFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+microGN_Rm3.toFixed(2)+"/m³";
 
+  // ============== EÓLICA v17: Atlas + Weibull + curva cúbica + perdas ==============
+  function _eolN(id, d){var el=$ && $(id); if(!el)return d; var v=+el.value; return (isFinite(v)&&v>0)?v:d;}
+  var eol = {
+    v50:_eolN("eol_v50",0), v80:_eolN("eol_v80",0), v100:_eolN("eol_v100",0), v120:_eolN("eol_v120",0),
+    k:_eolN("eol_k",2.0), c:_eolN("eol_c",0),
+    cutIn:_eolN("eol_cutIn",3), vNom:_eolN("eol_vNom",12), cutOut:_eolN("eol_cutOut",25),
+    rotor:_eolN("eol_rotor",30), hub:_eolN("eol_hub",80), rhoA:_eolN("eol_rhoA",1.225),
+    n_turb:_eolN("eol_n",1),
+    loss_e:_eolN("eol_loss_e",2), loss_a:_eolN("eol_loss_a",3),
+    loss_t:_eolN("eol_loss_t",3), loss_env:_eolN("eol_loss_env",2),
+    cap_gen:_eolN("eol_cap_gen",7500), cap_eng:_eolN("eol_cap_eng",0),
+    cap_conex:_eolN("eol_cap_conex",0), cap_obra:_eolN("eol_cap_obra",0),
+    cap_sub:_eolN("eol_cap_sub",0), cap_opex:_eolN("eol_cap_opex",0)
+  };
+  // 2) Correcao por altura (lei de potencia α=0,143) e defaults Weibull
+  if(eol.v100>0){
+    if(eol.v50<=0) eol.v50=eol.v100*Math.pow(50/100,0.143);
+    if(eol.v80<=0) eol.v80=eol.v100*Math.pow(80/100,0.143);
+    if(eol.v120<=0) eol.v120=eol.v100*Math.pow(120/100,0.143);
+    if(eol.c<=0) eol.c=eol.v100*0.95;
+    if(eol.k<=0) eol.k=2.0;
+  }
+  // 3) Curva de potencia cubica + plateau (kw e a potencia da turbina)
+  function pCurva_eol(v, kw){
+    if(v<eol.cutIn||v>eol.cutOut) return 0;
+    if(v>=eol.vNom) return kw;
+    var f=(v-eol.cutIn)/(eol.vNom-eol.cutIn);
+    return kw*f*f*f;
+  }
+  // 4) Weibull PDF + AEP por bins 0..25 m/s, passo 1 m/s
+  var eolicaKw_calc = +$("eolicaKw") ? (+$("eolicaKw").value||50) : 50;
+  var bins_eol=[]; var aep_bruto_kWh_eol=0;
+  if(eol.c>0 && scEolica){
+    for(var v_e=0;v_e<=25;v_e+=1){
+      var fv = (eol.k/eol.c)*Math.pow(v_e/eol.c, eol.k-1)*Math.exp(-Math.pow(v_e/eol.c, eol.k));
+      if(!isFinite(fv)) fv=0;
+      var pv = pCurva_eol(v_e, eolicaKw_calc);
+      var horas_bin=8760*fv*1;
+      var E_kWh_bin=pv*horas_bin*eol.n_turb;
+      aep_bruto_kWh_eol += E_kWh_bin;
+      bins_eol.push({v:v_e, f:fv, P_kW:pv, H_ano:horas_bin, E_kWh:E_kWh_bin});
+    }
+  }
+  var perdas_tot_eol = (eol.loss_e+eol.loss_a+eol.loss_t+eol.loss_env)/100;
+  if(perdas_tot_eol>0.5) perdas_tot_eol=0.5;
+  var aep_liq_kWh_eol = scEolica ? aep_bruto_kWh_eol*(1-perdas_tot_eol) : 0;
+  var FC_pct_eol = scEolica && eolicaKw_calc>0 ? (aep_liq_kWh_eol/(eolicaKw_calc*eol.n_turb*8760)*100) : 0;
+  var CAPEXeol_v17 = scEolica ? (eol.cap_gen*eolicaKw_calc + eol.cap_eng + eol.cap_conex + eol.cap_obra + eol.cap_sub) : 0;
+  var OPEXeol_v17  = scEolica ? eol.cap_opex : 0;
+  // ============================================================================
+
   var eolicaKw=+$("eolicaKw").value||50;
   var eolicaFC=0.30;
 
@@ -1169,7 +1286,8 @@ function calc(){
   var E_local_fv=Math.min(E_fv_break,E_mes*0.95);
   var E_local_motor=scMotor?(motorKw*horasMesGer*motorElecEff/1000):0;
   var E_local_micro=scMicro?(capKw*horasMesGer*capMD.eta/1000):0;
-  var E_local_eol=scEolica?(eolicaKw*eolicaFC*horasMes*30.4/24/1000):0;
+  // v17: se ha calculo Weibull (v100>0) usa AEP_liquido, senao fallback legado
+  var E_local_eol = scEolica ? (aep_liq_kWh_eol>0 ? (aep_liq_kWh_eol/12) : (eolicaKw*eolicaFC*horasMes*30.4/24/1000)) : 0;
   var E_local=E_local_fv+E_local_motor+E_local_micro+E_local_eol;
   var E_rede=Math.max(E_mes-E_local_fv-E_local_micro-E_local_motor-E_local_eol,0);var E_ativa_kWh_cen=Math.max(E_rede*1000,0);var kwh_reativo_exced_cen=E_ativa_kWh_cen*fatorReativoExced;var multaReativo_cen_mes=kwh_reativo_exced_cen*tReativa;var multaReativo_cen_ano=multaReativo_cen_mes*12;var eco_reativo_ano=multaReativo_ano; var combustivelGN_ano=Math.max(((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))*12,0);
 
@@ -1182,8 +1300,8 @@ function calc(){
   var OPEXmotor=scMotor?22000:0;
   var CAPEXmicro=scMicro?capKw*6500:0;
   var OPEXmicro=scMicro?capKw*100:0;
-  var CAPEXeol=scEolica?eolicaKw*7500:0;
-  var OPEXeol=scEolica?eolicaKw*120:0;
+  var CAPEXeol=scEolica?(CAPEXeol_v17>0?CAPEXeol_v17:eolicaKw*7500):0;
+  var OPEXeol=scEolica?(OPEXeol_v17>0?OPEXeol_v17:eolicaKw*120):0;
   var CAPEX=CAPEXfv+CAPEXbess+CAPEXmotor+CAPEXmicro+CAPEXeol;
   var OPEX_a=OPEXfv+OPEXbess+OPEXmotor+OPEXmicro+OPEXeol;
 
@@ -1532,7 +1650,10 @@ function renderSezChart(d){
   svgE("text",{x:padL+W-padR-10,y:padT+62,"text-anchor":"end",fill:"#0b1f3a","font-size":9},root,"Custo mensal sazonalizado: "+money(d.therm_custo_mes||0));
 }
 
-function renderCenarios(d){var h=$("cenarioRes");if(!h)return;var scn=d.scenarios||{};var fuel=d.fuel||{};var lines=[];if(scn.FV){var cv=d.CAPEX&&d.CAPEX>0?(((d.cap_kw.micro?1:1)).toString()):'';lines.push({c:"ok",t:"☀ FV",k:nf(d.E_local_fv,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXfv||0).toLocaleString("pt-BR")+" · TIR contribui"})}if(scn.BESS&&d.E_local){lines.push({c:"ok",t:"🔋 BESS",k:d.bess_peak?"peak-shaving ativa":"otimiza DC "+(d.demRes.dc_rec_p||0)+" kW"})}if(scn.Motor){lines.push({c:"ok",t:"⚙ Motor GN/BIO",k:nf(d.E_local_motor,2)+" MWh/mês · "+d.cost_fuel.fuel_motor_label+" · CAPEX R$ "+(d.CAPEXmotor||0).toLocaleString("pt-BR")})}if(scn.Micro){lines.push({c:"ok",t:"🔬 Capstone",k:nf(d.E_local_micro,2)+" MWh/mês · η "+(d.cap_kw.micro||200)+" kW · "+d.cost_fuel.fuel_micro_label})}if(scn.Eolica){lines.push({c:"ok",t:"🌀 Eólica",k:nf(d.E_local_eol,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXeol||0).toLocaleString("pt-BR")})}if(scn.Hibrido){var tot=d.E_local_fv+d.E_local_motor+d.E_local_micro+d.E_local_eol;lines.push({c:"ok",t:"🔀 Híbrido",k:"Σ "+tot.toFixed(2)+" MWh/mês · "+money((d.F_base||0)-(d.F_cen||0))+" /mês evitado"})}h.innerHTML=lines.length?'<h3 style="margin:0 0 8px;font-size:13px;color:var(--ok)">Cenários ativos</h3><div class="diag-grid">'+lines.map(function(l){return '<div class="diag-card"><div class="lbl">'+l.t+'</div><div class="val" style="color:var(--ok)">'+l.k+'</div></div>'}).join("")+'</div><div style="margin-top:8px;color:var(--bad);font-size:11.5px">Reativo PRODist M4 · FP '+nf(d.fp,2)+' · excedente '+nf(d.kwh_reativo_exced||0,0)+' → '+nf(d.kwh_reativo_exced_cen||0,0)+' kVArh/mês · multa R$/ano '+money(d.multaReativo_ano||0)+' → '+money(d.multaReativo_cen_ano||0)+' · ganho '+money(d.eco_reativo_ano||0)+' · Ultrapassagem RN 414/2010 → R$/ano '+money(d.ultrapass_ano||0)+'</div>':'<div class="aviso">Nenhum cenário selecionado. Marque FV, BESS, motor, microturbina, eólica ou híbrido na seção 10.</div>'}
+function renderCenarios(d){var h=$("cenarioRes");if(!h)return;var scn=d.scenarios||{};var fuel=d.fuel||{};var lines=[];if(scn.FV){var cv=d.CAPEX&&d.CAPEX>0?(((d.cap_kw.micro?1:1)).toString()):'';lines.push({c:"ok",t:"☀ FV",k:nf(d.E_local_fv,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXfv||0).toLocaleString("pt-BR")+" · TIR contribui"})}if(scn.BESS&&d.E_local){lines.push({c:"ok",t:"🔋 BESS",k:d.bess_peak?"peak-shaving ativa":"otimiza DC "+(d.demRes.dc_rec_p||0)+" kW"})}if(scn.Motor){lines.push({c:"ok",t:"⚙ Motor GN/BIO",k:nf(d.E_local_motor,2)+" MWh/mês · "+d.cost_fuel.fuel_motor_label+" · CAPEX R$ "+(d.CAPEXmotor||0).toLocaleString("pt-BR")})}if(scn.Micro){lines.push({c:"ok",t:"🔬 Capstone",k:nf(d.E_local_micro,2)+" MWh/mês · η "+(d.cap_kw.micro||200)+" kW · "+d.cost_fuel.fuel_micro_label})}if(scn.Eolica){
+  lines.push({c:"ok",t:"🌀 Eólica",k:nf(d.E_local_eol,2)+" MWh/mês · CAPEX R$ "+(d.CAPEXeol||0).toLocaleString("pt-BR")});
+  if(typeof renderEolicDet==="function") renderEolicDet(d);
+} else {var _ed=$("eolicDet"); if(_ed) _ed.style.display="none";}if(scn.Hibrido){var tot=d.E_local_fv+d.E_local_motor+d.E_local_micro+d.E_local_eol;lines.push({c:"ok",t:"🔀 Híbrido",k:"Σ "+tot.toFixed(2)+" MWh/mês · "+money((d.F_base||0)-(d.F_cen||0))+" /mês evitado"})}h.innerHTML=lines.length?'<h3 style="margin:0 0 8px;font-size:13px;color:var(--ok)">Cenários ativos</h3><div class="diag-grid">'+lines.map(function(l){return '<div class="diag-card"><div class="lbl">'+l.t+'</div><div class="val" style="color:var(--ok)">'+l.k+'</div></div>'}).join("")+'</div><div style="margin-top:8px;color:var(--bad);font-size:11.5px">Reativo PRODist M4 · FP '+nf(d.fp,2)+' · excedente '+nf(d.kwh_reativo_exced||0,0)+' → '+nf(d.kwh_reativo_exced_cen||0,0)+' kVArh/mês · multa R$/ano '+money(d.multaReativo_ano||0)+' → '+money(d.multaReativo_cen_ano||0)+' · ganho '+money(d.eco_reativo_ano||0)+' · Ultrapassagem RN 414/2010 → R$/ano '+money(d.ultrapass_ano||0)+'</div>':'<div class="aviso">Nenhum cenário selecionado. Marque FV, BESS, motor, microturbina, eólica ou híbrido na seção 10.</div>'}
 
 function renderGestion(d){var eq=d.EquipComparativo||{items:[]};var items=[
 {k:"Contribuição do Software",v:"Algoritmo IOP · v1.6.4",c:"ok"},
@@ -1821,6 +1942,99 @@ function libEditEquipment(key){var c=(window.EXTRA_LIB||[]).find(function(x){ret
 function libSaveFromForm(){var obj={isCustom:true};document.querySelectorAll('[data-libf]').forEach(function(el){obj[el.getAttribute('data-libf')]=el.value});if(!obj.nome){alert('Informe ao menos o Nome');return}var ex=(window.EXTRA_LIB||[]);var i=-1;ex.forEach(function(x,j){if(x.key===window._libEditKey)i=j});if(i>=0){obj.key=window._libEditKey;ex[i]=obj}else{obj.key='custom_'+Date.now();(window.EXTRA_LIB=window.EXTRA_LIB||[]).push(obj)}window._libEditKey=null;libPersist();var ed=document.getElementById('libEditor');if(ed){ed.style.display='none';ed.innerHTML=''}renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
 function libDeleteEquipment(key){if(!confirm('Excluir esta tecnologia local?'))return;window.EXTRA_LIB=(window.EXTRA_LIB||[]).filter(function(x){return x.key!==key});libPersist();renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
 function libExport(){try{var b=new Blob([JSON.stringify({biblioteca_local:window.EXTRA_LIB||[],exportadoEm:new Date().toISOString(),schemaVersion:'1.6.12'},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='energiaPro_biblioteca.json';a.click()}catch(e){alert('Falha ao exportar')}}
+// ============================== EÓLICA v17: Atlas + render ==============================
+function _eolSet(id, v){var el=$ && $(id); if(el && isFinite(v)) el.value=+v;}
+function aplicarCurva(){
+  var m=$("eol_modelo") && $("eol_modelo").value;
+  if(!m) return;
+  if(m==="WEG_W250_30"){_eolSet("eol_rotor",30); _eolSet("eol_hub",80); _eolSet("eolicaKw",250)}
+  else if(m==="Vestas_V120_2000"){_eolSet("eol_rotor",120); _eolSet("eol_hub",120); _eolSet("eolicaKw",2000)}
+  else if(m==="Nordex_N131_3300"){_eolSet("eol_rotor",131); _eolSet("eol_hub",120); _eolSet("eolicaKw",3300)}
+  renderEolic();
+}
+function buscarAtlas(){
+  var lat=($("eol_lat") && +$("eol_lat").value);
+  var lon=($("eol_lon") && +$("eol_lon").value);
+  if(!isFinite(lat)||!isFinite(lon)){alert("Preencha lat e lon primeiro.");return;}
+  $("eol_atlas_src") && ($("eol_atlas_src").textContent="Consultando /api/atlas-wind...");
+  fetch("/api/atlas-wind?lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon))
+    .then(function(r){if(!r.ok) throw new Error("HTTP "+r.status); return r.json();})
+    .then(function(j){
+      if(!j||!j.ok){var tag=$("eol_atlas_src"); if(tag) tag.textContent=" " + ((j&&j.error)||"sem dados"); return;}
+      _eolSet("eol_v50", j.v_50); _eolSet("eol_v80", j.v_80); _eolSet("eol_v100", j.v_100); _eolSet("eol_v120", j.v_120);
+      _eolSet("eol_k", j.fator_k); _eolSet("eol_c", j.fator_c);
+      var dirEl=$("eol_dir"); if(dirEl) dirEl.value = j.direcao_predominante || "";
+      var pdEl=$("eol_pd"); if(pdEl) pdEl.value = j.power_density_W_m2 || "";
+      var tag=$("eol_atlas_src"); if(tag) tag.textContent="Fonte: "+(j.fonte||"Atlas")+". Dist: "+(j.distance_m||"-")+" m. Regiao: "+(j.regiao||"-")+".";
+      renderEolic();
+    })
+    .catch(function(e){var tag=$("eol_atlas_src"); if(tag) tag.textContent="Erro: "+e.message;});
+}
+function renderEolic(){ if(typeof recalc==="function") recalc(); }
+function _eolDiv(parent, cls, txt){var d=document.createElement("div"); if(cls) d.className=cls; if(txt!=null) d.textContent=txt; parent.appendChild(d); return d;}
+function _eolSpan(parent, txt, style){var s=document.createElement("span"); if(txt!=null) s.textContent=txt; if(style) s.setAttribute("style", style); parent.appendChild(s); return s;}
+function renderEolicDet(d){
+  var h=$("eolicDet"); if(!h) return;
+  var eKw = (d && d.cap_kw && d.cap_kw.eolica) ? d.cap_kw.eolica : (($("eolicaKw")&&+$("eolicaKw").value)||50);
+  var temAtlas = !!(($("eol_v100") && +$("eol_v100").value>0) || ($("eol_k") && +$("eol_k").value>0));
+  var badge = temAtlas ? (window.__eolicBadge||"🟢") : "⚪";
+  var txtBadge = temAtlas ? "Pré-viabilidade (Atlas + coords)" : "Sem Atlas – preencher manualmente";
+  var fcPct = (typeof FC_pct_eol!=="undefined" && FC_pct_eol) ? FC_pct_eol : 0;
+  var aepBruto = (typeof aep_bruto_kWh_eol!=="undefined" && aep_bruto_kWh_eol) ? aep_bruto_kWh_eol : 0;
+  var aepLiq = (typeof aep_liq_kWh_eol!=="undefined" && aep_liq_kWh_eol) ? aep_liq_kWh_eol : 0;
+  var capexTot = (typeof CAPEXeol_v17!=="undefined" && CAPEXeol_v17) ? CAPEXeol_v17 : eKw*7500;
+  var opexAnual = (typeof OPEXeol_v17!=="undefined" && OPEXeol_v17) ? OPEXeol_v17 : eKw*120;
+  var tarifaMedia = (d && d.tarifa_media_R_kWh) ? d.tarifa_media_R_kWh : 0.85;
+  var eMensal = (aepLiq/12);
+  var ecoAnual = eMensal*12*tarifaMedia;
+  var payBack = (capexTot>0 && ecoAnual>opexAnual) ? (capexTot/(ecoAnual-opexAnual)).toFixed(1) : "—";
+  var payClass = payBack==="—" ? "warn" : (parseFloat(payBack)<=8?"ok":(parseFloat(payBack)<=12?"warn":"bad"));
+
+  while(h.firstChild) h.removeChild(h.firstChild);
+  // header
+  var head=_eolDiv(h, "", ""); head.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px";
+  _eolSpan(head, "🌬 Detalhes da Eólica", "font-weight:700;font-size:13px");
+  var tag=_eolSpan(head, badge+" "+txtBadge, "font-size:11.5px;padding:3px 8px;border-radius:999px;background:#fef3c7;color:#92400e");
+  // grid de cards
+  var grid=_eolDiv(h, "diag-grid", ""); grid.style.cssText="grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px";
+  function card(lbl, val, color){
+    var c=_eolDiv(grid, "diag-card", "");
+    var l=_eolDiv(c, "lbl", lbl); var v=_eolDiv(c, "val", val); if(color) v.style.color=color;
+  }
+  card("AEP bruto", (aepBruto/1000).toFixed(0)+" MWh/ano", "");
+  card("AEP líquido", (aepLiq/1000).toFixed(0)+" MWh/ano", "var(--ok)");
+  card("FC", fcPct.toFixed(1)+"%", "");
+  card("CAPEX total", "R$ "+capexTot.toLocaleString("pt-BR"), "");
+  card("OPEX /ano", "R$ "+opexAnual.toLocaleString("pt-BR"), "");
+  card("Economia /ano", "R$ "+ecoAnual.toFixed(0).toLocaleString("pt-BR"), "var(--ok)");
+  card("Payback", payBack+(payBack!=="—"?" a":""), "var(--"+payClass+")");
+  card("P nominal", eKw+" kW", "");
+  // curva de potencia (resumo)
+  var det1=document.createElement("details"); var sm1=document.createElement("summary"); sm1.innerHTML="<b>📈 Curva de potência (resumo)</b>"; det1.appendChild(sm1);
+  var cutIn=+($("eol_cutIn")&&$("eol_cutIn").value)||3;
+  var vNom=+($("eol_vNom")&&$("eol_vNom").value)||12;
+  var cutOut=+($("eol_cutOut")&&$("eol_cutOut").value)||25;
+  var pts=[3,5,7,9,11,12,15,20];
+  var tbl=document.createElement("table"); tbl.style.cssText="width:100%;font-size:11px;margin-top:4px;border-collapse:collapse";
+  var thead=document.createElement("thead"); var trh=document.createElement("tr"); trh.style.background="#f1f5f9";
+  var th1=document.createElement("th"); th1.textContent="v (m/s)"; var th2=document.createElement("th"); th2.textContent="P (kW)"; trh.appendChild(th1); trh.appendChild(th2); thead.appendChild(trh); tbl.appendChild(thead);
+  var tbody=document.createElement("tbody");
+  for(var i=0;i<pts.length;i++){
+    var v=pts[i]; var p=v<cutIn||v>cutOut?0:(v>=vNom?eKw:eKw*Math.pow((v-cutIn)/(vNom-cutIn),3));
+    var tr=document.createElement("tr"); var td1=document.createElement("td"); td1.textContent=v; var td2=document.createElement("td"); td2.textContent=p.toFixed(0); tr.appendChild(td1); tr.appendChild(td2); tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody); det1.appendChild(tbl); h.appendChild(det1);
+  // sensibilidade
+  var det2=document.createElement("details"); det2.style.marginTop="6px";
+  var sm2=document.createElement("summary"); sm2.innerHTML="<b>🧪 Sensibilidade (Pessimista / Base / Otimista)</b>"; det2.appendChild(sm2);
+  var txt=document.createElement("div"); txt.style.cssText="font-size:11.5px;line-height:1.5;margin-top:4px";
+  txt.innerHTML="· <b>Pessimista</b>: vento −10%, tarifa −10%, CAPEX +10% → payback aumenta.<br>· <b>Base</b>: parâmetros atuais do Atlas.<br>· <b>Otimista</b>: vento +10%, tarifa +10%, CAPEX −5% → payback reduz.";
+  det2.appendChild(txt); h.appendChild(det2);
+
+  h.style.display = "block";
+}
+// ==================================================================================
+
 function bindLib(){document.addEventListener('click',function(e){var t=e.target;if(!t||!t.id)return;if(t.id==='btnLibNew')libNewEquipment();else if(t.id==='btnLibReset'){if(confirm('Restaurar biblioteca padrao? Itens locais serao apagados.')){localStorage.removeItem('energiaPro.library');window.EXTRA_LIB=[];renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}}else if(t.id==='btnLibExport')libExport();else if(t.id==='_libSave')libSaveFromForm();else if(t.id==='_libCancel'){var ed=document.getElementById('libEditor');if(ed){ed.style.display='none';ed.innerHTML=''}}});
 document.addEventListener('click',function(e){var t=e.target;if(!t)return;if(t.hasAttribute&&t.hasAttribute('data-lib')){var act=t.getAttribute('data-lib');var k=t.getAttribute('data-key');if(act==='edit')libEditEquipment(k);else if(act==='del')libDeleteEquipment(k)}});
 var ls=document.getElementById('libSearch');if(ls)ls.addEventListener('input',function(){var d={};try{if(typeof calc==='function')d=calc()}catch(e){}try{if(typeof renderEquipTable==='function')renderEquipTable(d)}catch(e){}renderLibCustom(d)});
@@ -3567,6 +3781,7 @@ function nextStep(delta){
 </script>
 
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
