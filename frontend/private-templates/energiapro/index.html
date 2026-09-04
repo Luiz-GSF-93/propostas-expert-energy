@@ -1850,7 +1850,7 @@ function renderBessKPIs(){
 function recalc(){var d;try{d=calc()}catch(e){console.error("calc_fail",e&&e.message);return}
 function bindBessKpiInputs(){["bess_kw","bess_kwh","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","scBESS"].forEach(function(id){var el=document.getElementById(id);if(el){el.addEventListener("input",renderBessKPIs);el.addEventListener("change",renderBessKPIs);}});}
 
-  [["drawDiag",drawDiag],["renderKPIs",renderKPIs],["renderCompare",renderCompare],["renderCenarios",renderCenarios],["renderSezChart",renderSezChart],["renderLoadLineChart",renderLoadLineChart],["renderDemRes",renderDemRes],["renderTHDRes",renderTHDRes],["renderEquipTable",renderEquipTable],["renderGestion",renderGestion]].forEach(function(p){try{p[1](d)}catch(e2){console.error(p[0]+"_fail",e2&&e2.message)}});
+  [["drawDiag",drawDiag],["renderKPIs",renderKPIs],["renderCompare",renderCompare],["renderCenarios",renderCenarios],["renderEolicDet",renderEolicDet],["renderSezChart",renderSezChart],["renderLoadLineChart",renderLoadLineChart],["renderDemRes",renderDemRes],["renderTHDRes",renderTHDRes],["renderEquipTable",renderEquipTable],["renderGestion",renderGestion]].forEach(function(p){try{p[1](d)}catch(e2){console.error(p[0]+"_fail",e2&&e2.message)}});
   $("stateBadge").textContent="PRONTO"}
 
 function bindAll(){
@@ -1883,7 +1883,7 @@ function bindAll(){
     if(hib)hib.style.display=scnActive("scHibrido")?"flex":"none";
     recalc();
   })});
-  ["mercado","modalidade","distribuidora","tensao","dc","fp","hd","dm","fu","ger_atual","ger_cap","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","prop","TE_p_","TE_fp_","TUSD_dem_","porte","nfunc","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",function(){if(id==="mercado"||id==="modalidade"||id==="distribuidora")autoTarifa();recalc()})}});
+  ["mercado","modalidade","distribuidora","tensao","dc","fp","hd","dm","fu","ger_atual","ger_cap","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","prop","TE_p_","TE_fp_","TUSD_dem_","porte","nfunc","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw","eol_lat","eol_lon","eol_v50","eol_v80","eol_v100","eol_v120","eol_k","eol_c","eol_cutIn","eol_vNom","eol_cutOut","eol_rotor","eol_hub","eol_rhoA","eol_n","eol_loss_e","eol_loss_a","eol_loss_t","eol_loss_env","eol_cap_gen","eol_cap_eng","eol_cap_conex","eol_cap_obra","eol_cap_sub","eol_cap_opex"].forEach(function(id){var el=$(id);if(el){el.addEventListener("input",function(){if(id==="mercado"||id==="modalidade"||id==="distribuidora")autoTarifa();recalc()});el.addEventListener("change",function(){recalc()});}});
   // Ensure dia container renders the diagram on first paint
   try{if($("diagrama")){var initD=calc();drawDiag(initD);renderSezChart(initD)}}catch(e){console.error("firstPaint",e)}
 }
@@ -1994,14 +1994,13 @@ function _eolSpan(parent, txt, style){var s=document.createElement("span"); if(t
 // ====== PATCH 4 · AUTO-RERUN EOLICO ======
 (function attachEolicAutoRerun(){
   function reRun(){
-    try { if(typeof calc === 'function') calc(); }
-    catch(e){ console.warn('[P4] calc:', e && e.message); }
-    try { if(typeof renderEolicDet === 'function') renderEolicDet(); }
-    catch(e){ console.warn('[P4] renderEolicDet:', e && e.message); }
+    try { if(typeof recalc === 'function') { recalc(); return; } } catch(_){}
+    try { if(typeof calc === 'function') calc(); } catch(_){}
+    try { if(typeof renderEolicDet === 'function') renderEolicDet(); } catch(_){}
   }
   function isEolicTarget(el){
     if(!el) return false;
-    if(el.id === 'eolicaKw') return true;
+    if(el.id === 'eolicaKw' || (el.id && el.id.indexOf('eol_') === 0)) return true;
     var p = document.getElementById('eolPanel');
     return !!(p && p.contains(el));
   }
