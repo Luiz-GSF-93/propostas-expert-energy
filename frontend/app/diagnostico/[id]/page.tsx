@@ -218,82 +218,112 @@ const fmtN = (v: number, d = 0) =>
     ? new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v)
     : "--";
 
-/** Monta o prompt profissional para o OpenAI.
- * Foco em justificativas causais, bullet points limpos, sem repetir nome do cliente. */
+/** Monta o prompt profissional e aprofundado para a OpenAI (Seções 2 a 13).
+ * Foco em justificativas causais, digitalização, governança e viabilidade técnica/financeira. */
 function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
-  if (!summaryRecord) return "";
-  const s = summaryRecord as Record<string, any>;
-  const demanda        = Number(s.demandKw || 0);
-  const consumoMensal  = Number(s.monthlyConsumptionKwh || 0);
-  const consumoAnual   = Math.round(consumoMensal * 12);
-  const savingMensal   = Number(s.estimatedSavingsValue || 0);
-  const savingAnual    = savingMensal * 12;
-  const savingsPct     = Number(s.estimatedSavingsPercent || 0);
-  const paybackMeses   = Number(s.paybackMonths || 0);
-  const paybackAnos    = paybackMeses > 0 ? paybackMeses / 12 : 0;
-  const totalAnual     = Number(s.potentialGainAnnual || 0);
+  if (!summaryRecord && !recordAny) return "";
+  const s = (summaryRecord || {}) as Record<string, any>;
+  const rec = (recordAny || {}) as Record<string, any>;
+  const raw = (s.rawKpis || s.kpis || rec.kpis || {}) as Record<string, any>;
+
+  const demanda       = Number(s.demandKw || raw.dc || raw.dcP || 0);
+  const consumoMensal = Number(s.monthlyConsumptionKwh || (raw.E_mes_bruto ? raw.E_mes_bruto * 1000 : 0));
+  const consumoAnual  = Math.round(consumoMensal * 12);
+  const savingMensal  = Number(s.estimatedSavingsValue || (raw.eco_anual ? raw.eco_anual / 12 : 0));
+  const savingAnual   = Number(s.potentialGainAnnual || raw.eco_anual || (savingMensal * 12));
+  const savingsPct    = Number(s.estimatedSavingsPercent || 0);
+  const paybackMeses  = Number(s.paybackMonths || (raw.payback ? raw.payback * 12 : 0));
+  const paybackAnos   = paybackMeses > 0 ? paybackMeses / 12 : (raw.payback || 0);
 
   const fmt2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const brl  = (v: number) => "R$ " + fmt2.format(Number(v || 0));
-  const pct  = (v: number) => totalAnual > 0
-    ? ((v / totalAnual) * 100).toFixed(1).replace(".", ",") + "%"
+  const brl  = (v: any) => "R$ " + fmt2.format(Number(v || 0));
+  const num  = (v: any, dec = 2) => Number(v || 0).toFixed(dec).replace(".", ",");
+  const pct  = (v: number) => savingAnual > 0
+    ? ((v / savingAnual) * 100).toFixed(1).replace(".", ",") + "%"
     : "--";
 
-  // Compor contexto numerico estruturado para a IA nao inventar
   const breakdown =
-    "Linha de base tarifaria: " + brl(s.baselineScenarioAnnual) + " (" + pct(s.baselineScenarioAnnual) + " do total).\n" +
-    "Reducao termica: " + brl(s.thermalReductionAnnual) + " (" + pct(s.thermalReductionAnnual) + ").\n" +
-    "Otimizacao de demanda: " + brl(s.demandOptimizationAnnual) + " (" + pct(s.demandOptimizationAnnual) + ").\n" +
-    "QEE / reativo / THD: " + brl(s.powerQualityAnnual) + " (" + pct(s.powerQualityAnnual) + ").";
+    "Linha de base tarifária: " + brl(s.baselineScenarioAnnual || raw.F_base_liq || raw.F_base) + " (" + pct(Number(s.baselineScenarioAnnual || 0)) + " do total).\n" +
+    "Redução térmica: " + brl(s.thermalReductionAnnual || raw.therm_custo_anual) + " (" + pct(Number(s.thermalReductionAnnual || 0)) + ").\n" +
+    "Otimização de demanda: " + brl(s.demandOptimizationAnnual || raw.demRes?.ganho_anual_estimado) + " (" + pct(Number(s.demandOptimizationAnnual || 0)) + ").\n" +
+    "QEE / reativo / THD: " + brl(s.powerQualityAnnual || raw.thdRes?.total_RS_ano) + " (" + pct(Number(s.powerQualityAnnual || 0)) + ").";
 
   const profile = parseLoadProfile(String(s.loadProfileGainText || ""));
 
   const lines: string[] = [];
-  lines.push("# ANALISE TECNICA - DIAGNOSTICO ENERGETICO");
+  lines.push("# ANÁLISE TÉCNICA ESTRATÉGICA - DIAGNÓSTICO ENERGÉTICO (SEÇÕES 2 A 13)");
   lines.push("");
-  lines.push("## BLOCO 1 - Dados consolidados (use como referencia numerica)");
-  lines.push("- Demanda contratada: " + fmtN(demanda) + " kW" + (demanda > 500 ? " (grande porte)" : demanda > 100 ? " (medio porte)" : " (pequeno porte)"));
-  lines.push("- Consumo medio mensal: " + fmtN(consumoMensal) + " kWh/mes");
-  lines.push("- Volume anual estimado: " + fmtN(consumoAnual) + " kWh/ano");
-  lines.push("- Economia mensal projetada: " + brl(savingMensal));
-  lines.push("- Economia anualizada: " + brl(savingAnual));
-  lines.push("- Percentual de economia: " + savingsPct.toFixed(1).replace(".", ",") + "%");
-  lines.push("- Payback estimado: " + paybackMeses + " meses (" + paybackAnos.toFixed(1).replace(".", ",") + " anos)" + (paybackMeses <= 2 ? " [ATENCAO: payback muito baixo - investigar se ja ha obras em curso]" : ""));
-  lines.push("- Potencial de ganho no horizonte de 12 meses: " + brl(totalAnual));
+  lines.push("## BLOCO 1 - Perfil Cadastral e Operacional (Seções 1 e 2)");
+  lines.push("- Cliente / Razão Social: " + (rec.razao_social || rec.nome || "Não informado"));
+  lines.push("- Porte da Empresa: " + (raw.porte || rec.porte || "N/I") + " | Funcionários: " + (raw.nfunc || rec.nfunc || "N/I"));
+  lines.push("- Modalidade Tarifária: " + (raw.modalidade || rec.modalidade || "Verde/Azul") + " | Distribuidora: " + (raw.distribuidora || rec.distribuidora || "N/I"));
+  lines.push("- Demanda Contratada: " + fmtN(demanda) + " kW" + (raw.dcP ? " (Ponta: " + raw.dcP + " kW / Fora Ponta: " + (raw.dcFP || raw.dc) + " kW)" : ""));
+  lines.push("- Consumo Médio Mensal Base: " + fmtN(consumoMensal) + " kWh/mês (" + (consumoMensal/1000).toFixed(2) + " MWh/mês)");
+  lines.push("- Volume Anual Estimado: " + fmtN(consumoAnual) + " kWh/ano");
+  lines.push("- Fator de Potência Médio da Planta: " + (raw.fp ? num(raw.fp, 2) : "0,92"));
+  lines.push("- Sazonalidade Operacional: " + (raw.sazonal ? "Ativa (Índice: " + num(raw.indicesazonal) + ")" : "Não aplicável"));
   lines.push("");
-  lines.push("Decomposicao do ganho anual:");
+
+  lines.push("## BLOCO 2 - Demanda, Reativo e Qualidade da Rede (QEE) (Seções 6, 7 e 8)");
+  lines.push("- Ganho Anual com Otimização de Demanda: " + brl(s.demandOptimizationAnnual || raw.demRes?.ganho_anual_estimado));
+  lines.push("- Custos Anuais com Ultrapassagem de Demanda: " + brl(raw.ultrapass_ano));
+  lines.push("- Multa Anual por Energia Reativa Excedente (Baixo FP): " + brl(raw.multaReativo_ano || s.powerQualityAnnual));
+  lines.push("- Perdas Anuais por Distorção Harmônica Total (THD): " + brl(raw.thdRes?.total_RS_ano));
+  lines.push("- Confiabilidade e Risco de Interrupção da Rede (VOLL): " + (raw.crit_dur ? raw.crit_dur + " h/ano estimadas" : "N/I"));
+  lines.push("");
+
+  lines.push("## BLOCO 3 - Cargas Térmicas e Eficiência de Ativos (Seções 3 e 4)");
+  lines.push("- Custo Mensal com Utilidades Térmicas (Vapor/Gás/Frio): " + brl(s.thermalReductionAnnual ? s.thermalReductionAnnual / 12 : raw.therm_custo_mes));
+  lines.push("- Economia Anual por Substituição Tecnológica de Ativos: " + brl(raw.EquipComparativo?.gain_total));
+  lines.push("");
+
+  lines.push("## BLOCO 4 - Matriz de Geração On-Site e Armazenamento (Seções 5, 9 e 10)");
+  lines.push("- Fontes Locais Ativas: " + JSON.stringify(raw.scenarios || {}));
+  lines.push("- Geração Local Total Projetada: " + (raw.E_local ? num(raw.E_local) + " MWh/mês" : "0,00 MWh/mês"));
+  lines.push("- Usina Solar FV: " + (raw.E_local_fv ? num(raw.E_local_fv) + " MWh/mês (CAPEX: " + brl(raw.CAPEXfv) + ")" : "Inativo"));
+  lines.push("- Geração Eólica On-Site (Atlas/Weibull): " + (raw.E_local_eol ? num(raw.E_local_eol) + " MWh/mês · AEP Líquido: " + num((raw.aep_liq_kWh_eol || 0) / 1000, 1) + " MWh/ano (CAPEX: " + brl(raw.CAPEXeol) + ")" : "Inativo"));
+  lines.push("- Cogeração / Motor / Capstone: " + (raw.E_local_motor || raw.E_local_micro ? num((raw.E_local_motor || 0) + (raw.E_local_micro || 0)) + " MWh/mês (Combustível: " + (raw.fuel?.motor || "GN") + ")" : "Inativo"));
+  lines.push("- Sistema BESS (Armazenamento): " + (raw.scenarios?.BESS ? "Ativo (Peak-shaving e Backup · CAPEX: " + brl(raw.CAPEXbess) + ")" : "Inativo"));
+  lines.push("");
+
+  lines.push("## BLOCO 5 - Indicadores Econômico-Financeiros e Retorno (Seções 11 e 12)");
+  lines.push("- Fatura Atual da Concessionária (Base): " + brl(raw.F_base || s.baselineScenarioAnnual) + "/mês");
+  lines.push("- Fatura Projetada com Cenário Proposto: " + brl(raw.F_cen) + "/mês");
+  lines.push("- Economia Mensal Projetada: " + brl(savingMensal));
+  lines.push("- Economia Anual Consolidada: " + brl(savingAnual) + " (" + savingsPct.toFixed(1).replace(".", ",") + "% de redução)");
+  lines.push("- CAPEX Total de Investimento: " + brl(raw.CAPEX));
+  lines.push("- OPEX Anual de Manutenção: " + brl(raw.OPEX_a));
+  lines.push("- VPL (Valor Presente Líquido a 20 anos): " + brl(raw.VPL));
+  lines.push("- TIR (Taxa Interna de Retorno): " + (Number(raw.TIR || 0) * 100).toFixed(1).replace(".", ",") + "% a.a.");
+  lines.push("- Payback Estimado: " + paybackMeses + " meses (" + paybackAnos.toFixed(1).replace(".", ",") + " anos)");
+  lines.push("- Redução de Emissões de CO2 (ESG): " + (raw.CO_avoid ? num(raw.CO_avoid, 1) + " tCO2/ano" : "N/I"));
+  lines.push("");
+  lines.push("Decomposição do ganho anual apurado:");
   lines.push(breakdown);
   lines.push("");
+
   if (profile.media || profile.pico || profile.lfAntesPct) {
-    lines.push("Perfil de carga (do simulador):");
-    if (profile.media)   lines.push("- Media alvo: "   + fmtN(profile.media)        + " kWh/mes");
+    lines.push("Perfil de carga e flattening da planta (Seção 13):");
+    if (profile.media)   lines.push("- Média alvo: "   + fmtN(profile.media)        + " kWh/mês");
     if (profile.pico)    lines.push("- Pico: "         + fmtN(profile.pico.valor)   + " kWh em " + profile.pico.mes);
     if (profile.vale)    lines.push("- Vale: "         + fmtN(profile.vale.valor)   + " kWh em " + profile.vale.mes);
     if (profile.lfAntesPct != null) lines.push("- Fator de carga antes (bruto): "  + profile.lfAntesPct.toFixed(1).replace(".", ",") + "%");
     if (profile.lfDepoisPct != null) lines.push("- Fator de carga projetado: "    + profile.lfDepoisPct.toFixed(1).replace(".", ",") + "%");
-    if (profile.oscilacaoPp != null) lines.push("- Variacao FC projetada: " + (profile.oscilacaoPp >= 0 ? "+" : "") + profile.oscilacaoPp.toFixed(1).replace(".", ",") + " pp");
+    if (profile.oscilacaoPp != null) lines.push("- Variação FC projetada: " + (profile.oscilacaoPp >= 0 ? "+" : "") + profile.oscilacaoPp.toFixed(1).replace(".", ",") + " pp");
     lines.push("");
   }
-  if (recordAny?.created_by || recordAny?.reviewed_by) {
-    lines.push("Responsaveis pelo diagnostico: criado por "
-      + (recordAny.created_by || "nao informado")
-      + ", revisado por "
-      + (recordAny.reviewed_by || "nao informado") + ".");
-    lines.push("");
-  }
-  lines.push("## BLOCO 2 - Instrucoes para a sua resposta");
-  lines.push("- NAO repita o nome do cliente no inicio da resposta (ja consta na capa do PDF).");
-  lines.push("- NAO repita valores numericos em mais de um lugar; cada numero aparece uma unica vez, na secao onde e interpretado.");
-  lines.push("- Use 5 secoes com titulos EXATOS abaixo, nesta ordem:");
-  lines.push("  '### 1. Resumo executivo'     (3-5 linhas, conclusao direta, sem repetir numeros)");
-  lines.push("  '### 2. Perfil operacional'   (interpretar demanda + consumo + porte + fator de carga com causa-raiz)");
-  lines.push("  '### 3. Economia e payback'   (justificar o payback mesmo quando <= 2 meses)");
-  lines.push("  '### 4. Recomendacoes priorizadas' (lista numerada 1, 2, 3 com: ACAO + RACIONAL + IMPACTO EM R$)");
-  lines.push("  '### 5. Limitacoes e proximos passos' (1 paragrafo curto seguido de 3 a 5 bullets com foco em GESTAO ATIVA + PLATAFORMA ENERGY LINK + CONSULTORIA ESPECIALIZADA. Estrutura obrigatoria: (a) 1 paragrafo inicial DESTACANDO as vantagens concretas de investir em solucoes de eficiencia energetica - cite blindagem tarifaria, retorno financeiro crescente, sustentabilidade, modernizacao operacional, conformidade regulatoria e ganho competitivo. Deixar claro que eficiencia energetica nao e despesa, e investimento com payback e upside. (b) Bullet sobre a PLATAFORMA ENERGY LINK DO BRASIL - apresentar como o software de gestao energetica que sustenta a consultoria da Expert Energy: monitoramento em tempo real, alertas automaticos, indicadores de performance (KPIs), historico consultivo, integracao com a equipe tecnica, comparacao de cenarios. Posicionar a Plataforma como o destaque tecnologico da Expert Energy. (c) Bullet sobre a IMPORTANCIA DA GESTAO ATIVA - reforcar que instalar a solucao nao basta: e a gestao ativa dos indicadores que transforma o potencial do diagnostico em economia realizada e sustentada. Sem gestao ativa os numeros voltam ao baseline. (d) Bullet APRESENTANDO A CONSULTORIA ESPECIALIZADA DA EXPERT ENERGY como o caminho para executar as recomendacoes deste diagnostico com acompanhamento continuo via Plataforma Energy Link. (e) Bullet listando o que NAO esta no escopo deste diagnostico preliminar - investimentos em infraestrutura especifica, obras civis em andamento, projetos executivos detalhados, medicoes in loco - e propondo os proximos passos: contratacao da consultoria Expert Energy + onboard na Plataforma Energy Link do Brasil + gestao ativa dos indicadores.)");
-  lines.push("- ORTOGRAFIA OBRIGATORIA EM PORTUGUES BRASILEIRO (PT-BR): todo o texto que voce gerar - paragrafos, bullets, secoes, recomendacoes - DEVE estar corretamente acentuado, com todos os acentos graficos proprios do portugues do Brasil. Use os acentos proprios como: é, ã, ç, ó, í, ú, á, ê, ô, õ, à, entre outros, sempre que a palavra exigir. NAO escreva palavras sem acento apenas por seguranca tecnica. Exemplos corretos: \"diagnóstico\" (e nao \"diagnostico\"), \"análise\" (e nao \"analise\"), \"característica\", \"recomendação\". NUNCA pule, simplifique ou omita acentos proprios do portugues. Isso e um requisito inegociael de qualidade editorial do relatorio.");
-  lines.push("- Forneca justificativas causais para CADA recomendacao (ex: 'substituir sistema de iluminacao porque fator de carga caiu de 87% para 92% somente com variacao de setpoint, indicando excesso de iluminacao em horario de baixo consumo').");
-  lines.push("- Use bullet points com '-' e separacao por '\n'. Cada bullet em sua linha propria.");
-  lines.push("- Quando citar economia use 'R$ X.XXX,XX' (formato brasileiro, 2 casas).");
+
+  lines.push("## BLOCO 6 - Diretrizes e Estrutura Obrigatória da Resposta");
+  lines.push("- NAO repita o nome do cliente no início da resposta.");
+  lines.push("- Estruture em 5 seções numeradas EXATAS:");
+  lines.push("  '### 1. Resumo executivo' (conclusão direta dos ganhos e viabilidade global)");
+  lines.push("  '### 2. Perfil operacional e qualidade da rede' (interpretar demanda, consumo, reativo e perdas de THD)");
+  lines.push("  '### 3. Economia, matriz on-site e payback' (justificar a sinergia entre as fontes locais ativas e os indicadores financeiros VPL/TIR)");
+  lines.push("  '### 4. Recomendações técnicas priorizadas' (lista numerada 1, 2, 3 com AÇÃO + RACIONAL TÉCNICO + IMPACTO EM R$)");
+  lines.push("  '### 5. Governança, digitalização e próximos passos' (destacar a importância da telemetria contínua via Plataforma Energy Link do Brasil, gestão ativa e consultoria especializada da Expert Energy, pontuando também riscos e limites de coerência sem superdimensionamento)");
+  lines.push("- ORTOGRAFIA OBRIGATÓRIA EM PORTUGUÊS BRASILEIRO (PT-BR) com acentuação correta.");
+  lines.push("- Use bullet points com '-' e formatação monetária 'R$ X.XXX,XX'.");
+
   return lines.join("\n");
 }
 
