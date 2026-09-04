@@ -713,7 +713,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? 169287);
   const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? 116823);
   const ecoFaturaMensal = fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 52464;
-  const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12) ?? 643470);
+  const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
   // Demanda, Ultrapassagem, Reativo e THD
   const demandOptimizationAnnual = safeNumber(
@@ -744,7 +744,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
       361728
   );
 
-  const totalGanhosAnual = safeNumber(result.eco_anual_bruto ?? (ecoFaturaAnual + demandOptimizationAnnual + ultrapassagemAnual + multaReativoAnual + powerQualityAnnual + thermalReductionAnnual) ?? 1076037);
+  const totalGanhosAnual = safeNumber(result.eco_anual_bruto ?? (ecoFaturaAnual + demandOptimizationAnnual + ultrapassagemAnual + multaReativoAnual + powerQualityAnnual + thermalReductionAnnual));
 
   // Investimento e Viabilidade
   const capexTotal   = safeNumber(result.CAPEX ?? 2143000);
