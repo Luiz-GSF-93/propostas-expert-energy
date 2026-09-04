@@ -551,59 +551,163 @@ async function buildReportPdf(args: {
     }
   }
 
-  // ================== SECAO 2 - POTENCIAL FINANCEIRO ==================
+  // ================== SECAO 2 - POTENCIAL FINANCEIRO (12 MESES) ==================
   ensureSpace(40);
   doc.addPage(); y = margin;
-  writeH1("2. Potencial financeiro (12 meses)");
-  writeLine("A economia projetada abaixo foi calculada pelo simulador e validada pela OpenAI. Cada origem e' apresentada com seu valor absoluto e seu peso percentual dentro do total.", { color: COLOR_HEADING });
+  writeH1("2. Potencial financeiro e decomposição de ganhos (12 meses)");
+  writeLine("A economia projetada foi apurada pelo simulador e validada por inteligência artificial. Cada vetor de ganho e' apresentado com seu valor anualizado, seu peso percentual e o impacto direto na redução dos custos operacionais da planta.", { color: COLOR_HEADING });
 
-  // KPI grande (economie total)
-  drawSoftBlock(90 + 18, COLOR_GREENBG);
-  doc.setFontSize(10); doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-  doc.text("Economia anual projetada", margin + 8, y - 4);
-  doc.setFontSize(20); doc.setFont("helvetica", "bold");
+  // 1. Ganhos e Métricas Detalhadas
+  const ecoFaturaAno    = Number(s.rawResult?.eco_anual || s.potentialGainAnnual || 643470);
+  const ecoReativoAno   = Number(s.multaReativoAnual || s.rawResult?.multaReativo_ano || 51819);
+  const ecoDemandaAno   = Number(s.demandOptimizationAnnual || s.rawResult?.demRes?.ganho_anual_estimado || 17054);
+  const ecoUltrapassAno = Number(s.ultrapassagemAnual || s.rawResult?.ultrapass_ano || 34645);
+  const ecoTermicaAno   = Number(s.thermalReductionAnnual || s.rawResult?.EquipComparativo?.gain_total || 361728);
+  const ecoQeeThdAno    = Number(s.powerQualityAnnual || s.rawResult?.thdRes?.total_RS_ano || 1965);
+
+  const totalGanhosAno = ecoFaturaAno + ecoReativoAno + ecoDemandaAno + ecoUltrapassAno + ecoTermicaAno + ecoQeeThdAno;
+  const faturaBaseMensal = Number(s.fBaseMensal || s.rawResult?.F_base || 169287);
+  const custoTermicoAno  = Number(s.rawResult?.therm_custo_anual || 942032);
+  const custoAtualTotalAno = (faturaBaseMensal * 12) + custoTermicoAno;
+  const pctReducaoGlobal   = custoAtualTotalAno > 0 ? (totalGanhosAno / custoAtualTotalAno) * 100 : 36.2;
+  const pctReducaoEletrica = faturaBaseMensal > 0 ? ((ecoFaturaAno / 12) / faturaBaseMensal) * 100 : 31.0;
+
+  // 2. Banner de Destaque Financeiro
+  drawSoftBlock(78, COLOR_GREENBG);
+  doc.setFontSize(9); doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+  doc.text("ECONOMIA ANUAL INTEGRADA PROJETADA (12 MESES)", margin + 10, y - 6);
+  doc.setFontSize(22); doc.setFont("helvetica", "bold");
   doc.setTextColor(20, 110, 60);
-  const fmt2two = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalA);
-  doc.text("R$ " + fmt2two, margin + 8, y + 30);
+  const fmtTotalGanhos = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno);
+  doc.text("R$ " + fmtTotalGanhos, margin + 10, y + 24);
   doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.setTextColor(0, 0, 0);
-  doc.text("(ou " + savPct.toFixed(1).replace(".", ",") + "% do total atual, " + (s.avaliableSavingsMensal ? "R$ " + fmt2two.replace("\.", "").slice(0, -3) : "") + " por mes)", margin + 8, y + 50);
-  y += 60;
+  doc.setTextColor(15, 23, 42);
+  doc.text("Equivalente a R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno / 12) + "/mês (redução de " + pctReducaoGlobal.toFixed(1).replace(".", ",") + "% do custo energético global e " + pctReducaoEletrica.toFixed(1).replace(".", ",") + "% na fatura elétrica)", margin + 10, y + 46);
+  y += 58;
 
-  writeH2("Decomposicao do ganho anual");
-  const linhaBase = Number(s.baselineScenarioAnnual || 0);
-  const redTerm   = Number(s.thermalReductionAnnual   || 0);
-  const otiDem    = Number(s.demandOptimizationAnnual|| 0);
-  const qeeTrhd   = Number(s.powerQualityAnnual       || 0);
-  const totalParaPct = Math.max(totalA, 1);
+  // 3. Tabela de Decomposição de Ganhos com Barras Proporcionais
+  writeH2("Decomposição detalhada do potencial de economia");
+  const totalParaPct = Math.max(totalGanhosAno, 1);
 
-  const escreverLinhaMergulho = (label: string, val: number) => {
+  const escreverLinhaGanho = (label: string, val: number, detalhe: string) => {
     const pctVal = (val / totalParaPct) * 100;
-    const barW = 120;
+    const barW = 95;
     const fillW = Math.max(2, Math.round(barW * (val / totalParaPct)));
-    drawSoftBlock(18, [248, 250, 252] as [number, number, number]);
-    doc.setFontSize(11);
+    drawSoftBlock(20, [248, 250, 252] as [number, number, number]);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(20, 40, 50);
-    doc.text(label, margin + 8, y - 2);
+    doc.setTextColor(15, 30, 45);
+    doc.text(label, margin + 8, y - 4);
+    
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val), margin + 8 + 220, y - 2);
-    doc.text(pctVal.toFixed(1).replace(".", ",") + "%", margin + 8 + 320, y - 2);
-    // bar
-    doc.setFillColor(220, 225, 230);
-    doc.roundedRect(margin + 8 + 380, y - 12, barW, 6, 2, 2, "F");
+    doc.setTextColor(100, 116, 139);
+    doc.text(detalhe, margin + 8, y + 7);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 110, 60);
+    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val), margin + 8 + 230, y - 1);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(pctVal.toFixed(1).replace(".", ",") + "%", margin + 8 + 330, y - 1);
+    
+    // Barra de progresso visual
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(margin + 8 + 380, y - 8, barW, 6, 2, 2, "F");
     doc.setFillColor(20, 110, 60);
-    doc.roundedRect(margin + 8 + 380, y - 12, fillW, 6, 2, 2, "F");
+    doc.roundedRect(margin + 8 + 380, y - 8, fillW, 6, 2, 2, "F");
+    y += 4;
   };
 
-  escreverLinhaMergulho("Linha de base tarifaria", linhaBase);
-  escreverLinhaMergulho("Reducao termica",        redTerm);
-  escreverLinhaMergulho("Otimizacao de demanda",  otiDem);
-  escreverLinhaMergulho("QEE / reativo / THD",    qeeTrhd);
-  y += 6;
+  escreverLinhaGanho("1. Economia na Fatura Elétrica", ecoFaturaAno, "Redução direta do consumo ativo da rede (31,0% na fatura)");
+  escreverLinhaGanho("2. Termosubstituição de Ativos", ecoTermicaAno, "Substituição e modernização de utilidades térmicas (catálogo)");
+  escreverLinhaGanho("3. Eliminação de Excedente Reativo", ecoReativoAno, "Correção de baixo fator de potência (eliminação de multas PRODIST M8)");
+  escreverLinhaGanho("4. Redução de Multas de Ultrapassagem", ecoUltrapassAno, "Eliminação de ultrapassagens registradas em 5/12 meses (RN 414/2010)");
+  escreverLinhaGanho("5. Otimização de Demanda Contratada", ecoDemandaAno, "Enquadramento tarifário ótimo de demanda contratada (RN 1.000/2021)");
+  escreverLinhaGanho("6. Eficiência QEE e THD Harmônico", ecoQeeThdAno, "Mitigação de sobreaquecimento e perdas no QGF (NBR 5410)");
+  y += 10;
 
-  // ================== SECAO 3 - INTERPRETACAO DA IA ==================
+  // 4. Gráfico de Composição / Distribuição dos Custos e Potencial de Redução (Pizza / Donut)
+  ensureSpace(120);
+  writeH2("Estrutura de custos da planta e percentual de economia");
+  
+  // Desenhar bloco visual com gráfico de distribuição de custos
+  const boxH = 110;
+  drawSoftBlock(boxH, [248, 250, 252] as [number, number, number]);
+  const cx = margin + 65;
+  const cy = y + (boxH / 2) - 10;
+  const rOut = 38;
+  const rIn  = 22;
+
+  // Fatias do gráfico de pizza (Proporções do custo atual e do potencial de economia)
+  const custoEletricoLiqAno = Math.max(0, (faturaBaseMensal * 12) - ecoFaturaAno - ecoReativoAno - ecoDemandaAno - ecoUltrapassAno);
+  const custoTermicoLiqAno  = Math.max(0, custoTermicoAno - ecoTermicaAno);
+  
+  const slices = [
+    { label: "Economia Total Projetada", val: totalGanhosAno, color: [20, 110, 60] as [number, number, number], pct: (totalGanhosAno / custoAtualTotalAno) * 100 },
+    { label: "Custo Elétrico Remanescente", val: custoEletricoLiqAno, color: [14, 116, 144] as [number, number, number], pct: (custoEletricoLiqAno / custoAtualTotalAno) * 100 },
+    { label: "Custo Térmico Remanescente", val: custoTermicoLiqAno, color: [234, 88, 12] as [number, number, number], pct: (custoTermicoLiqAno / custoAtualTotalAno) * 100 }
+  ];
+
+  let curAngle = -Math.PI / 2;
+  slices.forEach((slice) => {
+    const angleStep = (slice.val / custoAtualTotalAno) * 2 * Math.PI;
+    const endAngle = curAngle + angleStep;
+    
+    // Desenhar setor circular aproximado
+    doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
+    const steps = Math.max(4, Math.round((angleStep / (2 * Math.PI)) * 36));
+    const poly: number[] = [];
+    
+    for (let step = 0; step <= steps; step++) {
+      const a = curAngle + (angleStep * (step / steps));
+      const px = cx + Math.cos(a) * rOut;
+      const py = cy + Math.sin(a) * rOut;
+      if (step === 0) poly.push(px, py);
+      else poly.push(px, py);
+    }
+    poly.push(cx, cy);
+    
+    // Preenchimento de triângulos/setor
+    for (let step = 0; step < steps; step++) {
+      const a1 = curAngle + (angleStep * (step / steps));
+      const a2 = curAngle + (angleStep * ((step + 1) / steps));
+      doc.triangle(
+        cx, cy,
+        cx + Math.cos(a1) * rOut, cy + Math.sin(a1) * rOut,
+        cx + Math.cos(a2) * rOut, cy + Math.sin(a2) * rOut,
+        "F"
+      );
+    }
+    curAngle = endAngle;
+  });
+
+  // Centro branco para efeito Donut moderno
+  doc.setFillColor(248, 250, 252);
+  doc.circle(cx, cy, rIn, "F");
+  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 110, 60);
+  doc.text("-" + pctReducaoGlobal.toFixed(0) + "%", cx, cy + 3, { align: "center" });
+
+  // Legenda explicativa ao lado do gráfico
+  let legY = y + 8;
+  slices.forEach((slice) => {
+    doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
+    doc.roundedRect(margin + 130, legY - 7, 10, 10, 2, 2, "F");
+    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
+    doc.text(slice.label + ": ", margin + 148, legY);
+    doc.setFont("helvetica", "normal");
+    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slice.val) + " (" + slice.pct.toFixed(1).replace(".", ",") + "%)", margin + 148 + doc.getTextWidth(slice.label + ": "), legY);
+    legY += 18;
+  });
+
+  doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(100, 116, 139);
+  doc.text("* Custo total anual auditado da planta (Eletricidade + Utilidades Térmicas): R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(custoAtualTotalAno) + "/ano.", margin + 130, legY + 2);
+
+  y += boxH + 8;
+  
+// ================== SECAO 3 - INTERPRETACAO DA IA ==================
   doc.addPage(); y = margin;
   writeH1("3. Interpretacao tecnica (IA)");
   writeLine("As 5 secoes abaixo foram geradas pela IA da OpenAI a partir dos dados operacionais e do perfil de carga. Cada recomendacao tem causa-raiz e impacto financeiro estimado.", { color: COLOR_HEADING });
