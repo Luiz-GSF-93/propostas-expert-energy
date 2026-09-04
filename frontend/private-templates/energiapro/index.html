@@ -3152,6 +3152,30 @@ setTimeout(function(){ window.__epcBoot(); },500);
       ]
     },
     {
+      id: "eolica",
+      title: "10. Geração Eólica On-Site",
+      target: "#eolPanel",
+      cards: [
+        {
+          title: "Finalidade da seção Eólica",
+          body: "Permite modelar a viabilidade técnica e financeira de autoprodução eólica on-site ou remota na planta do cliente, integrando dados do Atlas Eólico Brasileiro (CEPEL/INPE), distribuição estatística de Weibull e curva de potência da aerogerador."
+        },
+        {
+          title: "Passo a passo de preenchimento",
+          body: "1) Marque o checkbox '🌬 Eólica on-site' nos cenários.\n2) Informe a Potência instalada (kW) da turbina (ex: 50 kW, 250 kW ou modelos industriais).\n3) No quadro do Atlas Eólico, insira a Latitude e Longitude da planta e clique em '🔍 Buscar Atlas'. O sistema preenche automaticamente as velocidades médias de vento (V50 a V120 m/s), parâmetros Weibull (k e c) e a direção predominante.\n4) Opcionalmente, ajuste no acordeon 'Turbina & Curva de Potência' a altura do cubo (Hub), diâmetro do rotor e velocidades de corte (Cut-in: 3 m/s, Nominal: 12 m/s, Cut-out: 25 m/s)."
+        },
+        {
+          title: "Entendendo os resultados: AEP e Fator de Capacidade",
+          body: "• AEP Bruto (MWh/ano): Energia total teórica gerada por ano pela integração da curva de potência com o PDF de Weibull dos ventos.\n• AEP Líquido (MWh/ano): Geração anual real após descontar as perdas elétricas, indisponibilidade, esteira e ambientais (tipicamente 10% a 15% de perdas).\n• Fator de Capacidade (FC %): Relação entre a energia líquida gerada e o máximo teórico da turbina operando a 100% o ano todo (FC acima de 20% a 25% indica excelente viabilidade on-site)."
+        },
+        {
+          title: "CAPEX Granular e Análise de Sensibilidade",
+          body: "• CAPEX Granular: Permite detalhar custos de geração (R$/kW), engenharia, conexão à rede, obras civis e subestação.\n• Sensibilidade (Pessimista / Base / Otimista): Calcula em tempo real o impacto de variações no vento (±10%), na tarifa de energia (±10%) e no CAPEX (+10% / -5%), exibindo o novo Payback e a variação da economia para tomada de decisão segura pelo CFO."
+        }
+      ]
+    },
+
+    {
       id: "tabelas",
       title: "Leitura de tabelas",
       target: "#demRes",
