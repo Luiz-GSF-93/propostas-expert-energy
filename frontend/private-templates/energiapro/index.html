@@ -1913,7 +1913,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 window.EnergiaPro={
   version:"1.6.4",schemaVersion:"1.6.4",
   schema:{schemaVersion:"1.6.1",cargas:"Array",termicas:"Array<custo_h>",sezE:"Array<matriz 12>",sezT:"Array<matriz 12>",demandHist:"Array",thdCirc:"Array",kpis:"object",EquipComparativo:"object",scenarios:"object{FV,Motor,Micro,BESS,Eolica,Hibrido}",fuel:"object{motor,micro}"},
-  populate:function(input){if(!input||typeof input!=="object")return false;["razao","cnpj","segmento","tensao","distribuidora","mercado","modalidade","dc","fp","hd","dm","fu","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","sazonal","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw"].forEach(function(id){var el=$(id);if(el&&input[id]!==undefined)el.value=input[id]});
+  populate:function(input){if(!input||typeof input!=="object")return false;["razao","cnpj","segmento","tensao","distribuidora","mercado","modalidade","dc","fp","hd","dm","fu","pisc_mes","queda_mes","queda_dur","crit_ano","crit_dur","prod_h","voll","fv_kwp","hsp","pr","capex_fv_k","opex_fv","bess_kwh","bess_kw","bess_amp","bess_capex_kw","bess_volt","bess_fp_local","bess_eta","bess_horas_desejadas","chp","wacc","spread","horiz","infl","f_emis","sazonal","capModel","capKw","capCost_MWh","motorFuel","motorGN_Rm3","motorConsGN","motorKw","microFuel","microGN_Rm3","microConsGN","eolicaKw","eol_modelo","eol_rotor","eol_hub","eol_rhoA","eol_cutIn","eol_vNom","eol_cutOut","eol_lat","eol_lon","eol_alt","eol_area","eol_grow","eol_v50","eol_v80","eol_v100","eol_v120","eol_k","eol_c","eol_dir","eol_pd","eol_loc","eol_n","eol_loss_e","eol_loss_a","eol_loss_t","eol_loss_env","eol_cap_gen","eol_cap_eng","eol_cap_conex","eol_cap_obra","eol_cap_sub","eol_cap_opex"].forEach(function(id){var el=$(id);if(el&&input[id]!==undefined)el.value=input[id]});
   if(Array.isArray(input.cargas)){CARGAS=input.cargas.slice();SEZ_E=CARGAS.map(function(_,i){return Array.isArray(input.sezE)&&Array.isArray(input.sezE[i])?input.sezE[i]:defaultSeasonal()})}
   if(Array.isArray(input.termicas)){TERMICAS=input.termicas.map(function(t){if((t.custo_h===undefined||t.custo_h===null)&&t.cons!==undefined&&t.custo!==undefined)t.custo_h=t.cons*t.custo;else if(t.custo_h!==undefined&&(t.cons===undefined||t.custo===undefined)){if(!t.cons&&t.custo)t.cons=t.custo_h/Math.max(t.custo,1);else if(t.cons&&!t.custo)t.custo=t.custo_h/Math.max(t.cons,1)}return t});SEZ_T=TERMICAS.map(function(_,i){return Array.isArray(input.sezT)&&Array.isArray(input.sezT[i])?input.sezT[i]:defaultSeasonal()})}
   if(Array.isArray(input.demandHist))DEM_HIST=input.demandHist.slice();
@@ -1961,6 +1961,16 @@ function libDeleteEquipment(key){if(!confirm('Excluir esta tecnologia local?'))r
 function libExport(){try{var b=new Blob([JSON.stringify({biblioteca_local:window.EXTRA_LIB||[],exportadoEm:new Date().toISOString(),schemaVersion:'1.6.12'},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='energiaPro_biblioteca.json';a.click()}catch(e){alert('Falha ao exportar')}}
 // ============================== EÓLICA v17: Atlas + render ==============================
 function _eolSet(id, v){var el=$ && $(id); if(el && isFinite(v)) el.value=+v;}
+function syncEolModeloOnKwChange(){
+  var kwEl = $("eolicaKw");
+  var modEl = $("eol_modelo");
+  if(!kwEl || !modEl) return;
+  var v = parseFloat(String(kwEl.value).replace(",","."));
+  if(v === 250 && modEl.value === "WEG_W250_30") return;
+  if(v === 2000 && modEl.value === "Vestas_V120_2000") return;
+  if(v === 3300 && modEl.value === "Nordex_N131_3300") return;
+  modEl.value = "custom";
+}
 function aplicarCurva(){
   var m=$("eol_modelo") && $("eol_modelo").value;
   if(!m) return;
@@ -1994,6 +2004,7 @@ function _eolSpan(parent, txt, style){var s=document.createElement("span"); if(t
 // ====== PATCH 4 · AUTO-RERUN EOLICO ======
 (function attachEolicAutoRerun(){
   function reRun(){
+    try { syncEolModeloOnKwChange(); } catch(_){}
     try { if(typeof recalc === 'function') { recalc(); return; } } catch(_){}
     try { if(typeof calc === 'function') calc(); } catch(_){}
     try { if(typeof renderEolicDet === 'function') renderEolicDet(); } catch(_){}
