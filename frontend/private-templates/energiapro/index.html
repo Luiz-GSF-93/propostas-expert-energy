@@ -1229,7 +1229,7 @@ function calc(){
   var microFuelLabel=(microFuel==="BIO")?"🟢 BIOGÁS cliente (100% economia)":"GN R$ "+microGN_Rm3.toFixed(2)+"/m³";
 
   // ============== EÓLICA v17: Atlas + Weibull + curva cúbica + perdas ==============
-  function _eolN(id, d){var el=$ && $(id); if(!el)return d; var v=+el.value; return (isFinite(v)&&v>0)?v:d;}
+  function _eolN(id, d){var el=$ && $(id); if(!el)return d; var s=String(el.value||"").trim().replace(",","."); var v=parseFloat(s); return (isFinite(v)&&v>0)?v:d;}
   var eol = {
     v50:_eolN("eol_v50",0), v80:_eolN("eol_v80",0), v100:_eolN("eol_v100",0), v120:_eolN("eol_v120",0),
     k:_eolN("eol_k",2.0), c:_eolN("eol_c",0),
@@ -1258,7 +1258,7 @@ function calc(){
     return kw*f*f*f;
   }
   // 4) Weibull PDF + AEP por bins 0..25 m/s, passo 1 m/s
-  var eolicaKw_calc = +$("eolicaKw") ? (+$("eolicaKw").value||50) : 50;
+  var eolicaKw_calc = ($("eolicaKw") && parseFloat(String($("eolicaKw").value).replace(",",".")) > 0) ? parseFloat(String($("eolicaKw").value).replace(",",".")) : 50;
   var bins_eol=[]; var aep_bruto_kWh_eol=0;
   if(eol.c>0 && scEolica){
     for(var v_e=0;v_e<=25;v_e+=1){
@@ -2001,15 +2001,15 @@ function _eolSpan(parent, txt, style){var s=document.createElement("span"); if(t
   }
   function isEolicTarget(el){
     if(!el) return false;
+    if(el.id === 'eolicaKw') return true;
     var p = document.getElementById('eolPanel');
     return !!(p && p.contains(el));
   }
-  ['input','change','blur'].forEach(function(ev){
+  ['input','change','blur','keyup'].forEach(function(ev){
     document.addEventListener(ev, function(e){
       if(isEolicTarget(e.target)) reRun();
     }, true);
   });
-  // primeira carga: garante cards preenchidos
   setTimeout(function(){ try { reRun(); } catch(_){} }, 300);
 })();
 // ====== FIM PATCH 4 ======
