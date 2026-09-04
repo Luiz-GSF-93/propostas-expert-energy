@@ -1274,24 +1274,25 @@ function calc(){
   var perdas_tot_eol = (eol.loss_e+eol.loss_a+eol.loss_t+eol.loss_env)/100;
   if(perdas_tot_eol>0.5) perdas_tot_eol=0.5;
   var aep_liq_kWh_eol = scEolica ? aep_bruto_kWh_eol*(1-perdas_tot_eol) : 0;
-  // ====== PATCH 3.1 · bridge runtime ======
-  try {
-    window.__eolic_runtime = {
-      aep_bruto_kWh_eol: aep_bruto_kWh_eol,
-      aep_liq_kWh_eol:   aep_liq_kWh_eol,
-      FC_pct_eol:        FC_pct_eol,
-      CAPEXeol_v17:      CAPEXeol_v17,
-      OPEXeol_v17:       OPEXeol_v17,
-      eol_c: eol_c, eol_k: eol_k, eol_v100: eol_v100,
-      eol_dir: eol_dir, eol_pd: eol_pd,
-      tarifa_media_R_kWh: (typeof tarifa_media_R_kWh !== 'undefined') ? tarifa_media_R_kWh : 0,
-      economia_R_ano:     (typeof eco_eol_an !== 'undefined') ? eco_eol_an : 0
-    };
-  } catch(_){ }
-  // ====== FIM 3.1 ======
   var FC_pct_eol = scEolica && eolicaKw_calc>0 ? (aep_liq_kWh_eol/(eolicaKw_calc*eol.n_turb*8760)*100) : 0;
   var CAPEXeol_v17 = scEolica ? (eol.cap_gen*eolicaKw_calc + eol.cap_eng + eol.cap_conex + eol.cap_obra + eol.cap_sub) : 0;
   var OPEXeol_v17  = scEolica ? eol.cap_opex : 0;
+  // ====== PATCH 3.1f · bridge runtime (CORRIGIDO - apos definicoes) ======
+  try {
+    window.__eolic_runtime = {
+      aep_bruto_kWh_eol:  aep_bruto_kWh_eol,
+      aep_liq_kWh_eol:    aep_liq_kWh_eol,
+      FC_pct_eol:         FC_pct_eol,
+      CAPEXeol_v17:       CAPEXeol_v17,
+      OPEXeol_v17:        OPEXeol_v17,
+      eol_c: eol_c, eol_k: eol_k, eol_v100: eol_v100,
+      eol_dir: eol_dir, eol_pd: eol_pd,
+      tarifa_media_R_kWh: (typeof tarifa_media_R_kWh !== 'undefined') ? tarifa_media_R_kWh : 0,
+      economia_R_ano:     (typeof eco_eol_an !== 'undefined') ? eco_eol_an : 0,
+      updated:            Date.now()
+    };
+  } catch(_){ }
+  // ====== FIM 3.1f ======
   // ============================================================================
 
   var eolicaKw=+$("eolicaKw").value||50;
@@ -3874,6 +3875,7 @@ function nextStep(delta){
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
