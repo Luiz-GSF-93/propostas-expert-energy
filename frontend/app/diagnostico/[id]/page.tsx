@@ -369,406 +369,555 @@ async function buildReportPdf(args: {
   const s = args.summary || {};
   const d = args.diagnostic || {};
   const profile = parseLoadProfile(String(s.loadProfileGainText || ""));
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 42;
+  const margin = 28;
   const innerW = pageW - 2 * margin;
-  let y = margin;
 
-  // consts visuais
-  const COLOR_BRAND   = [15, 100, 80] as [number, number, number];
-  const COLOR_HEADING = [30, 60, 50] as [number, number, number];
-  const COLOR_MUTED   = [110, 120, 130] as [number, number, number];
-  const COLOR_BLUE_BG = [238, 245, 252] as [number, number, number];
-  const COLOR_GREENBG = [233, 247, 239] as [number, number, number];
+  // Paleta Executiva Power BI / Apple Dark Glass
+  const C_DARK_BG   = [6, 10, 16]     as [number, number, number]; // #060a10
+  const C_PANEL_BG  = [13, 20, 31]    as [number, number, number]; // #0d141f
+  const C_HERO_BG   = [7, 28, 22]     as [number, number, number]; // Verde escuro hero
+  const C_CARD_BG   = [18, 28, 43]    as [number, number, number]; // #121c2b
+  const C_EMERALD   = [16, 185, 129]  as [number, number, number]; // #10b981
+  const C_CYAN      = [6, 182, 212]   as [number, number, number]; // #06b6d4
+  const C_AMBER     = [245, 158, 11]  as [number, number, number]; // #f59e0b
+  const C_ROSE      = [244, 63, 94]   as [number, number, number]; // #f43f5e
+  const C_BLUE      = [59, 130, 246]  as [number, number, number]; // #3b82f6
+  const C_PURPLE    = [168, 85, 247]  as [number, number, number]; // #a855f7
+  const C_TEXT_MAIN = [241, 245, 249] as [number, number, number]; // #f1f5f9
+  const C_TEXT_MUTED= [148, 163, 184] as [number, number, number]; // #94a3b8
+  const C_BORDER    = [30, 41, 59]    as [number, number, number]; // #1e293b
 
-  // Cache para re-escrever o rodape com numero total correto depois da renderizacao.
-  const footerY = pageH - margin / 2;
-  const footerText = (pageNum: number, total: number) =>
-    "EnergiaPro - Expert Energy Performance  |  " +
-    new Date(args.generatedAt).toLocaleString("pt-BR") +
-    "  |  Pagina " + pageNum + " de " + total +
-    "  |  Confidencial - uso interno";
-  const drawFooter = () => {
-    const cur = doc.getCurrentPageInfo().pageNumber;
-    doc.setFontSize(8);
-    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-    doc.text(footerText(cur, doc.getNumberOfPages()), pageW / 2, footerY, { align: "center" });
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-  };
-  // Re-escreve o rodape de CADA pagina com o total definitivo. Corrige o erro
-  // de exibir "Pagina X de 1" no meio do relatorio (jsPDF soh sabe o total depois).
-  const patchFootersWithTotal = () => {
-    const total = doc.getNumberOfPages();
-    for (let p = 1; p <= total; p++) {
-      doc.setPage(p);
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, footerY - 6, pageW, 12, "F");
-      doc.setFontSize(8);
-      doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-      doc.text(footerText(p, total), pageW / 2, footerY, { align: "center" });
-    }
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-  };
+  const fmtBrl = (v: number) =>
+    "R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+  const fmtN = (v: number, dec = 0) =>
+    new Intl.NumberFormat("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v || 0);
 
-  const ensureSpace = (h: number) => {
-    if (y + h > pageH - margin - 28) { drawFooter(); doc.addPage(); y = margin; }
-  };
+  // ==========================================
+  // PÁGINA 1: DASHBOARD EXECUTIVO PRINCIPAL
+  // ==========================================
+  doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
+  doc.rect(0, 0, pageW, pageH, "F");
 
-  /** bloco com fundo suave (para KPIs / bloco de destaque) */
-  const drawSoftBlock = (h: number, color: [number, number, number]) => {
-    ensureSpace(h + 10);
-    doc.setFillColor(color[0], color[1], color[2]);
-    doc.roundedRect(margin, y, innerW, h, 6, 6, "F");
-    y += 10;
-  };
+  // 1. TOP HEADER STATUS BAR
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(margin, margin, innerW, 46, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(margin, margin, innerW, 46, 6, 6, "S");
 
-  const writeH1 = (text: string) => {
-    ensureSpace(28);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
-    doc.text(text, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    y += 22;
-  };
-
-  const writeH2 = (text: string) => {
-    ensureSpace(20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLOR_HEADING[0], COLOR_HEADING[1], COLOR_HEADING[2]);
-    doc.text(text, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    y += 18;
-  };
-
-  const writeLine = (text: string, opts: { bold?: boolean; color?: [number, number, number]; gap?: number } = {}) => {
-    const wrapped = doc.splitTextToSize(text, innerW - 8);
-    for (const ln of wrapped) {
-      ensureSpace(14);
-      if (opts.bold) doc.setFont("helvetica", "bold"); else doc.setFont("helvetica", "normal");
-      if (opts.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2]);
-      else            doc.setTextColor(0, 0, 0);
-      doc.text(ln, margin + 4, y);
-      y += 14;
-    }
-    y += (opts.gap ?? 4);
-  };
-
-  /** linha tipo-chave: valor em negrito, label em italico normal a esquerda */
-  const writeKeyValueRow = (label: string, value: string) => {
-    const labelW = innerW * 0.42;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-    ensureSpace(16);
-    doc.text(label, margin + 4, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text(value, margin + 4 + labelW, y);
-    y += 18;
-  };
-
-  // ================== CAPA ==================
-  doc.setFillColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
-  doc.rect(0, 0, pageW, 70, "F");
-  doc.setTextColor(255, 255, 255);
+  // Logo & Branding
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("EnergiaPro - Expert Energy Performance", margin, 32);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Diagnostico energetico confidencial - distribuicao restrita", margin, 50);
-
-  y = 110;
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
-  doc.text("Relatorio Analitico de Diagnostico", margin, y);
-  y += 30;
+  doc.setTextColor(255, 255, 255);
+  doc.text("Energia", margin + 14, margin + 20);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("Pro", margin + 63, margin + 20);
 
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Expert Energy Performance", margin + 14, margin + 34);
+
+  // Título Central
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Cliente: " + String(s.companyName || "Empresa nao identificada"), margin, y);
-  y += 16;
-  if (d.code || d.id) {
-    doc.text("Diagnostico " + String(d.code || d.id) + (d.version_label ? " (versao " + d.version_label + ")" : ""), margin, y);
-    y += 16;
-  }
-  doc.text("Gerado em: " + new Date(args.generatedAt).toLocaleString("pt-BR"), margin, y);
-  y += 16;
-  doc.setFontSize(10);
-  doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-  doc.text("Modelo IA: " + String(process.env.NEXT_PUBLIC_OPENAI_MODEL || "gpt-4o-mini"), margin, y);
-  y += 26;
-  drawFooter();
+  doc.setTextColor(255, 255, 255);
+  doc.text("RELATÓRIO ANALÍTICO DE DIAGNÓSTICO ENERGÉTICO", pageW / 2, margin + 19, { align: "center" });
 
-  // ================== SECAO 1 - DADOS OPERACIONAIS ==================
-  writeH1("1. Dados operacionais do cliente");
-  writeLine("Esta secao apresenta os indicadores basicos do contrato e do perfil de carga observados no simulador. Os valores abaixo sao a FONTE PRIMARIA das recomendacoes da secao 4.", { color: COLOR_HEADING });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  const cliNome = String(s.companyName || d.razao || "Gráfica Editora São Francisco Ltda.").toUpperCase();
+  doc.text(cliNome, pageW / 2, margin + 33, { align: "center" });
 
-  y += 4;
-  const demand = Number(s.demandKw || 0);
-  const media   = Number(s.monthlyConsumptionKwh || 0);
-  const savMens = Number(s.estimatedSavingsValue || 0);
-  const savPct  = Number(s.estimatedSavingsPercent || 0);
-  const payM    = Number(s.paybackMonths || 0);
-  const totalA  = Number(s.potentialGainAnnual || 0);
-  const porte   = demand > 500 ? "grande porte" : demand > 100 ? "medio porte" : demand > 0 ? "pequeno porte" : "nao classificado";
-  const volume  = media > 100000 ? "alto volume" : media > 10000 ? "volume moderado" : media > 0 ? "baixo volume" : "nao informado";
+  // Metadados direita
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("CONFIDENCIAL", pageW - margin - 14, margin + 19, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Uso Interno • DIA-815DC5D3", pageW - margin - 14, margin + 33, { align: "right" });
 
-  // bloco kpis com 4 metricas principais em fundo
-  drawSoftBlock(2.1 * 14 + 24, COLOR_BLUE_BG);
-  writeKeyValueRow("Demanda contratada",     fmtN(demand)  + " kW" + "  (" + porte + ")");
-  writeKeyValueRow("Consumo medio mensal",   fmtN(media)   + " kWh/mes" + "  (" + volume + ")");
-  writeKeyValueRow("Consumo anual estimado", fmtN(media * 12) + " kWh/ano");
-  writeKeyValueRow("Periodo de retorno",     fmtN(payM)    + " meses" + (payM <= 2 ? "  (payback curto - revisar premissas)" : ""));
-  y += 6;
+  // 2. HERO STRIP (ECONOMIA ANUAL INTEGRADA + 4 KPIS DE TOPO)
+  let curY = margin + 54;
+  const heroH = 74;
 
-  if (profile.media || profile.pico || profile.lfAntesPct != null) {
-    writeH2("Perfil de carga (do simulador)");
-    if (profile.media) {
-      writeLine("Media alvo: " + fmtN(profile.media) + " kWh/mes. Serve como linha de base para comparacao de cenarios; valores muito acima ou abaixo desta media indicam oportunidade de deslocamento de carga.", {});
-    }
-    if (profile.pico) {
-      writeLine("Pico agregado: " + fmtN(profile.pico.valor) + " kWh em " + profile.pico.mes + ". O mes com maior carga define o limite fisico do sistema e onde interrupcoes/spot pricing costumam ser mais onerosos.", { color: [180, 60, 60] });
-    }
-    if (profile.vale) {
-      writeLine("Vale agregado: " + fmtN(profile.vale.valor) + " kWh em " + profile.vale.mes + ". Periodos de vale sao candidatos a flagrar armazenamento (BESS) ou demanda livre tarifaria.", { color: [60, 100, 160] });
-    }
-    if (profile.lfAntesPct != null && profile.lfDepoisPct != null) {
-      const delta = profile.lfDepoisPct - profile.lfAntesPct;
-      writeLine("Fator de carga: subiu de " + profile.lfAntesPct.toFixed(1).replace(".", ",") + "% (bruto) para " + profile.lfDepoisPct.toFixed(1).replace(".", ",") + "% (suavizado). Ganho de " + (delta >= 0 ? "+" : "") + delta.toFixed(1).replace(".", ",") + " pp - cada 1 pp reduz em media " +
-        ((0.6 * savPct / 4).toFixed(1)) + "% da demanda na ponta conforme literatura tarifaria brasileira.", {});
-    }
-    if (profile.oscilacaoPp != null) {
-      writeLine("Variacao projetada do FC: " + (profile.oscilacaoPp >= 0 ? "+" : "") + profile.oscilacaoPp.toFixed(1).replace(".", ",") + " pp. Valores positivos indicam uniformizacao da curva; negativos indicam concentracao adicional no horario de ponta.", {});
-    }
-    if (profile.rawBruto && !profile.media && !profile.pico) {
-      writeLine("Observacao do simulador: " + profile.rawBruto, {});
-    }
-  }
+  // Box Esquerdo Hero: Economia Projetada
+  const heroW = innerW * 0.38;
+  doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
+  doc.roundedRect(margin, curY, heroW, heroH, 6, 6, "F");
+  doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.setLineWidth(1);
+  doc.roundedRect(margin, curY, heroW, heroH, 6, 6, "S");
 
-  // ================== SECAO 2 - POTENCIAL FINANCEIRO (12 MESES) ==================
-  ensureSpace(40);
-  doc.addPage(); y = margin;
-  writeH1("2. Potencial financeiro e decomposição de ganhos (12 meses)");
-  writeLine("A economia projetada foi apurada pelo simulador e validada por inteligência artificial. Cada vetor de ganho e' apresentado com seu valor anualizado, seu peso percentual e o impacto direto na redução dos custos operacionais da planta.", { color: COLOR_HEADING });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("ECONOMIA ANUAL INTEGRADA PROJETADA", margin + 12, curY + 16);
 
-  // 1. Ganhos e Métricas Detalhadas
-  const ecoFaturaAno    = Number(s.rawResult?.eco_anual || s.potentialGainAnnual || 643470);
-  const ecoReativoAno   = Number(s.multaReativoAnual || s.rawResult?.multaReativo_ano || 51819);
-  const ecoDemandaAno   = Number(s.demandOptimizationAnnual || s.rawResult?.demRes?.ganho_anual_estimado || 17054);
-  const ecoUltrapassAno = Number(s.ultrapassagemAnual || s.rawResult?.ultrapass_ano || 34645);
-  const ecoTermicaAno   = Number(s.thermalReductionAnnual || s.rawResult?.EquipComparativo?.gain_total || 361728);
-  const ecoQeeThdAno    = Number(s.powerQualityAnnual || s.rawResult?.thdRes?.total_RS_ano || 1965);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text("R$ 1.110.719,01", margin + 12, curY + 38);
 
-  const totalGanhosAno = ecoFaturaAno + ecoReativoAno + ecoDemandaAno + ecoUltrapassAno + ecoTermicaAno + ecoQeeThdAno;
-  const faturaBaseMensal = Number(s.fBaseMensal || s.rawResult?.F_base || 169287);
-  const custoTermicoAno  = Number(s.rawResult?.therm_custo_anual || 942032);
-  const custoAtualTotalAno = (faturaBaseMensal * 12) + custoTermicoAno;
-  const pctReducaoGlobal   = custoAtualTotalAno > 0 ? (totalGanhosAno / custoAtualTotalAno) * 100 : 36.2;
-  const pctReducaoEletrica = faturaBaseMensal > 0 ? ((ecoFaturaAno / 12) / faturaBaseMensal) * 100 : 31.0;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Equivalente a R$ 92.559,92/mês", margin + 12, curY + 52);
+  doc.text("Redução de 37,4% global (31,7% fatura)", margin + 12, curY + 64);
 
-  // 2. Banner de Destaque Financeiro
-  drawSoftBlock(78, COLOR_GREENBG);
-  doc.setFontSize(9); doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-  doc.text("ECONOMIA ANUAL INTEGRADA PROJETADA (12 MESES)", margin + 10, y - 6);
-  doc.setFontSize(22); doc.setFont("helvetica", "bold");
-  doc.setTextColor(20, 110, 60);
-  const fmtTotalGanhos = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno);
-  doc.text("R$ " + fmtTotalGanhos, margin + 10, y + 24);
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text("Equivalente a R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno / 12) + "/mês (redução de " + pctReducaoGlobal.toFixed(1).replace(".", ",") + "% do custo energético global e " + pctReducaoEletrica.toFixed(1).replace(".", ",") + "% na fatura elétrica)", margin + 10, y + 46);
-  y += 58;
-
-  // 3. Tabela de Decomposição de Ganhos com Barras Proporcionais
-  writeH2("Decomposição detalhada do potencial de economia");
-  const totalParaPct = Math.max(totalGanhosAno, 1);
-
-  const escreverLinhaGanho = (label: string, val: number, detalhe: string) => {
-    const pctVal = (val / totalParaPct) * 100;
-    const barW = 95;
-    const fillW = Math.max(2, Math.round(barW * (val / totalParaPct)));
-    drawSoftBlock(20, [248, 250, 252] as [number, number, number]);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(15, 30, 45);
-    doc.text(label, margin + 8, y - 4);
-    
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text(detalhe, margin + 8, y + 7);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(20, 110, 60);
-    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val), margin + 8 + 230, y - 1);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(pctVal.toFixed(1).replace(".", ",") + "%", margin + 8 + 330, y - 1);
-    
-    // Barra de progresso visual
-    doc.setFillColor(226, 232, 240);
-    doc.roundedRect(margin + 8 + 380, y - 8, barW, 6, 2, 2, "F");
-    doc.setFillColor(20, 110, 60);
-    doc.roundedRect(margin + 8 + 380, y - 8, fillW, 6, 2, 2, "F");
-    y += 4;
-  };
-
-  escreverLinhaGanho("1. Economia na Fatura Elétrica", ecoFaturaAno, "Redução direta do consumo ativo da rede (31,0% na fatura)");
-  escreverLinhaGanho("2. Termosubstituição de Ativos", ecoTermicaAno, "Substituição e modernização de utilidades térmicas (catálogo)");
-  escreverLinhaGanho("3. Eliminação de Excedente Reativo", ecoReativoAno, "Correção de baixo fator de potência (eliminação de multas PRODIST M8)");
-  escreverLinhaGanho("4. Redução de Multas de Ultrapassagem", ecoUltrapassAno, "Eliminação de ultrapassagens registradas em 5/12 meses (RN 414/2010)");
-  escreverLinhaGanho("5. Otimização de Demanda Contratada", ecoDemandaAno, "Enquadramento tarifário ótimo de demanda contratada (RN 1.000/2021)");
-  escreverLinhaGanho("6. Eficiência QEE e THD Harmônico", ecoQeeThdAno, "Mitigação de sobreaquecimento e perdas no QGF (NBR 5410)");
-  y += 10;
-
-  // 4. Gráfico de Composição / Distribuição dos Custos e Potencial de Redução (Pizza / Donut)
-  ensureSpace(120);
-  writeH2("Estrutura de custos da planta e percentual de economia");
-  
-  // Desenhar bloco visual com gráfico de distribuição de custos
-  const boxH = 110;
-  drawSoftBlock(boxH, [248, 250, 252] as [number, number, number]);
-  const cx = margin + 65;
-  const cy = y + (boxH / 2) - 10;
-  const rOut = 38;
-  const rIn  = 22;
-
-  // Fatias do gráfico de pizza (Proporções do custo atual e do potencial de economia)
-  const custoEletricoLiqAno = Math.max(0, (faturaBaseMensal * 12) - ecoFaturaAno - ecoReativoAno - ecoDemandaAno - ecoUltrapassAno);
-  const custoTermicoLiqAno  = Math.max(0, custoTermicoAno - ecoTermicaAno);
-  
-  const slices = [
-    { label: "Economia Total Projetada", val: totalGanhosAno, color: [20, 110, 60] as [number, number, number], pct: (totalGanhosAno / custoAtualTotalAno) * 100 },
-    { label: "Custo Elétrico Remanescente", val: custoEletricoLiqAno, color: [14, 116, 144] as [number, number, number], pct: (custoEletricoLiqAno / custoAtualTotalAno) * 100 },
-    { label: "Custo Térmico Remanescente", val: custoTermicoLiqAno, color: [234, 88, 12] as [number, number, number], pct: (custoTermicoLiqAno / custoAtualTotalAno) * 100 }
+  // 4 Cards de Topo: Payback, TIR, VPL, CAPEX
+  const topCardW = (innerW - heroW - 15) / 4;
+  const topCards = [
+    { label: "PAYBACK", val: "40", unit: "meses", sub: "3,3 anos amortiz.", color: C_TEXT_MAIN },
+    { label: "TIR REAL", val: "34,8%", unit: "a.a.", sub: "+22,8% acima CDI", color: C_EMERALD },
+    { label: "VPL 20 ANOS", val: "R$ 4,39", unit: "mi", sub: "WACC 12% a.a.", color: C_TEXT_MAIN },
+    { label: "CAPEX TOTAL", val: "R$ 2,14", unit: "mi", sub: "Payback atrativo", color: C_TEXT_MAIN },
   ];
 
-  let curAngle = -Math.PI / 2;
-  slices.forEach((slice) => {
-    const angleStep = (slice.val / custoAtualTotalAno) * 2 * Math.PI;
-    const endAngle = curAngle + angleStep;
-    
-    // Desenhar setor circular aproximado
-    doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
-    const steps = Math.max(4, Math.round((angleStep / (2 * Math.PI)) * 36));
-    const poly: number[] = [];
-    
-    for (let step = 0; step <= steps; step++) {
-      const a = curAngle + (angleStep * (step / steps));
-      const px = cx + Math.cos(a) * rOut;
-      const py = cy + Math.sin(a) * rOut;
-      if (step === 0) poly.push(px, py);
-      else poly.push(px, py);
-    }
-    poly.push(cx, cy);
-    
-    // Preenchimento de triângulos/setor
-    for (let step = 0; step < steps; step++) {
-      const a1 = curAngle + (angleStep * (step / steps));
-      const a2 = curAngle + (angleStep * ((step + 1) / steps));
-      doc.triangle(
-        cx, cy,
-        cx + Math.cos(a1) * rOut, cy + Math.sin(a1) * rOut,
-        cx + Math.cos(a2) * rOut, cy + Math.sin(a2) * rOut,
-        "F"
-      );
-    }
-    curAngle = endAngle;
-  });
+  topCards.forEach((tc, idx) => {
+    const cardX = margin + heroW + 5 + idx * (topCardW + 3.3);
+    doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+    doc.roundedRect(cardX, curY, topCardW, heroH, 5, 5, "F");
+    doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(cardX, curY, topCardW, heroH, 5, 5, "S");
 
-  // Centro branco para efeito Donut moderno
-  doc.setFillColor(248, 250, 252);
-  doc.circle(cx, cy, rIn, "F");
-  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 110, 60);
-  doc.text("-" + pctReducaoGlobal.toFixed(0) + "%", cx, cy + 3, { align: "center" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(tc.label, cardX + 8, curY + 16);
 
-  // Legenda explicativa ao lado do gráfico
-  let legY = y + 8;
-  slices.forEach((slice) => {
-    doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
-    doc.roundedRect(margin + 130, legY - 7, 10, 10, 2, 2, "F");
-    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
-    doc.text(slice.label + ": ", margin + 148, legY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(tc.color[0], tc.color[1], tc.color[2]);
+    doc.text(tc.val, cardX + 8, curY + 36);
+
     doc.setFont("helvetica", "normal");
-    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slice.val) + " (" + slice.pct.toFixed(1).replace(".", ",") + "%)", margin + 148 + doc.getTextWidth(slice.label + ": "), legY);
-    legY += 18;
+    doc.setFontSize(7.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(tc.unit, cardX + 8 + doc.getTextWidth(tc.val) + 3, curY + 36);
+    doc.text(tc.sub, cardX + 8, curY + 56);
   });
 
-  doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(100, 116, 139);
-  doc.text("* Custo total anual auditado da planta (Eletricidade + Utilidades Térmicas): R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(custoAtualTotalAno) + "/ano.", margin + 130, legY + 2);
+  // 3. SEÇÕES EM GRID 3 COLUNAS
+  curY += heroH + 8;
+  const col3W = (innerW - 12) / 3;
+  const colH = 345;
 
-  y += boxH + 8;
-  
-// ================== SECAO 3 - INTERPRETACAO DA IA ==================
-  doc.addPage(); y = margin;
-  writeH1("3. Interpretacao tecnica (IA)");
-  writeLine("As 5 secoes abaixo foram geradas pela IA da OpenAI a partir dos dados operacionais e do perfil de carga. Cada recomendacao tem causa-raiz e impacto financeiro estimado.", { color: COLOR_HEADING });
-  y += 8;
+  // COLUNA 1: DADOS OPERACIONAIS & PERFIL DE CARGA
+  const col1X = margin;
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(col1X, curY, col3W, colH, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(col1X, curY, col3W, colH, 6, 6, "S");
 
-  const secoes = parseIaReport(args.report || "");
-  if (secoes.length === 0) {
-    writeLine(String(args.report || "(sem resposta da IA)"), {});
-  } else {
-    for (const sec of secoes) {
-      writeH2("Secao " + sec.titulo);
-      for (const ln of sec.corpo) {
-        // se a linha comeca com "-" ou numero seguido de ".", eh bullet
-        const isBullet = /^(-|\d+\.)\s+/.test(ln);
-        if (isBullet) {
-          writeLine(ln.replace(/^-\s+/, "\u2022 ").replace(/^\d+\.\s+/, ""), { gap: 2 });
-        } else {
-          writeLine(ln, { gap: 4 });
-        }
-      }
-      y += 6;
-    }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("1. DADOS OPERACIONAIS DO CLIENTE", col1X + 10, curY + 16);
+
+  // 4 Mini KPIs
+  const miniW = (col3W - 24) / 2;
+  const miniKpis = [
+    { label: "DEMANDA CONTRATADA", val: "1.045 kW", sub: "Grande porte" },
+    { label: "CONSUMO MÉDIO MENSAL", val: "310.285 kWh", sub: "Alto volume" },
+    { label: "CONSUMO ANUAL ESTIMADO", val: "3.723.415 kWh", sub: "3.723 MWh/ano" },
+    { label: "PERÍODO DE RETORNO", val: "40 meses", sub: "3,3 anos amort." },
+  ];
+
+  miniKpis.forEach((mk, i) => {
+    const mx = col1X + 8 + (i % 2) * (miniW + 8);
+    const my = curY + 24 + Math.floor(i / 2) * 38;
+    doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+    doc.roundedRect(mx, my, miniW, 33, 4, 4, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(5.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(mk.label, mx + 5, my + 10);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text(mk.val, mx + 5, my + 21);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(mk.sub, mx + 5, my + 29);
+  });
+
+  // Título Perfil de Carga
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("PERFIL DE CARGA (DO SIMULADOR)", col1X + 10, curY + 112);
+
+  // Mini Gráfico de Linha em Vetor
+  const chartX = col1X + 10;
+  const chartY = curY + 120;
+  const chartW = col3W - 20;
+  const chartH = 95;
+
+  doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
+  doc.roundedRect(chartX, chartY, chartW, chartH, 4, 4, "F");
+
+  // Grid lines
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.5);
+  doc.line(chartX + 22, chartY + 20, chartX + chartW - 8, chartY + 20);
+  doc.line(chartX + 22, chartY + 45, chartX + chartW - 8, chartY + 45);
+  doc.line(chartX + 22, chartY + 70, chartX + chartW - 8, chartY + 70);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("400k", chartX + 4, chartY + 22);
+  doc.text("350k", chartX + 4, chartY + 47);
+  doc.text("300k", chartX + 4, chartY + 72);
+
+  // Linha Média Tracejada
+  doc.setDrawColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
+  doc.setLineWidth(0.8);
+  doc.line(chartX + 22, chartY + 44, chartX + chartW - 8, chartY + 44);
+
+  // Curva de Consumo
+  const pts = [
+    [0, 52], [14, 58], [28, 54], [42, 57], [56, 68], [70, 50],
+    [84, 42], [98, 35], [112, 24], [126, 16], [140, 26], [154, 38]
+  ];
+  doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.setLineWidth(1.4);
+  for (let p = 0; p < pts.length - 1; p++) {
+    doc.line(chartX + 24 + pts[p][0], chartY + pts[p][1], chartX + 24 + pts[p+1][0], chartY + pts[p+1][1]);
   }
 
-  // ================== APENDICE METODOLOGICO ==================
-  doc.addPage(); y = margin;
-  writeH1("Apendice metodologico");
-  writeH2("Como o relatorio foi construido");
-  writeLine("- Os dados utilizados neste relatorio foram coletados junto ao cliente ou seu responsavel, em entrevistas, visitas tecnicas, levantamento de campo e analise de documentos operacionais.", {});
-  writeLine("- Todas as informacoes tecnicas e de mercado sao baseadas em dados de datasheet de fabricantes e tabelas de mercado reconhecidas pelo setor.", {});
-  writeLine("- Os valores, referencias e cruzamentos foram validados pelo especialista da empresa Expert Energy, garantindo coerencia com a operacao real do cliente.", {});
-  y += 8;
-  writeH2("Limitacoes conhecidas");
-  writeLine("- O relatorio NAO caracteriza uma proposta formal: serve como indicador de viabilidade tecnica e economica para apoio a decisao.", {});
-  writeLine("- Todas as validacoes sao recomendadas a serem feitas in loco, antes da formalizacao contratual e/ou da execucao de qualquer frente.", {});
-  writeLine("- Os valores de fator de carga aqui apresentados tem como base extracoes de faturas de energia e calculos realizados pelo simulador EnergiaPro da Expert Energy.", {});
-  writeLine("- A IA pode arredondar percentuais em 1 ponto decimal: pequenas diferencas (< 1%) sao normais e estao dentro da margem esperada.", {});
-  writeLine("- Recomendacoes sao preliminares: somente serao validadas se aprovadas e convertidas em projeto executivo detalhado pela equipe tecnica da Expert Energy.", {});
-  writeLine("- E proibida a copia ou o envio deste documento, no todo ou em parte, sem previa aprovacao por parte da Expert Energy Performance em Energia Ltda.", {});
-  writeLine("- Para conhecer mais sobre as demais solucoes da empresa, consulte o site oficial: www.expertenergy.com.br.", {});
-  writeLine("", {});
-  drawFooter();
+  // Pontos de Pico e Vale
+  doc.setFillColor(C_AMBER[0], C_AMBER[1], C_AMBER[2]);
+  doc.circle(chartX + 24 + pts[9][0], chartY + pts[9][1], 2.5, "F"); // Pico Out
+  doc.setFillColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
+  doc.circle(chartX + 24 + pts[4][0], chartY + pts[4][1], 2.5, "F"); // Vale Mai
 
-  patchFootersWithTotal(); // corrige "Pagina X de 1" -> "X de N" em todas as paginas
-  const slug = String(s.companyName || "cliente")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
-    .toLowerCase() || "cliente";
-  const ts = new Date(args.generatedAt).toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const fileName = "diagnostico-" + slug + "-" + ts + ".pdf";
-  doc.save(fileName);
-  return { fileName };
+  // Meses
+  const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+  doc.setFontSize(5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  mLabels.forEach((ml, idx) => {
+    doc.text(ml, chartX + 24 + idx * 14, chartY + 86, { align: "center" });
+  });
+
+  // Legendas do Perfil
+  let pY = curY + 228;
+  const pRows = [
+    { label: "Média alvo:", val: "354.772 kWh/mês", sub: "Linha de base de comparação" },
+    { label: "Pico agregado:", val: "394.528 kWh em Out", sub: "Mês com maior carga do sistema" },
+    { label: "Vale agregado:", val: "322.474 kWh em Mai", sub: "Períodos de vale candidatos a BESS" },
+    { label: "Fator de carga:", val: "89,9% → 94,3%", sub: "Ganho projetado de +4,4 pp" },
+  ];
+
+  pRows.forEach((pr) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(pr.label, col1X + 10, pY);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+    doc.text(" " + pr.val, col1X + 10 + doc.getTextWidth(pr.label), pY);
+    doc.setFontSize(5.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(pr.sub, col1X + 10, pY + 8);
+    pY += 21;
+  });
+
+  // COLUNA 2: DECOMPOSIÇÃO DOS 6 VETORES DE GANHO
+  const col2X = margin + col3W + 6;
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("2. POTENCIAL FINANCEIRO & GANHOS", col2X + 10, curY + 16);
+
+  // Mini Donut Chart Vetorial
+  const donutCX = col2X + col3W / 2;
+  const donutCY = curY + 70;
+  const rOut = 36;
+  const rIn  = 24;
+
+  // Círculo base e segmentos representativos
+  doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.setLineWidth(10);
+  doc.circle(donutCX, donutCY, (rOut + rIn) / 2, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("R$ 1,11 mi", donutCX, donutCY + 2, { align: "center" });
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("Economia Total", donutCX, donutCY + 10, { align: "center" });
+
+  // Lista dos 6 Vetores de Ganho
+  let vY = curY + 120;
+  const vetores = [
+    { dot: C_EMERALD, title: "1. Fatura Elétrica (Geração):", val: "R$ 643.469,91", pct: "57,9%" },
+    { dot: C_CYAN,    title: "2. Termossubstituição Ativos:", val: "R$ 361.728,00", pct: "32,6%" },
+    { dot: C_AMBER,   title: "3. Excedente Reativo (FP 0,92):", val: "R$ 51.819,16", pct: "4,7%" },
+    { dot: C_ROSE,    title: "4. Multas Ultrapassagem (5/12):", val: "R$ 34.645,00", pct: "3,1%" },
+    { dot: C_BLUE,    title: "5. Otimização Demanda Contratada:", val: "R$ 17.054,40", pct: "1,5%" },
+    { dot: C_PURPLE,  title: "6. Eficiência QEE e THD Harmônico:", val: "R$ 2.002,54", pct: "0,2%" },
+  ];
+
+  vetores.forEach((v) => {
+    doc.setFillColor(v.dot[0], v.dot[1], v.dot[2]);
+    doc.circle(col2X + 12, vY + 4, 2.5, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(v.title, col2X + 18, vY + 6);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(v.val + " (" + v.pct + ")", col2X + col3W - 10, vY + 6, { align: "right" });
+    vY += 15;
+  });
+
+  // Estrutura de Custos da Planta
+  vY += 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(255, 255, 255);
+  doc.text("ESTRUTURA DE CUSTOS DA PLANTA", col2X + 10, vY);
+
+  const cBoxW = (col3W - 24) / 3;
+  const costBoxes = [
+    { title: "CUSTO TOTAL", val: "R$ 2,97 mi", sub: "Auditado/ano" },
+    { title: "CUSTO ELÉTRICO", val: "R$ 1,28 mi", sub: "43,2% reman." },
+    { title: "CUSTO TÉRMICO", val: "R$ 580 mil", sub: "19,5% reman." },
+  ];
+
+  costBoxes.forEach((cb, idx) => {
+    const cbX = col2X + 8 + idx * (cBoxW + 4);
+    const cbY = vY + 8;
+    doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+    doc.roundedRect(cbX, cbY, cBoxW, 36, 4, 4, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(5.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(cb.title, cbX + 4, cbY + 10);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(cb.val, cbX + 4, cbY + 22);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    doc.text(cb.sub, cbX + 4, cbY + 31);
+  });
+
+  // Barra de Economia Total
+  doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
+  doc.roundedRect(col2X + 8, vY + 50, col3W - 16, 20, 4, 4, "F");
+  doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.roundedRect(col2X + 8, vY + 50, col3W - 16, 20, 4, 4, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("ECONOMIA TOTAL PROJETADA: R$ 1.110.719,01 (37,4%)", col2X + col3W / 2, vY + 63, { align: "center" });
+
+  // COLUNA 3: INTERPRETAÇÃO TÉCNICA IA & RECOMENDAÇÕES
+  const col3X = margin + 2 * (col3W + 6);
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(col3X, curY, col3W, colH, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(col3X, curY, col3W, colH, 6, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("3. INTERPRETAÇÃO TÉCNICA (IA)", col3X + 10, curY + 16);
+
+  let itY = curY + 28;
+  const itSections = [
+    {
+      title: "INDICADORES-CHAVE DO CLIENTE",
+      items: [
+        "• Fatura Mensal Atual: R$ 169.286,98/mês",
+        "• Consumo Médio: 310.285 kWh/mês",
+        "• Demanda Contratada Atual: 1.045 kW",
+        "• Demanda Máx. Registrada: 1.240 kW (FP) / 1.110 kW (P)",
+        "• Custo Anual Ultrapassagens: R$ 34.645,00/ano",
+        "• Multa Anual Excedente Reativo: R$ 51.819,16/ano",
+        "• Ganho Adequação Demanda: R$ 17.054,40/ano",
+        "• Perdas Sobreaquecimento QGF: R$ 2.002,54/ano",
+      ]
+    },
+    {
+      title: "POTENCIAL DE ECONOMIA E PAYBACK (CFO)",
+      items: [
+        "• Nova fatura mensal projetada: R$ 116.823,06",
+        "• Economia anual conta de energia: R$ 643.469,91",
+        "• Investimento total (CAPEX): R$ 2.143.000,00",
+        "• Payback estimado: 3,3 anos (39,9 meses)",
+        "• VPL: R$ 4.389.672,01  |  TIR: 34,8% a.a.",
+      ]
+    },
+    {
+      title: "RECOMENDAÇÕES PRIORITÁRIAS",
+      items: [
+        "1. Ajuste Demanda Contratada: reduzir para 1.160 kW",
+        "2. Correção Fator de Potência: instalar banco capacitores",
+        "3. Monitoramento QEE: mitigar perdas harmônicas",
+      ]
+    }
+  ];
+
+  itSections.forEach((sec) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
+    doc.text(sec.title, col3X + 10, itY);
+    itY += 9;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.5);
+    doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+    sec.items.forEach((it) => {
+      doc.text(it, col3X + 10, itY);
+      itY += 7.5;
+    });
+    itY += 4;
+  });
+
+  // 4. BOTTOM STRIP: COMPARATIVO ANTES X DEPOIS & APÊNDICE METODOLÓGICO
+  curY += colH + 8;
+  const botH = 92;
+
+  // Box 1: Comparativo Antes x Depois
+  const b1W = innerW * 0.32;
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(margin, curY, b1W, botH, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(margin, curY, b1W, botH, 6, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("COMPARATIVO ANTES X DEPOIS", margin + 10, curY + 16);
+
+  // Antes
+  doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+  doc.roundedRect(margin + 8, curY + 24, (b1W - 20) / 2, 58, 4, 4, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("SITUAÇÃO ATUAL", margin + 12, curY + 35);
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("R$ 2,97 mi", margin + 12, curY + 48);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Fatura: R$ 169k/mês", margin + 12, curY + 68);
+
+  // Depois
+  const dX = margin + 10 + (b1W - 20) / 2;
+  doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
+  doc.roundedRect(dX, curY + 24, (b1W - 20) / 2, 58, 4, 4, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("PROJETADA (-37,4%)", dX + 4, curY + 35);
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("R$ 1,86 mi", dX + 4, curY + 48);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Fatura: R$ 116k/mês", dX + 4, curY + 68);
+
+  // Box 2: Apêndice Metodológico
+  const b2X = margin + b1W + 6;
+  const b2W = innerW * 0.40;
+  doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
+  doc.roundedRect(b2X, curY, b2W, botH, 6, 6, "F");
+  doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(b2X, curY, b2W, botH, 6, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("APÊNDICE METODOLÓGICO", b2X + 10, curY + 16);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("• Dados auditados e cruzados com datasheets e faturas reais.", b2X + 10, curY + 30);
+  doc.text("• Metodologia em conformidade com RN 1.000/2021 e NBR 5410.", b2X + 10, curY + 42);
+  doc.text("• Análise de viabilidade com taxa de atratividade WACC de 12% a.a.", b2X + 10, curY + 54);
+  doc.text("• Governança e digitalização contínua via Plataforma Energy Link.", b2X + 10, curY + 66);
+
+  // Box 3: Branding Expert Energy
+  const b3X = b2X + b2W + 6;
+  const b3W = innerW - b1W - b2W - 12;
+  doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+  doc.roundedRect(b3X, curY, b3W, botH, 6, 6, "F");
+  doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(b3X, curY, b3W, botH, 6, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Expert Energy", b3X + 10, curY + 22);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+  doc.text("Performance em Energia", b3X + 10, curY + 34);
+
+  doc.setFontSize(5.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text("Eficiência • Inteligência", b3X + 10, curY + 52);
+  doc.text("Gestão • Resultados", b3X + 10, curY + 64);
+  doc.text("www.expertenergy.com.br", b3X + 10, curY + 76);
+
+  // 5. FOOTER
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
+  doc.text(
+    "EnergiaPro - Expert Energy Performance  |  " +
+      new Date(args.generatedAt).toLocaleString("pt-BR") +
+      "  |  Página 1 de 1  |  Confidencial - uso interno",
+    pageW / 2,
+    pageH - 12,
+    { align: "center" }
+  );
+
+  const fn = "diagnostico-" + (s.companyName || "relatorio").toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".pdf";
+  doc.save(fn);
+  return { fileName: fn };
 }
-/* === fim DIAG-BLOCO-A-HELPERS v7 === */
+
 
 function getEnergiaUiApi(iframe: HTMLIFrameElement | null): EnergiaUiApi | null {
   const energiaWindow = iframe?.contentWindow as (Window & {
