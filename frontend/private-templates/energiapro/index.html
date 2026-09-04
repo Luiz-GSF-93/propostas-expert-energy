@@ -2029,12 +2029,15 @@ function renderEolicDet(d){
   var temAtlas = !!(($("eol_v100") && +$("eol_v100").value>0) || ($("eol_k") && +$("eol_k").value>0));
   var badge = temAtlas ? (window.__eolicBadge||"🟢") : "⚪";
   var txtBadge = temAtlas ? "Pré-viabilidade (Atlas + coords)" : "Sem Atlas – preencher manualmente";
-  var fcPct = (typeof FC_pct_eol!=="undefined" && FC_pct_eol) ? FC_pct_eol : 0;
-  var aepBruto = (typeof aep_bruto_kWh_eol!=="undefined" && aep_bruto_kWh_eol) ? aep_bruto_kWh_eol : 0;
-  var aepLiq = (typeof aep_liq_kWh_eol!=="undefined" && aep_liq_kWh_eol) ? aep_liq_kWh_eol : 0;
-  var capexTot = (typeof CAPEXeol_v17!=="undefined" && CAPEXeol_v17) ? CAPEXeol_v17 : eKw*7500;
-  var opexAnual = (typeof OPEXeol_v17!=="undefined" && OPEXeol_v17) ? OPEXeol_v17 : eKw*120;
-  var tarifaMedia = (d && d.tarifa_media_R_kWh) ? d.tarifa_media_R_kWh : 0.85;
+  // ====== PATCH 3.2f - ler do __eolic_runtime (publicado em calc) ======
+  var _rt = _eolicRT();
+  var fcPct     = _rt.FC_pct_eol        || 0;
+  var aepBruto  = _rt.aep_bruto_kWh_eol || 0;
+  var aepLiq    = _rt.aep_liq_kWh_eol   || 0;
+  var capexTot  = _rt.CAPEXeol_v17      || (eKw*7500);
+  var opexAnual = _rt.OPEXeol_v17       || (eKw*120);
+  var tarifaMedia = _rt.tarifa_media_R_kWh || 0.85;
+  // ====== FIM 3.2f ======
   var eMensal = (aepLiq/12);
   var ecoAnual = eMensal*12*tarifaMedia;
   var payBack = (capexTot>0 && ecoAnual>opexAnual) ? (capexTot/(ecoAnual-opexAnual)).toFixed(1) : "—";
