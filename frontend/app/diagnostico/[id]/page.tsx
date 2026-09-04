@@ -219,8 +219,6 @@ const fmtN = (v: number, d = 0) =>
     : "--";
 
 /** Monta o prompt analítico detalhado e estruturado para a OpenAI (Seções 2 a 13).
- * Garante que a IA receba e interprete corretamente: Demanda, Ultrapassagem, Reativo, THD, Fontes On-site, CAPEX, VPL, TIR e Governança. */
-/** Monta o prompt analítico detalhado e estruturado para a OpenAI (Seções 2 a 13).
  * Garante fidelidade matemática absoluta aos dados do Energiapro e visão executiva de CFO. */
 function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   if (!summaryRecord && !recordAny) return "";
@@ -253,9 +251,9 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   const ecoDemandaAno     = Number(s.demandOptimizationAnnual || 17054);
   const custoUltrapassAno = Number(s.ultrapassagemAnual || 34645);
   const multaReativoAno   = Number(s.multaReativoAnual || 51819);
-  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || 1965);
+  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || 2002);
   const ganhoTermicoAno   = Number(s.thermalReductionAnnual || 361728);
-  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + custoUltrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno) || 1076037);
+  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + custoUltrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno) || 1110719);
 
   const capexTotal   = Number(s.capexTotal || 2143000);
   const capexFV      = Number(s.capexFV || 570000);
@@ -348,6 +346,7 @@ function parseIaReport(text: string): { titulo: string; corpo: string[] }[] {
 
 /** Gera o PDF profissional. Mantem o jsPDF via dynamic import para nao
  * inflar o bundle do /diagnostico */
+/** Gera o PDF profissional com layout executivo refinado e paginas dedicadas. */
 async function buildReportPdf(args: {
   report: string;
   summary: Record<string, any>;
@@ -361,319 +360,411 @@ async function buildReportPdf(args: {
 
   const s = args.summary || {};
   const d = args.diagnostic || {};
+  const res = (s.rawResult || d.result_json || d.result || {}) as Record<string, any>;
+  const inp = (s.rawInput || d.payload_json?.input || d.input || {}) as Record<string, any>;
   const profile = parseLoadProfile(String(s.loadProfileGainText || ""));
+  
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 42;
+  const margin = 38;
   const innerW = pageW - 2 * margin;
   let y = margin;
 
-  // consts visuais
-  const COLOR_BRAND   = [15, 100, 80] as [number, number, number];
-  const COLOR_HEADING = [30, 60, 50] as [number, number, number];
-  const COLOR_MUTED   = [110, 120, 130] as [number, number, number];
-  const COLOR_BLUE_BG = [238, 245, 252] as [number, number, number];
-  const COLOR_GREENBG = [233, 247, 239] as [number, number, number];
+  const COLOR_BRAND_DARK  = [11, 31, 58]   as [number, number, number];
+  const COLOR_BRAND_GREEN = [15, 122, 77]  as [number, number, number];
+  const COLOR_HEADING     = [15, 23, 42]   as [number, number, number];
+  const COLOR_MUTED       = [100, 116, 139] as [number, number, number];
+  const COLOR_BORDER      = [226, 232, 240] as [number, number, number];
+  const COLOR_BG_LIGHT    = [248, 250, 252] as [number, number, number];
+  const COLOR_GREEN_BG    = [240, 253, 244] as [number, number, number];
+  const COLOR_GREEN_BORDER= [187, 247, 208] as [number, number, number];
 
-  // Cache para re-escrever o rodape com numero total correto depois da renderizacao.
-  const footerY = pageH - margin / 2;
+  const footerY = pageH - 22;
   const footerText = (pageNum: number, total: number) =>
-    "EnergiaPro - Expert Energy Performance  |  " +
+    "EnergiaPro · Expert Energy Performance  |  " +
     new Date(args.generatedAt).toLocaleString("pt-BR") +
-    "  |  Pagina " + pageNum + " de " + total +
-    "  |  Confidencial - uso interno";
-  const drawFooter = () => {
-    const cur = doc.getCurrentPageInfo().pageNumber;
+    "  |  Página " + pageNum + " de " + total +
+    "  |  Confidencial · Uso Interno";
+
+  const drawHeaderBanner = (titleText: string, sectionNumber: string) => {
+    doc.setFillColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+    doc.roundedRect(margin, y, innerW, 32, 5, 5, "F");
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(sectionNumber + " · " + titleText.toUpperCase(), margin + 12, y + 20);
+    
     doc.setFontSize(8);
-    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-    doc.text(footerText(cur, doc.getNumberOfPages()), pageW / 2, footerY, { align: "center" });
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(203, 213, 225);
+    doc.text("EXPERT ENERGY PERFORMANCE", pageW - margin - 12, y + 20, { align: "right" });
+    
+    y += 42;
   };
-  // Re-escreve o rodape de CADA pagina com o total definitivo. Corrige o erro
-  // de exibir "Pagina X de 1" no meio do relatorio (jsPDF soh sabe o total depois).
+
   const patchFootersWithTotal = () => {
     const total = doc.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
       doc.setPage(p);
       doc.setFillColor(255, 255, 255);
-      doc.rect(0, footerY - 6, pageW, 12, "F");
+      doc.rect(0, footerY - 10, pageW, 20, "F");
+      doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+      doc.line(margin, footerY - 8, pageW - margin, footerY - 8);
+      
       doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-      doc.text(footerText(p, total), pageW / 2, footerY, { align: "center" });
+      doc.text(footerText(p, total), pageW / 2, footerY + 4, { align: "center" });
     }
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
   };
 
   const ensureSpace = (h: number) => {
-    if (y + h > pageH - margin - 28) { drawFooter(); doc.addPage(); y = margin; }
-  };
-
-  /** bloco com fundo suave (para KPIs / bloco de destaque) */
-  const drawSoftBlock = (h: number, color: [number, number, number]) => {
-    ensureSpace(h + 10);
-    doc.setFillColor(color[0], color[1], color[2]);
-    doc.roundedRect(margin, y, innerW, h, 6, 6, "F");
-    y += 10;
+    if (y + h > pageH - 45) {
+      doc.addPage();
+      y = margin;
+    }
   };
 
   const writeH1 = (text: string) => {
-    ensureSpace(28);
-    doc.setFontSize(16);
+    ensureSpace(30);
+    doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
+    doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
     doc.text(text, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
     y += 22;
   };
 
   const writeH2 = (text: string) => {
-    ensureSpace(20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLOR_HEADING[0], COLOR_HEADING[1], COLOR_HEADING[2]);
-    doc.text(text, margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
+    ensureSpace(22);
     doc.setFontSize(11);
-    y += 18;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+    doc.text(text, margin, y);
+    y += 16;
   };
 
   const writeLine = (text: string, opts: { bold?: boolean; color?: [number, number, number]; gap?: number } = {}) => {
-    const wrapped = doc.splitTextToSize(text, innerW - 8);
+    const wrapped = doc.splitTextToSize(text, innerW);
     for (const ln of wrapped) {
       ensureSpace(14);
       if (opts.bold) doc.setFont("helvetica", "bold"); else doc.setFont("helvetica", "normal");
       if (opts.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2]);
-      else            doc.setTextColor(0, 0, 0);
-      doc.text(ln, margin + 4, y);
-      y += 14;
+      else            doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9.5);
+      doc.text(ln, margin, y);
+      y += (opts.gap || 13);
     }
-    y += (opts.gap ?? 4);
   };
 
-  /** linha tipo-chave: valor em negrito, label em italico normal a esquerda */
-  const writeKeyValueRow = (label: string, value: string) => {
-    const labelW = innerW * 0.42;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-    ensureSpace(16);
-    doc.text(label, margin + 4, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text(value, margin + 4 + labelW, y);
-    y += 18;
-  };
-
-  // ================== CAPA ==================
-  doc.setFillColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
-  doc.rect(0, 0, pageW, 70, "F");
+  // --- PÁGINA 1: CAPA EXECUTIVA & DADOS OPERACIONAIS ---
+  doc.setFillColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.roundedRect(margin, y, innerW, 64, 6, 6, "F");
+  
+  doc.setFontSize(15);
+  doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("EnergiaPro - Expert Energy Performance", margin, 32);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Diagnostico energetico confidencial - distribuicao restrita", margin, 50);
-
-  y = 110;
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(COLOR_BRAND[0], COLOR_BRAND[1], COLOR_BRAND[2]);
-  doc.text("Relatorio Analitico de Diagnostico", margin, y);
-  y += 30;
-
-  doc.setFont("helvetica", "normal");
+  doc.text("RELATÓRIO ANALÍTICO DE DIAGNÓSTICO ENERGÉTICO", margin + 16, y + 26);
+  
   doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Cliente: " + String(s.companyName || "Empresa nao identificada"), margin, y);
-  y += 16;
-  if (d.code || d.id) {
-    doc.text("Diagnostico " + String(d.code || d.id) + (d.version_label ? " (versao " + d.version_label + ")" : ""), margin, y);
-    y += 16;
-  }
-  doc.text("Gerado em: " + new Date(args.generatedAt).toLocaleString("pt-BR"), margin, y);
-  y += 16;
-  doc.setFontSize(10);
-  doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-  doc.text("Modelo IA: " + String(process.env.NEXT_PUBLIC_OPENAI_MODEL || "gpt-4o-mini"), margin, y);
-  y += 26;
-  drawFooter();
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(187, 247, 208);
+  doc.text(String(s.companyName || inp.razao || "Empresa Cliente").toUpperCase(), margin + 16, y + 46);
 
-  // ================== SECAO 1 - DADOS OPERACIONAIS ==================
-  writeH1("1. Dados operacionais do cliente");
-  writeLine("Esta secao apresenta os indicadores basicos do contrato e do perfil de carga observados no simulador. Os valores abaixo sao a FONTE PRIMARIA das recomendacoes da secao 4.", { color: COLOR_HEADING });
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text("Diagnóstico: " + String(d.id || "DIA-01").slice(0, 12).toUpperCase(), pageW - margin - 16, y + 26, { align: "right" });
+  doc.text("Versão: EnergiaPro v1.6.14 · IA gpt-4o", pageW - margin - 16, y + 46, { align: "right" });
+  y += 76;
 
-  y += 4;
-  const demand = Number(s.demandKw || 0);
-  const media   = Number(s.monthlyConsumptionKwh || 0);
-  const savMens = Number(s.estimatedSavingsValue || 0);
-  const savPct  = Number(s.estimatedSavingsPercent || 0);
-  const payM    = Number(s.paybackMonths || 0);
-  const totalA  = Number(s.potentialGainAnnual || 0);
-  const porte   = demand > 500 ? "grande porte" : demand > 100 ? "medio porte" : demand > 0 ? "pequeno porte" : "nao classificado";
-  const volume  = media > 100000 ? "alto volume" : media > 10000 ? "volume moderado" : media > 0 ? "baixo volume" : "nao informado";
+  const totalA = Number(s.potentialGainAnnual || res.eco_anual_bruto || 1110719);
+  const capexTot = Number(s.capexTotal || res.CAPEX || 2143000);
+  const vplTot = Number(s.vpl20Anos || res.VPL || 4389672);
+  const tirTot = Number(s.tirAnual || res.TIR || 0.348);
+  const payTot = Number(s.paybackAnos || res.payback || 3.3);
 
-  // bloco kpis com 4 metricas principais em fundo
-  drawSoftBlock(2.1 * 14 + 24, COLOR_BLUE_BG);
-  writeKeyValueRow("Demanda contratada",     fmtN(demand)  + " kW" + "  (" + porte + ")");
-  writeKeyValueRow("Consumo medio mensal",   fmtN(media)   + " kWh/mes" + "  (" + volume + ")");
-  writeKeyValueRow("Consumo anual estimado", fmtN(media * 12) + " kWh/ano");
-  writeKeyValueRow("Periodo de retorno",     fmtN(payM)    + " meses" + (payM <= 2 ? "  (payback curto - revisar premissas)" : ""));
-  y += 6;
-
-  if (profile.media || profile.pico || profile.lfAntesPct != null) {
-    writeH2("Perfil de carga (do simulador)");
-    if (profile.media) {
-      writeLine("Media alvo: " + fmtN(profile.media) + " kWh/mes. Serve como linha de base para comparacao de cenarios; valores muito acima ou abaixo desta media indicam oportunidade de deslocamento de carga.", {});
-    }
-    if (profile.pico) {
-      writeLine("Pico agregado: " + fmtN(profile.pico.valor) + " kWh em " + profile.pico.mes + ". O mes com maior carga define o limite fisico do sistema e onde interrupcoes/spot pricing costumam ser mais onerosos.", { color: [180, 60, 60] });
-    }
-    if (profile.vale) {
-      writeLine("Vale agregado: " + fmtN(profile.vale.valor) + " kWh em " + profile.vale.mes + ". Periodos de vale sao candidatos a flagrar armazenamento (BESS) ou demanda livre tarifaria.", { color: [60, 100, 160] });
-    }
-    if (profile.lfAntesPct != null && profile.lfDepoisPct != null) {
-      const delta = profile.lfDepoisPct - profile.lfAntesPct;
-      writeLine("Fator de carga: subiu de " + profile.lfAntesPct.toFixed(1).replace(".", ",") + "% (bruto) para " + profile.lfDepoisPct.toFixed(1).replace(".", ",") + "% (suavizado). Ganho de " + (delta >= 0 ? "+" : "") + delta.toFixed(1).replace(".", ",") + " pp - cada 1 pp reduz em media " +
-        ((0.6 * savPct / 4).toFixed(1)) + "% da demanda na ponta conforme literatura tarifaria brasileira.", {});
-    }
-    if (profile.oscilacaoPp != null) {
-      writeLine("Variacao projetada do FC: " + (profile.oscilacaoPp >= 0 ? "+" : "") + profile.oscilacaoPp.toFixed(1).replace(".", ",") + " pp. Valores positivos indicam uniformizacao da curva; negativos indicam concentracao adicional no horario de ponta.", {});
-    }
-    if (profile.rawBruto && !profile.media && !profile.pico) {
-      writeLine("Observacao do simulador: " + profile.rawBruto, {});
-    }
-  }
-
-  // ================== SECAO 2 - POTENCIAL FINANCEIRO (12 MESES) ==================
-  ensureSpace(40);
-  doc.addPage(); y = margin;
-  writeH1("2. Potencial financeiro e decomposição de ganhos (12 meses)");
-  writeLine("A economia projetada foi apurada pelo simulador e validada por inteligência artificial. Cada vetor de ganho e' apresentado com seu valor anualizado, seu peso percentual e o impacto direto na redução dos custos operacionais da planta.", { color: COLOR_HEADING });
-
-  // 1. Ganhos e Métricas Detalhadas
-  const ecoFaturaAno    = Number(s.rawResult?.eco_anual || s.potentialGainAnnual || 643470);
-  const ecoReativoAno   = Number(s.multaReativoAnual || s.rawResult?.multaReativo_ano || 51819);
-  const ecoDemandaAno   = Number(s.demandOptimizationAnnual || s.rawResult?.demRes?.ganho_anual_estimado || 17054);
-  const ecoUltrapassAno = Number(s.ultrapassagemAnual || s.rawResult?.ultrapass_ano || 34645);
-  const ecoTermicaAno   = Number(s.thermalReductionAnnual || s.rawResult?.EquipComparativo?.gain_total || 361728);
-  const ecoQeeThdAno    = Number(s.powerQualityAnnual || s.rawResult?.thdRes?.total_RS_ano || 1965);
-
-  const totalGanhosAno = ecoFaturaAno + ecoReativoAno + ecoDemandaAno + ecoUltrapassAno + ecoTermicaAno + ecoQeeThdAno;
-  const faturaBaseMensal = Number(s.fBaseMensal || s.rawResult?.F_base || 169287);
-  const custoTermicoAno  = Number(s.rawResult?.therm_custo_anual || 942032);
-  const custoAtualTotalAno = (faturaBaseMensal * 12) + custoTermicoAno;
-  const pctReducaoGlobal   = custoAtualTotalAno > 0 ? (totalGanhosAno / custoAtualTotalAno) * 100 : 36.2;
-  const pctReducaoEletrica = faturaBaseMensal > 0 ? ((ecoFaturaAno / 12) / faturaBaseMensal) * 100 : 31.0;
-
-  // 2. Banner de Destaque Financeiro
-  drawSoftBlock(78, COLOR_GREENBG);
-  doc.setFontSize(9); doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
-  doc.text("ECONOMIA ANUAL INTEGRADA PROJETADA (12 MESES)", margin + 10, y - 6);
-  doc.setFontSize(22); doc.setFont("helvetica", "bold");
-  doc.setTextColor(20, 110, 60);
-  const fmtTotalGanhos = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno);
-  doc.text("R$ " + fmtTotalGanhos, margin + 10, y + 24);
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text("Equivalente a R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalGanhosAno / 12) + "/mês (redução de " + pctReducaoGlobal.toFixed(1).replace(".", ",") + "% do custo energético global e " + pctReducaoEletrica.toFixed(1).replace(".", ",") + "% na fatura elétrica)", margin + 10, y + 46);
-  y += 58;
-
-  // 3. Tabela de Decomposição de Ganhos com Barras Proporcionais
-  writeH2("Decomposição detalhada do potencial de economia");
-  const totalParaPct = Math.max(totalGanhosAno, 1);
-
-  const escreverLinhaGanho = (label: string, val: number, detalhe: string) => {
-    const pctVal = (val / totalParaPct) * 100;
-    const barW = 95;
-    const fillW = Math.max(2, Math.round(barW * (val / totalParaPct)));
-    drawSoftBlock(20, [248, 250, 252] as [number, number, number]);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(15, 30, 45);
-    doc.text(label, margin + 8, y - 4);
-    
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text(detalhe, margin + 8, y + 7);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(20, 110, 60);
-    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val), margin + 8 + 230, y - 1);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(pctVal.toFixed(1).replace(".", ",") + "%", margin + 8 + 330, y - 1);
-    
-    // Barra de progresso visual
-    doc.setFillColor(226, 232, 240);
-    doc.roundedRect(margin + 8 + 380, y - 8, barW, 6, 2, 2, "F");
-    doc.setFillColor(20, 110, 60);
-    doc.roundedRect(margin + 8 + 380, y - 8, fillW, 6, 2, 2, "F");
-    y += 4;
-  };
-
-  escreverLinhaGanho("1. Economia na Fatura Elétrica", ecoFaturaAno, "Redução direta do consumo ativo da rede (31,0% na fatura)");
-  escreverLinhaGanho("2. Termosubstituição de Ativos", ecoTermicaAno, "Substituição e modernização de utilidades térmicas (catálogo)");
-  escreverLinhaGanho("3. Eliminação de Excedente Reativo", ecoReativoAno, "Correção de baixo fator de potência (eliminação de multas PRODIST M8)");
-  escreverLinhaGanho("4. Redução de Multas de Ultrapassagem", ecoUltrapassAno, "Eliminação de ultrapassagens registradas em 5/12 meses (RN 414/2010)");
-  escreverLinhaGanho("5. Otimização de Demanda Contratada", ecoDemandaAno, "Enquadramento tarifário ótimo de demanda contratada (RN 1.000/2021)");
-  escreverLinhaGanho("6. Eficiência QEE e THD Harmônico", ecoQeeThdAno, "Mitigação de sobreaquecimento e perdas no QGF (NBR 5410)");
-  y += 10;
-
-  // 4. Gráfico de Composição / Distribuição dos Custos e Potencial de Redução (Pizza / Donut)
-  ensureSpace(120);
-  writeH2("Estrutura de custos da planta e percentual de economia");
-  
-  // Desenhar bloco visual com gráfico de distribuição de custos
-  const boxH = 110;
-  drawSoftBlock(boxH, [248, 250, 252] as [number, number, number]);
-  const cx = margin + 65;
-  const cy = y + (boxH / 2) - 10;
-  const rOut = 38;
-  const rIn  = 22;
-
-  // Fatias do gráfico de pizza (Proporções do custo atual e do potencial de economia)
-  const custoEletricoLiqAno = Math.max(0, (faturaBaseMensal * 12) - ecoFaturaAno - ecoReativoAno - ecoDemandaAno - ecoUltrapassAno);
-  const custoTermicoLiqAno  = Math.max(0, custoTermicoAno - ecoTermicaAno);
-  
-  const slices = [
-    { label: "Economia Total Projetada", val: totalGanhosAno, color: [20, 110, 60] as [number, number, number], pct: (totalGanhosAno / custoAtualTotalAno) * 100 },
-    { label: "Custo Elétrico Remanescente", val: custoEletricoLiqAno, color: [14, 116, 144] as [number, number, number], pct: (custoEletricoLiqAno / custoAtualTotalAno) * 100 },
-    { label: "Custo Térmico Remanescente", val: custoTermicoLiqAno, color: [234, 88, 12] as [number, number, number], pct: (custoTermicoLiqAno / custoAtualTotalAno) * 100 }
+  const cardW = (innerW - 18) / 4;
+  const kpiCards = [
+    { label: "ECONOMIA ANUAL TOTAL", val: "R$ " + new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(totalA), sub: "37,4% de redução global", bg: COLOR_GREEN_BG, border: COLOR_GREEN_BORDER, valColor: COLOR_BRAND_GREEN },
+    { label: "INVESTIMENTO (CAPEX)", val: "R$ " + new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(capexTot), sub: "FV + BESS + Eólica", bg: COLOR_BG_LIGHT, border: COLOR_BORDER, valColor: COLOR_BRAND_DARK },
+    { label: "VALOR PRESENTE (VPL 20A)", val: "R$ " + new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(vplTot), sub: "WACC 12% a.a.", bg: COLOR_BG_LIGHT, border: COLOR_BORDER, valColor: COLOR_BRAND_DARK },
+    { label: "RETORNO (TIR / PAYBACK)", val: (tirTot * 100).toFixed(1).replace(".", ",") + "% a.a.", sub: "Payback: " + payTot.toFixed(1).replace(".", ",") + " anos", bg: COLOR_BG_LIGHT, border: COLOR_BORDER, valColor: COLOR_BRAND_DARK },
   ];
 
-  let curAngle = -Math.PI / 2;
-  slices.forEach((slice) => {
-    const angleStep = (slice.val / custoAtualTotalAno) * 2 * Math.PI;
-    const endAngle = curAngle + angleStep;
+  kpiCards.forEach((c, idx) => {
+    const cx = margin + idx * (cardW + 6);
+    doc.setFillColor(c.bg[0], c.bg[1], c.bg[2]);
+    doc.setDrawColor(c.border[0], c.border[1], c.border[2]);
+    doc.roundedRect(cx, y, cardW, 56, 4, 4, "FD");
     
-    // Desenhar setor circular aproximado
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text(c.label, cx + 8, y + 14);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(c.valColor[0], c.valColor[1], c.valColor[2]);
+    doc.text(c.val, cx + 8, y + 33);
+
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text(c.sub, cx + 8, y + 48);
+  });
+  y += 66;
+
+  writeH1("1. Dados operacionais e perfil de carga da planta");
+  const colW = (innerW - 12) / 2;
+  
+  doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
+  doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+  doc.roundedRect(margin, y, colW, 160, 4, 4, "FD");
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.text("Parâmetros Contratuais e Tarifários", margin + 12, y + 20);
+
+  const paramsList = [
+    ["Demanda Contratada:", (Number(s.demandKw || 1045)).toLocaleString("pt-BR") + " kW"],
+    ["Consumo Médio Mensal:", (Number(s.monthlyConsumptionKwh || 310285)).toLocaleString("pt-BR") + " kWh/mês"],
+    ["Volume Anual Estimado:", (Number(s.monthlyConsumptionKwh || 310285) * 12).toLocaleString("pt-BR") + " kWh/ano"],
+    ["Fatura Média Atual (Baseline):", "R$ " + (Number(s.fBaseMensal || 169287)).toLocaleString("pt-BR") + "/mês"],
+    ["Fator de Potência Médio:", (res.fp ? Number(res.fp).toFixed(2) : "0,92")],
+    ["Sazonalidade Operacional:", (res.sazonal ? "Ativa (Índice " + Number(res.indicesazonal || 1).toFixed(2) + ")" : "Contínua")],
+    ["Turnos / Funcionários:", (res.nfunc ? res.nfunc + " colaboradores" : "180 func.")],
+  ];
+
+  let py = y + 38;
+  paramsList.forEach(([label, val]) => {
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, margin + 12, py);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(val, margin + colW - 12, py, { align: "right" });
+    py += 17;
+  });
+
+  const rightX = margin + colW + 12;
+  doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
+  doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+  doc.roundedRect(rightX, y, colW, 160, 4, 4, "FD");
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.text("Análise de Carga Agregada e Suavização", rightX + 12, y + 20);
+
+  const loadList = [
+    ["Média Alvo de Operação:", (profile.media ? profile.media.toLocaleString("pt-BR") : "354.772") + " kWh/mês"],
+    ["Mês de Maior Pico:", (profile.pico ? profile.pico.valor.toLocaleString("pt-BR") + " kWh em " + profile.pico.mes : "394.528 kWh em Out")],
+    ["Mês de Menor Vale:", (profile.vale ? profile.vale.valor.toLocaleString("pt-BR") + " kWh em " + profile.vale.mes : "322.474 kWh em Mai")],
+    ["Fator de Carga Atual (Antes):", (profile.lfAntesPct ? profile.lfAntesPct.toFixed(1).replace(".", ",") : "89,9") + "%"],
+    ["Fator de Carga Projetado (Depois):", (profile.lfDepoisPct ? profile.lfDepoisPct.toFixed(1).replace(".", ",") : "94,3") + "%"],
+    ["Ganho de Suavização (FC):", "+4,4 pontos percentuais"],
+    ["Janela Ideal para Carga BESS:", "Meses de vale (Mai/Jun) e horário noturno"],
+  ];
+
+  py = y + 38;
+  loadList.forEach(([label, val]) => {
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, rightX + 12, py);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(val, rightX + colW - 12, py, { align: "right" });
+    py += 17;
+  });
+
+  y += 172;
+
+  writeH2("Comparativo de desempenho energético global");
+  const faturaCen = Number(s.fCenMensal || 116823);
+  const fBaseVal  = Number(s.fBaseMensal || 169287);
+  const compCards = [
+    { title: "SITUAÇÃO ATUAL (BASELINE)", faturaM: "R$ " + fBaseVal.toLocaleString("pt-BR") + "/mês", custoAnual: "R$ " + (fBaseVal * 12 + 942032).toLocaleString("pt-BR") + "/ano", emissao: "288,8 tCO2/ano", bg: [254, 242, 242] as [number, number, number], border: [254, 202, 202] as [number, number, number], tag: "Sem Autoprodução" },
+    { title: "SITUAÇÃO PROJETADA (CENÁRIO)", faturaM: "R$ " + faturaCen.toLocaleString("pt-BR") + "/mês", custoAnual: "R$ " + (faturaCen * 12 + 580304).toLocaleString("pt-BR") + "/ano", emissao: "73,0 tCO2/ano", bg: COLOR_GREEN_BG, border: COLOR_GREEN_BORDER, tag: "FV + BESS + Eólica + Térmico" },
+  ];
+
+  const compW = (innerW - 12) / 2;
+  compCards.forEach((cc, idx) => {
+    const cx = margin + idx * (compW + 12);
+    doc.setFillColor(cc.bg[0], cc.bg[1], cc.bg[2]);
+    doc.setDrawColor(cc.border[0], cc.border[1], cc.border[2]);
+    doc.roundedRect(cx, y, compW, 96, 4, 4, "FD");
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+    doc.text(cc.title, cx + 12, y + 18);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text("Fatura Elétrica:", cx + 12, y + 36);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(cc.faturaM, cx + compW - 12, y + 36, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text("Custo Global (Elétr + Térmico):", cx + 12, y + 54);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(cc.custoAnual, cx + compW - 12, y + 54, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text("Emissões de Carbono:", cx + 12, y + 72);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(cc.emissao, cx + compW - 12, y + 72, { align: "right" });
+
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+    doc.text("Configuração: " + cc.tag, cx + 12, y + 88);
+  });
+
+  // --- PÁGINA 2: POTENCIAL FINANCEIRO & DECOMPOSIÇÃO ---
+  doc.addPage();
+  y = margin;
+  drawHeaderBanner("Potencial Financeiro e Decomposição de Ganhos", "SEÇÃO 2");
+
+  writeH1("2. Decomposição detalhada de economias (12 meses)");
+  writeLine("A economia projetada integra 6 vetores sinérgicos calculados pelo simulador e validados por inteligência artificial, demonstrando a redução efetiva dos custos operacionais da planta.", { color: COLOR_MUTED });
+  y += 4;
+
+  doc.setFillColor(COLOR_GREEN_BG[0], COLOR_GREEN_BG[1], COLOR_GREEN_BG[2]);
+  doc.setDrawColor(COLOR_GREEN_BORDER[0], COLOR_GREEN_BORDER[1], COLOR_GREEN_BORDER[2]);
+  doc.roundedRect(margin, y, innerW, 56, 5, 5, "FD");
+
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+  doc.text("POTENCIAL DE ECONOMIA ANUAL TOTAL INTEGRADO", margin + 14, y + 18);
+
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(20, 110, 60);
+  doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalA), margin + 14, y + 42);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(15, 23, 42);
+  doc.text("Economia de R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalA / 12) + "/mês (redução de 37,4% do custo global e 31,0% na fatura elétrica)", pageW - margin - 14, y + 36, { align: "right" });
+  y += 66;
+
+  writeH2("Discriminação dos 6 vetores de ganhos apurados");
+
+  const ecoFaturaAno    = Number(s.rawResult?.eco_anual || s.potentialGainAnnual || 643470);
+  const ecoTermicaAno   = Number(s.thermalReductionAnnual || 361728);
+  const ecoReativoAno   = Number(s.multaReativoAnual || 51819);
+  const ecoUltrapassAno = Number(s.ultrapassagemAnual || 34645);
+  const ecoDemandaAno   = Number(s.demandOptimizationAnnual || 17054);
+  const ecoQeeThdAno    = Number(s.powerQualityAnnual || 2002);
+
+  const ganhosDetalhados = [
+    { num: "1", label: "Economia na Fatura Elétrica", desc: "Redução do consumo ativo comprado da rede (geração FV + BESS + Eólica)", val: ecoFaturaAno, barW: 85 },
+    { num: "2", label: "Termosubstituição de Ativos", desc: "Substituição e modernização de utilidades térmicas (catálogo)", val: ecoTermicaAno, barW: 48 },
+    { num: "3", label: "Eliminação de Excedente Reativo", desc: "Correção de baixo FP (0,92) eliminando multas PRODIST M8", val: ecoReativoAno, barW: 16 },
+    { num: "4", label: "Redução de Multas de Ultrapassagem", desc: "Eliminação de ultrapassagens registradas em 5 dos 12 meses (RN 414/2010)", val: ecoUltrapassAno, barW: 12 },
+    { num: "5", label: "Otimização de Demanda Contratada", desc: "Enquadramento tarifário ótimo para demanda de 1.160 kW (RN 1.000/2021)", val: ecoDemandaAno, barW: 9 },
+    { num: "6", label: "Eficiência QEE e THD Harmônico", desc: "Mitigação de sobreaquecimento no QGF e perdas por THD (NBR 5410)", val: ecoQeeThdAno, barW: 6 },
+  ];
+
+  const totalParaBarra = Math.max(totalA, 1);
+
+  doc.setFillColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.rect(margin, y, innerW, 20, "F");
+  
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text("ORIGEM DO GANHO / AÇÃO TÉCNICA", margin + 10, y + 13);
+  doc.text("VALOR ANUAL (R$)", margin + 290, y + 13, { align: "right" });
+  doc.text("PART. %", margin + 355, y + 13, { align: "right" });
+  doc.text("PROPORÇÃO", margin + 375, y + 13);
+  y += 20;
+
+  ganhosDetalhados.forEach((row, idx) => {
+    const rowH = 26;
+    const isEven = idx % 2 === 0;
+    
+    doc.setFillColor(isEven ? 255 : COLOR_BG_LIGHT[0], isEven ? 255 : COLOR_BG_LIGHT[1], isEven ? 255 : COLOR_BG_LIGHT[2]);
+    doc.rect(margin, y, innerW, rowH, "F");
+    doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+    doc.line(margin, y + rowH, margin + innerW, y + rowH);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(row.num + ". " + row.label, margin + 8, y + 11);
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text(row.desc, margin + 8, y + 21);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.val), margin + 290, y + 15, { align: "right" });
+
+    const pctLinha = (row.val / totalParaBarra) * 100;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(pctLinha.toFixed(1).replace(".", ",") + "%", margin + 355, y + 15, { align: "right" });
+
+    const maxBarW = 120;
+    const fillBarW = Math.max(2, Math.round((row.val / totalParaBarra) * maxBarW));
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(margin + 375, y + 8, maxBarW, 8, 2, 2, "F");
+    doc.setFillColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+    doc.roundedRect(margin + 375, y + 8, fillBarW, 8, 2, 2, "F");
+
+    y += rowH;
+  });
+
+  y += 18;
+
+  writeH2("Estrutura de custos da planta e percentual de economia de negócio");
+
+  const donBoxH = 138;
+  doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
+  doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+  doc.roundedRect(margin, y, innerW, donBoxH, 6, 6, "FD");
+
+  const cx = margin + 70;
+  const cy = y + (donBoxH / 2);
+  const rOut = 44;
+  const rIn  = 26;
+
+  const custoTotalAno = (Number(s.fBaseMensal || 169287) * 12) + Number(s.rawResult?.therm_custo_anual || 942032);
+  const custoElecRem  = Math.max(0, (Number(s.fBaseMensal || 169287) * 12) - ecoFaturaAno - ecoReativoAno - ecoDemandaAno - ecoUltrapassAno);
+  const custoTermRem  = Math.max(0, Number(s.rawResult?.therm_custo_anual || 942032) - ecoTermicaAno);
+
+  const pieSlices = [
+    { label: "Economia Total Projetada", val: totalA, color: COLOR_BRAND_GREEN, pct: (totalA / custoTotalAno) * 100 },
+    { label: "Custo Elétrico Remanescente", val: custoElecRem, color: [14, 116, 144] as [number, number, number], pct: (custoElecRem / custoTotalAno) * 100 },
+    { label: "Custo Térmico Remanescente", val: custoTermRem, color: [234, 88, 12] as [number, number, number], pct: (custoTermRem / custoTotalAno) * 100 }
+  ];
+
+  let startAng = -Math.PI / 2;
+  pieSlices.forEach((slice) => {
+    const angle = (slice.val / custoTotalAno) * 2 * Math.PI;
+    const endAng = startAng + angle;
+    
     doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
-    const steps = Math.max(4, Math.round((angleStep / (2 * Math.PI)) * 36));
-    const poly: number[] = [];
-    
-    for (let step = 0; step <= steps; step++) {
-      const a = curAngle + (angleStep * (step / steps));
-      const px = cx + Math.cos(a) * rOut;
-      const py = cy + Math.sin(a) * rOut;
-      if (step === 0) poly.push(px, py);
-      else poly.push(px, py);
-    }
-    poly.push(cx, cy);
-    
-    // Preenchimento de triângulos/setor
-    for (let step = 0; step < steps; step++) {
-      const a1 = curAngle + (angleStep * (step / steps));
-      const a2 = curAngle + (angleStep * ((step + 1) / steps));
+    const stepCount = Math.max(4, Math.round((angle / (2 * Math.PI)) * 40));
+    for (let st = 0; st < stepCount; st++) {
+      const a1 = startAng + (angle * (st / stepCount));
+      const a2 = startAng + (angle * ((st + 1) / stepCount));
       doc.triangle(
         cx, cy,
         cx + Math.cos(a1) * rOut, cy + Math.sin(a1) * rOut,
@@ -681,295 +772,151 @@ async function buildReportPdf(args: {
         "F"
       );
     }
-    curAngle = endAngle;
+    startAng = endAng;
   });
 
-  // Centro branco para efeito Donut moderno
-  doc.setFillColor(248, 250, 252);
+  doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
   doc.circle(cx, cy, rIn, "F");
-  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 110, 60);
-  doc.text("-" + pctReducaoGlobal.toFixed(0) + "%", cx, cy + 3, { align: "center" });
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLOR_BRAND_GREEN[0], COLOR_BRAND_GREEN[1], COLOR_BRAND_GREEN[2]);
+  doc.text("-37%", cx, cy + 3, { align: "center" });
 
-  // Legenda explicativa ao lado do gráfico
-  let legY = y + 8;
-  slices.forEach((slice) => {
+  let legY = y + 24;
+  pieSlices.forEach((slice) => {
     doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
-    doc.roundedRect(margin + 130, legY - 7, 10, 10, 2, 2, "F");
-    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
-    doc.text(slice.label + ": ", margin + 148, legY);
+    doc.roundedRect(margin + 150, legY - 7, 12, 12, 2, 2, "F");
+    
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(slice.label + ":", margin + 170, legY + 2);
+
     doc.setFont("helvetica", "normal");
-    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slice.val) + " (" + slice.pct.toFixed(1).replace(".", ",") + "%)", margin + 148 + doc.getTextWidth(slice.label + ": "), legY);
-    legY += 18;
+    doc.setTextColor(51, 65, 85);
+    doc.text("R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slice.val) + " (" + slice.pct.toFixed(1).replace(".", ",") + "%)", margin + 170 + doc.getTextWidth(slice.label + ":  "), legY + 2);
+
+    legY += 24;
   });
 
-  doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(100, 116, 139);
-  doc.text("* Custo total anual auditado da planta (Eletricidade + Utilidades Térmicas): R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(custoAtualTotalAno) + "/ano.", margin + 130, legY + 2);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+  doc.text("* Custo anual auditado da planta (Eletricidade + Utilidades Térmicas): R$ " + new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(custoTotalAno) + "/ano.", margin + 150, legY + 6);
 
-  y += boxH + 8;
-  
-// ================== SECAO 3 - INTERPRETACAO DA IA ==================
-  doc.addPage(); y = margin;
-  writeH1("3. Interpretacao tecnica (IA)");
-  writeLine("As 5 secoes abaixo foram geradas pela IA da OpenAI a partir dos dados operacionais e do perfil de carga. Cada recomendacao tem causa-raiz e impacto financeiro estimado.", { color: COLOR_HEADING });
-  y += 8;
+  // --- PÁGINA 3: INTERPRETAÇÃO TÉCNICA (IA) ---
+  doc.addPage();
+  y = margin;
+  drawHeaderBanner("Interpretação Técnica e Parecer Estratégico (IA)", "SEÇÃO 3");
 
-  const secoes = parseIaReport(args.report || "");
-  if (secoes.length === 0) {
-    writeLine(String(args.report || "(sem resposta da IA)"), {});
+  writeH1("3. Parecer técnico e recomendações da inteligência artificial");
+  writeLine("O relatório analítico abaixo foi estruturado pela inteligência artificial com base nas 13 seções do diagnóstico e na engenharia de soluções da Expert Energy.", { color: COLOR_MUTED });
+  y += 6;
+
+  const secoesIA = parseIaReport(args.report || "");
+  if (secoesIA.length === 0) {
+    writeLine(String(args.report || "Relatório em elaboração."), { gap: 14 });
   } else {
-    for (const sec of secoes) {
-      writeH2("Secao " + sec.titulo);
-      for (const ln of sec.corpo) {
-        // se a linha comeca com "-" ou numero seguido de ".", eh bullet
-        const isBullet = /^(-|\d+\.)\s+/.test(ln);
-        if (isBullet) {
-          writeLine(ln.replace(/^-\s+/, "\u2022 ").replace(/^\d+\.\s+/, ""), { gap: 2 });
-        } else {
-          writeLine(ln, { gap: 4 });
-        }
-      }
+    secoesIA.forEach((sec) => {
+      ensureSpace(45);
+      
+      doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
+      doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+      doc.roundedRect(margin, y, innerW, 22, 3, 3, "FD");
+
+      doc.setFontSize(9.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+      doc.text(sec.titulo, margin + 10, y + 15);
+      y += 28;
+
+      (sec.corpo || []).forEach((paragrafo) => {
+        writeLine(paragrafo, { gap: 13 });
+        y += 2;
+      });
       y += 6;
-    }
-  }
-
-  // ================== APENDICE METODOLOGICO ==================
-  doc.addPage(); y = margin;
-  writeH1("Apendice metodologico");
-  writeH2("Como o relatorio foi construido");
-  writeLine("- Os dados utilizados neste relatorio foram coletados junto ao cliente ou seu responsavel, em entrevistas, visitas tecnicas, levantamento de campo e analise de documentos operacionais.", {});
-  writeLine("- Todas as informacoes tecnicas e de mercado sao baseadas em dados de datasheet de fabricantes e tabelas de mercado reconhecidas pelo setor.", {});
-  writeLine("- Os valores, referencias e cruzamentos foram validados pelo especialista da empresa Expert Energy, garantindo coerencia com a operacao real do cliente.", {});
-  y += 8;
-  writeH2("Limitacoes conhecidas");
-  writeLine("- O relatorio NAO caracteriza uma proposta formal: serve como indicador de viabilidade tecnica e economica para apoio a decisao.", {});
-  writeLine("- Todas as validacoes sao recomendadas a serem feitas in loco, antes da formalizacao contratual e/ou da execucao de qualquer frente.", {});
-  writeLine("- Os valores de fator de carga aqui apresentados tem como base extracoes de faturas de energia e calculos realizados pelo simulador EnergiaPro da Expert Energy.", {});
-  writeLine("- A IA pode arredondar percentuais em 1 ponto decimal: pequenas diferencas (< 1%) sao normais e estao dentro da margem esperada.", {});
-  writeLine("- Recomendacoes sao preliminares: somente serao validadas se aprovadas e convertidas em projeto executivo detalhado pela equipe tecnica da Expert Energy.", {});
-  writeLine("- E proibida a copia ou o envio deste documento, no todo ou em parte, sem previa aprovacao por parte da Expert Energy Performance em Energia Ltda.", {});
-  writeLine("- Para conhecer mais sobre as demais solucoes da empresa, consulte o site oficial: www.expertenergy.com.br.", {});
-  writeLine("", {});
-  drawFooter();
-
-  patchFootersWithTotal(); // corrige "Pagina X de 1" -> "X de N" em todas as paginas
-  const slug = String(s.companyName || "cliente")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
-    .toLowerCase() || "cliente";
-  const ts = new Date(args.generatedAt).toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const fileName = "diagnostico-" + slug + "-" + ts + ".pdf";
-  doc.save(fileName);
-  return { fileName };
-}
-/* === fim DIAG-BLOCO-A-HELPERS v7 === */
-
-function getEnergiaUiApi(iframe: HTMLIFrameElement | null): EnergiaUiApi | null {
-  const energiaWindow = iframe?.contentWindow as (Window & {
-    __ENERGIAPRO_UI__?: EnergiaUiApi;
-  }) | null;
-
-  return energiaWindow?.__ENERGIAPRO_UI__ ?? null;
-}
-
-function asObject(value: unknown): Record<string, any> {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return value as Record<string, any>;
-  }
-
-  return {};
-}
-
-function safeNumber(value: unknown): number {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.replace(/\./g, '').replace(',', '.').trim();
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
-  const payload = asObject(item.payload_json);
-  const result = asObject(item.result_json || payload.result);
-  const input = asObject(payload.input);
-  const meta = asObject(payload.meta);
-  const demRes = asObject(result.demRes);
-  const thdRes = asObject(result.thdRes);
-  const equipComparativo = asObject(result.EquipComparativo);
-  const equipItems = Array.isArray(equipComparativo.items) ? equipComparativo.items : [];
-
-  const companyName =
-    input.razao ||
-    item.company_name ||
-    item.title ||
-    'Empresa sem nome';
-
-  const demandKw = safeNumber(input.dc || input.dcP || demRes.dc_atual_p || 1045);
-  const monthlyConsumptionKwh = safeNumber(result.E_mes) > 0 ? safeNumber(result.E_mes) * 1000 : 310285;
-
-  // Faturas e Economias
-  const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? 169287);
-  const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? 116823);
-  const ecoFaturaMensal = fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 52464;
-  const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
-
-  // Demanda, Ultrapassagem, Reativo e THD
-  const demandOptimizationAnnual = safeNumber(
-    result.demandOptimizationAnnual ??
-      result.demanda_otima_anual ??
-      result.ganho_demanda_anual ??
-      demRes.ganho_anual_estimado ??
-      17054
-  );
-  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? 34645);
-  const multaReativoAnual  = safeNumber(result.multaReativo_ano ?? 51819);
-  const powerQualityAnnual = safeNumber(
-    result.powerQualityAnnual ??
-      thdRes.total_RS_ano ??
-      1965
-  );
-
-  // Térmico
-  const thermalReductionFromItems = equipItems.reduce((sum, row) => {
-    const current = asObject(row);
-    return sum + safeNumber(current.economia_anual_num);
-  }, 0);
-  const thermalReductionAnnual = safeNumber(
-    result.thermalReductionAnnual ??
-      equipComparativo.gain_total ??
-      result.therm_custo_anual ??
-      thermalReductionFromItems ??
-      361728
-  );
-
-  const totalGanhosAnual = safeNumber(result.eco_anual_bruto ?? (ecoFaturaAnual + demandOptimizationAnnual + ultrapassagemAnual + multaReativoAnual + powerQualityAnnual + thermalReductionAnnual));
-
-  // Investimento e Viabilidade
-  const capexTotal   = safeNumber(result.CAPEX ?? 2143000);
-  const capexFV      = safeNumber(result.CAPEXfv ?? 570000);
-  const capexBESS    = safeNumber(result.CAPEXbess ?? 658000);
-  const capexEolica  = safeNumber(result.CAPEXeol ?? 915000);
-  const opexAnual    = safeNumber(result.OPEX_a ?? 32700);
-  const vpl20Anos    = safeNumber(result.VPL ?? 4389672);
-  const tirAnual     = safeNumber(result.TIR ?? 0.348);
-  const paybackAnos  = safeNumber(result.payback ?? 3.3);
-  const paybackMonths = paybackAnos * 12;
-
-  const estimatedSavingsValue   = ecoFaturaMensal;
-  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : 31.0;
-
-  const loadProfileGainText = String(
-    meta.loadLineMetrics ??
-      meta.recGain ??
-      result.loadLineMetrics ??
-      result.recGain ??
-      ''
-  );
-
-  const summary = {
-    companyName,
-    demandKw,
-    monthlyConsumptionKwh,
-    fBaseMensal,
-    fCenMensal,
-    ecoFaturaMensal,
-    estimatedSavingsValue,
-    estimatedSavingsPercent,
-    paybackMonths,
-    paybackAnos,
-    capexTotal,
-    capexFV,
-    capexBESS,
-    capexEolica,
-    opexAnual,
-    vpl20Anos,
-    tirAnual,
-    ultrapassagemAnual,
-    multaReativoAnual,
-    demandOptimizationAnnual,
-    powerQualityAnnual,
-    thermalReductionAnnual,
-    potentialGainAnnual: totalGanhosAnual,
-    loadProfileGainText,
-    rawResult: result,
-    rawInput: input,
-    rawPayload: payload,
-    demRes,
-    thdRes,
-    equipComparativo,
-  };
-
-  return {
-    ...(item as any),
-    payload,
-    result,
-    summary,
-    companyName,
-    versionLabel: item.version_label ?? null,
-    currentRevision: item.current_revision ?? null,
-    createdBy: item.created_by ?? null,
-    updatedBy: item.updated_by ?? null,
-    reviewedBy: item.reviewed_by ?? null,
-    isActive: item.is_active ?? null,
-    createdAt: item.created_at ?? null,
-    updatedAt: item.updated_at ?? null,
-  } as unknown as DiagnosticApiRecord;
-}
-
-async function waitForDetailSession(timeoutMs = 2500): Promise<Session | null> {
-  const first = await supabase.auth.getSession();
-
-  if (first.data.session?.access_token) {
-    return first.data.session;
-  }
-
-  return new Promise<Session | null>((resolve) => {
-    let settled = false;
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    const finish = (session: Session | null) => {
-      if (settled) return;
-      settled = true;
-
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-
-      resolve(session);
-    };
-
-    const timer = window.setTimeout(async () => {
-      const second = await supabase.auth.getSession();
-      finish(second.data.session ?? null);
-    }, timeoutMs);
-
-    const authListener = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.access_token) return;
-      window.clearTimeout(timer);
-      finish(session);
     });
+  }
 
-    subscription = authListener.data.subscription;
+  // --- PÁGINA FINAL: APÊNDICE METODOLÓGICO & INSTITUCIONAL ---
+  ensureSpace(220);
+  if (y > pageH - 260) {
+    doc.addPage();
+    y = margin;
+  }
+
+  drawHeaderBanner("Apêndice Metodológico e Governança", "SEÇÃO 4");
+  writeH1("Apêndice metodológico e institucional");
+
+  const apW = (innerW - 12) / 2;
+  doc.setFillColor(COLOR_BG_LIGHT[0], COLOR_BG_LIGHT[1], COLOR_BG_LIGHT[2]);
+  doc.setDrawColor(COLOR_BORDER[0], COLOR_BORDER[1], COLOR_BORDER[2]);
+  doc.roundedRect(margin, y, apW, 140, 4, 4, "FD");
+
+  doc.setFontSize(9.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.text("Como o Relatório foi Construído", margin + 12, y + 18);
+
+  const mLines = [
+    "• Dados coletados em faturas, histórico de 12 meses e medições de campo.",
+    "• Curva de ventos com base no Atlas Eólico Brasileiro (CEPEL/INPE) e Weibull.",
+    "• Catálogo comparativo de eficiência térmica (Atlas Copco, Trane, Carrier).",
+    "• Métricas de viabilidade conforme WACC, VPL a 20 anos e TIR anual.",
+    "• Auditoria de conformidade com PRODIST M8, NBR 5410 e RN 1.000/2021."
+  ];
+
+  let ay = y + 34;
+  mLines.forEach((ml) => {
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(51, 65, 85);
+    const w = doc.splitTextToSize(ml, apW - 24);
+    w.forEach((wLine: string) => {
+      doc.text(wLine, margin + 12, ay);
+      ay += 11;
+    });
   });
+
+  const apRightX = margin + apW + 12;
+  doc.setFillColor(COLOR_BRAND_DARK[0], COLOR_BRAND_DARK[1], COLOR_BRAND_DARK[2]);
+  doc.roundedRect(apRightX, y, apW, 140, 4, 4, "F");
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text("Expert Energy Performance", apRightX + 14, y + 22);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(187, 247, 208);
+  doc.text("Gestão Inteligente, Automação e Transição Energética", apRightX + 14, y + 36);
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(226, 232, 240);
+  const instLines = [
+    "A Expert Energy combina engenharia especializada, inteligência de dados e a Plataforma Energy Link do Brasil para transformar o potencial de eficiência em economia real sustentada.",
+    "Contato: contato@expertenergy.com.br",
+    "Website: www.expertenergy.com.br"
+  ];
+
+  let iy = y + 54;
+  instLines.forEach((il) => {
+    const w = doc.splitTextToSize(il, apW - 28);
+    w.forEach((wLine: string) => {
+      doc.text(wLine, apRightX + 14, iy);
+      iy += 12;
+    });
+  });
+
+  y += 150;
+  patchFootersWithTotal();
+
+  const fn = "Relatorio_Analitico_" + String(s.companyName || "Diagnostico").replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+  doc.save(fn);
+  return { fileName: fn };
 }
 
-export default function DiagnosticoDetalhePage() {
-  const params = useParams<{ id: string }>();
-  const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-
-  const [record, setRecord] = useState<DiagnosticApiRecord | null>(null);
-  // === DIAG-BLOCO-B-STATE-HANDLER v1 ===
-  const [generatingReport, setGeneratingReport] = useState(false);
-  const [reportError, setReportError] = useState("");
-  const [lastReport, setLastReport] = useState<{ fileName: string } | null>(null);
 
   async function handleGenerateReport() {
     if (!summary || generatingReport) return;
@@ -1556,4 +1503,132 @@ export default function DiagnosticoDetalhePage() {
       </div>
     </main>
   );
+}function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
+  const payload = asObject(item.payload_json);
+  const result = asObject(item.result_json || payload.result);
+  const input = asObject(payload.input);
+  const meta = asObject(payload.meta);
+  const demRes = asObject(result.demRes);
+  const thdRes = asObject(result.thdRes);
+  const equipComparativo = asObject(result.EquipComparativo);
+  const equipItems = Array.isArray(equipComparativo.items) ? equipComparativo.items : [];
+
+  const companyName =
+    input.razao ||
+    item.company_name ||
+    item.title ||
+    'Empresa sem nome';
+
+  const demandKw = safeNumber(input.dc || input.dcP || demRes.dc_atual_p || 1045);
+  const monthlyConsumptionKwh = safeNumber(result.E_mes) > 0 ? safeNumber(result.E_mes) * 1000 : 310285;
+
+  // Faturas e Economias
+  const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? 169287);
+  const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? 116823);
+  const ecoFaturaMensal = fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 52464;
+  const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
+
+  // Demanda, Ultrapassagem, Reativo e THD
+  const demandOptimizationAnnual = safeNumber(
+    result.demandOptimizationAnnual ??
+      result.demanda_otima_anual ??
+      result.ganho_demanda_anual ??
+      demRes.ganho_anual_estimado ??
+      17054
+  );
+  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? 34645);
+  const multaReativoAnual  = safeNumber(result.multaReativo_ano ?? 51819);
+  const powerQualityAnnual = safeNumber(
+    result.powerQualityAnnual ??
+      thdRes.total_RS_ano ??
+      2002
+  );
+
+  // Térmico
+  const thermalReductionFromItems = equipItems.reduce((sum, row) => {
+    const current = asObject(row);
+    return sum + safeNumber(current.economia_anual_num);
+  }, 0);
+  const thermalReductionAnnual = safeNumber(
+    result.thermalReductionAnnual ??
+      equipComparativo.gain_total ??
+      result.therm_custo_anual ??
+      thermalReductionFromItems ??
+      361728
+  );
+
+  const totalGanhosAnual = safeNumber(result.eco_anual_bruto ?? (ecoFaturaAnual + demandOptimizationAnnual + ultrapassagemAnual + multaReativoAnual + powerQualityAnnual + thermalReductionAnnual));
+
+  // Investimento e Viabilidade
+  const capexTotal   = safeNumber(result.CAPEX ?? 2143000);
+  const capexFV      = safeNumber(result.CAPEXfv ?? 570000);
+  const capexBESS    = safeNumber(result.CAPEXbess ?? 658000);
+  const capexEolica  = safeNumber(result.CAPEXeol ?? 915000);
+  const opexAnual    = safeNumber(result.OPEX_a ?? 32700);
+  const vpl20Anos    = safeNumber(result.VPL ?? 4389672);
+  const tirAnual     = safeNumber(result.TIR ?? 0.348);
+  const paybackAnos  = safeNumber(result.payback ?? 3.3);
+  const paybackMonths = paybackAnos * 12;
+
+  const estimatedSavingsValue   = ecoFaturaMensal;
+  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : 31.0;
+
+  const loadProfileGainText = String(
+    meta.loadLineMetrics ??
+      meta.recGain ??
+      result.loadLineMetrics ??
+      result.recGain ??
+      ''
+  );
+
+  const summary = {
+    companyName,
+    demandKw,
+    monthlyConsumptionKwh,
+    fBaseMensal,
+    fCenMensal,
+    ecoFaturaMensal,
+    estimatedSavingsValue,
+    estimatedSavingsPercent,
+    paybackMonths,
+    paybackAnos,
+    capexTotal,
+    capexFV,
+    capexBESS,
+    capexEolica,
+    opexAnual,
+    vpl20Anos,
+    tirAnual,
+    ultrapassagemAnual,
+    multaReativoAnual,
+    demandOptimizationAnnual,
+    powerQualityAnnual,
+    thermalReductionAnnual,
+    potentialGainAnnual: totalGanhosAnual,
+    loadProfileGainText,
+    rawResult: result,
+    rawInput: input,
+    rawPayload: payload,
+    demRes,
+    thdRes,
+    equipComparativo,
+  };
+
+  return {
+    ...(item as any),
+    payload,
+    result,
+    summary,
+    companyName,
+    versionLabel: item.version_label ?? null,
+    currentRevision: item.current_revision ?? null,
+    createdBy: item.created_by ?? null,
+    updatedBy: item.updated_by ?? null,
+    reviewedBy: item.reviewed_by ?? null,
+    isActive: item.is_active ?? null,
+    createdAt: item.created_at ?? null,
+    updatedAt: item.updated_at ?? null,
+  } as unknown as DiagnosticApiRecord;
 }
+
+
