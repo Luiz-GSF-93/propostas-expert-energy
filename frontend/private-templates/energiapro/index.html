@@ -1304,7 +1304,7 @@ function calc(){
   var E_local_motor=scMotor?(motorKw*horasMesGer*motorElecEff/1000):0;
   var E_local_micro=scMicro?(capKw*horasMesGer*capMD.eta/1000):0;
   // v17: se ha calculo Weibull (v100>0) usa AEP_liquido, senao fallback legado
-  var E_local_eol = scEolica ? (aep_liq_kWh_eol>0 ? (aep_liq_kWh_eol/12) : (eolicaKw*eolicaFC*horasMes*30.4/24/1000)) : 0;
+  var E_local_eol = scEolica ? (aep_liq_kWh_eol>0 ? (aep_liq_kWh_eol/12/1000) : (eolicaKw*eolicaFC*horasMes*30.4/24/1000)) : 0;
   var E_local=E_local_fv+E_local_motor+E_local_micro+E_local_eol;
   var E_rede=Math.max(E_mes-E_local_fv-E_local_micro-E_local_motor-E_local_eol,0);var E_ativa_kWh_cen=Math.max(E_rede*1000,0);var kwh_reativo_exced_cen=E_ativa_kWh_cen*fatorReativoExced;var multaReativo_cen_mes=kwh_reativo_exced_cen*tReativa;var multaReativo_cen_ano=multaReativo_cen_mes*12;var eco_reativo_ano=multaReativo_ano; var combustivelGN_ano=Math.max(((scMotor?motorFuelRS:0)+(scMicro?microFuelRS:0))*12,0);
 
