@@ -1959,7 +1959,21 @@ function libSaveFromForm(){var obj={isCustom:true};document.querySelectorAll('[d
 function libDeleteEquipment(key){if(!confirm('Excluir esta tecnologia local?'))return;window.EXTRA_LIB=(window.EXTRA_LIB||[]).filter(function(x){return x.key!==key});libPersist();renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
 function libExport(){try{var b=new Blob([JSON.stringify({biblioteca_local:window.EXTRA_LIB||[],exportadoEm:new Date().toISOString(),schemaVersion:'1.6.12'},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='energiaPro_biblioteca.json';a.click()}catch(e){alert('Falha ao exportar')}}
 // ============================== EÓLICA v17: Atlas + render ==============================
-function _eolSet(id, v){var el=$ && $(id); if(el && isFinite(v)) el.value=+v;}
+// ====== PATCH 5 · _eolSet dispara evento input ======
+function _eolSet(id, v){
+  var el=$ && $(id);
+  if(!el || !isFinite(v)) return;
+  el.value = +v;
+  // Disparar evento 'input' para acordar listeners delegados (Patch 4)
+  // que escutam mudanças dentro de #eolPanel; .value= nao dispara nativamente.
+  try {
+    var ev = new Event('input',  { bubbles: true });
+    el.dispatchEvent(ev);
+    var ev2 = new Event('change', { bubbles: true });
+    el.dispatchEvent(ev2);
+  } catch(_) {}
+}
+// ====== FIM PATCH 5 ======
 function aplicarCurva(){
   var m=$("eol_modelo") && $("eol_modelo").value;
   if(!m) return;
