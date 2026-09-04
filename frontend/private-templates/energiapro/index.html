@@ -1959,21 +1959,7 @@ function libSaveFromForm(){var obj={isCustom:true};document.querySelectorAll('[d
 function libDeleteEquipment(key){if(!confirm('Excluir esta tecnologia local?'))return;window.EXTRA_LIB=(window.EXTRA_LIB||[]).filter(function(x){return x.key!==key});libPersist();renderLibCustom();try{if(typeof renderEquipTable==='function')renderEquipTable(typeof calc==='function'?calc():{})}catch(e){}}
 function libExport(){try{var b=new Blob([JSON.stringify({biblioteca_local:window.EXTRA_LIB||[],exportadoEm:new Date().toISOString(),schemaVersion:'1.6.12'},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='energiaPro_biblioteca.json';a.click()}catch(e){alert('Falha ao exportar')}}
 // ============================== EÓLICA v17: Atlas + render ==============================
-// ====== PATCH 5 · _eolSet dispara evento input ======
-function _eolSet(id, v){
-  var el=$ && $(id);
-  if(!el || !isFinite(v)) return;
-  el.value = +v;
-  // Disparar evento 'input' para acordar listeners delegados (Patch 4)
-  // que escutam mudanças dentro de #eolPanel; .value= nao dispara nativamente.
-  try {
-    var ev = new Event('input',  { bubbles: true });
-    el.dispatchEvent(ev);
-    var ev2 = new Event('change', { bubbles: true });
-    el.dispatchEvent(ev2);
-  } catch(_) {}
-}
-// ====== FIM PATCH 5 ======
+function _eolSet(id, v){var el=$ && $(id); if(el && isFinite(v)) el.value=+v;}
 function aplicarCurva(){
   var m=$("eol_modelo") && $("eol_modelo").value;
   if(!m) return;
@@ -3888,6 +3874,7 @@ function nextStep(delta){
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v3d52b47920f24c319d37e2661827c42b1787588026925" integrity="sha512-d9sL6GJLXn6fInD1+TVXhTcQOsmxeHfmHAvwGDIxp5TO+uo1fiWW7mHomMj4MLRlCsJDTqXzWLHJFFlPCEIj/A==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
