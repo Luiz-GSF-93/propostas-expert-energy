@@ -1290,8 +1290,8 @@
     </table>
     <div class="table-action" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="addPricingRowBtn">Adicionar linha</button>
-      <button type="button" id="openAddKitBtn" style="background:#1b5e7b; color:#ffffff; border:1px solid #144960; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
-      <button type="button" id="openCreateKitBtn" style="background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
+      <button type="button" id="openAddKitBtn" onclick="openAddKitModalDirect()" style="background:#1b5e7b; color:#ffffff; border:1px solid #144960; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
+      <button type="button" id="openCreateKitBtn" onclick="openCreateKitModalDirect()" style="background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
     </div>
 
         <div class="totals">
@@ -2120,7 +2120,8 @@
         savedAt: new Date().toISOString(),
         fields: {},
         serviceState: collectServiceState(),
-        pricingRows: collectPricingRows()
+        pricingRows: collectPricingRows(),
+        selectedKits: Array.isArray(proposalSelectedKits) ? proposalSelectedKits : []
       };
       staticFields.forEach(id=>{
         const el = document.getElementById(id);
@@ -2139,6 +2140,10 @@
       });
       restorePricingRows(data.pricingRows || []);
       restoreServiceState(data.serviceState || {});
+      if(Array.isArray(data.selectedKits)){
+        proposalSelectedKits = data.selectedKits;
+        updateAttachedKitsUI();
+      }
       syncContactRegistryFromStoredSelection(true);
       calculatePricing();
       updateCoverClientName();
@@ -3536,6 +3541,42 @@
       `;
       tbody.appendChild(tr);
     }
+
+    
+    /* Funções globais de abertura direta dos modais de kit */
+    window.openAddKitModalDirect = function(){
+      fetchKitsRegistry();
+      const modal = document.getElementById("modalAddKit");
+      if(modal) modal.style.display = "flex";
+    };
+
+    window.openCreateKitModalDirect = function(){
+      const modal = document.getElementById("modalCreateKit");
+      const btnReset = document.getElementById("btnNewKitReset");
+      const nameInput = document.getElementById("newKitName");
+      const descInput = document.getElementById("newKitDescription");
+      const kitRowsBody = document.getElementById("kitModalRowsBody");
+
+      document.getElementById("editingKitId").value = "";
+      document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
+      if(nameInput) nameInput.value = "";
+      if(descInput) descInput.value = "";
+      if(btnReset) btnReset.style.display = "none";
+      if(kitRowsBody) kitRowsBody.innerHTML = "";
+      addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
+      addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
+
+      const secForm = document.getElementById("sectionFormKit");
+      const secList = document.getElementById("sectionListKits");
+      const tabForm = document.getElementById("tabFormKitBtn");
+      const tabList = document.getElementById("tabListKitsBtn");
+      if(secForm) secForm.style.display = "block";
+      if(secList) secList.style.display = "none";
+      if(tabForm){ tabForm.style.background = "#1b5e7b"; tabForm.style.color = "#fff"; }
+      if(tabList){ tabList.style.background = "#eef2f4"; tabList.style.color = "#123d56"; }
+
+      if(modal) modal.style.display = "flex";
+    };
 
     function setupKitsModule(){
       const btnCreate = document.getElementById("openCreateKitBtn");
