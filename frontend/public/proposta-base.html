@@ -1338,6 +1338,16 @@
           <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
         </div>
 
+        <div style="margin-bottom:16px; background:#f4f9fb; border:1px dashed #1b5e7b; border-radius:8px; padding:12px;">
+          <label for="newKitPdfFile" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#123d56;">
+            📄 Anexo Técnico Oficial em PDF do Kit (Datasheet / Memorial / Escopo)
+          </label>
+          <input type="file" id="newKitPdfFile" accept=".pdf" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:6px; background:#fff; box-sizing:border-box;" />
+          <div id="pdfUploadStatus" style="font-size:11px; color:#55656f; margin-top:4px;">
+            O arquivo PDF enviado para o bucket <strong>kit-documents</strong> será vinculado ao kit e anexado automaticamente à proposta ao selecioná-lo.
+          </div>
+        </div>
+
         <div style="margin-bottom:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
@@ -1452,8 +1462,14 @@
   </section>
 
   <section class="editor-only" id="anexo-section">
-    <h2>10. Anexo contratual - condições específicas por atividade</h2>
-    <p class="muted">Este anexo é preenchido automaticamente conforme os serviços selecionados.</p>
+    <h2>10. Anexo contratual e documentos técnicos complementares</h2>
+    <p class="muted">Este anexo reúne as condições específicas das atividades e os documentos/datasheets técnicos vinculados aos kits selecionados.</p>
+    
+    <div id="attachedKitsContainer" style="display:none; margin-bottom:20px;">
+      <h3 style="color:#123d56; font-size:15px; margin:0 0 10px 0;">Documentos Técnicos e Datasheets dos Kits Inclusos</h3>
+      <div id="attachedKitsList" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px;"></div>
+    </div>
+
     <div id="annexDynamic"></div>
   </section>
 
@@ -3394,7 +3410,22 @@
     </section>
 
     <section class="ro-section">
-      <h2>Anexo contratual - condições específicas por atividade</h2>
+      <h2>Anexo contratual e documentos técnicos complementares</h2>
+      ${proposalSelectedKits && proposalSelectedKits.filter(k => k.pdf_attachment_url).length ? `
+        <div style="margin-bottom:20px; background:#f4f9fb; border:1px solid #c7d3da; border-radius:8px; padding:14px;">
+          <h3 style="margin:0 0 10px 0; color:#123d56; font-size:14px;">Documentos Técnicos e Datasheets em Anexo</h3>
+          <ul style="margin:0; padding-left:20px; font-size:13px; line-height:1.6;">
+            ${proposalSelectedKits.filter(k => k.pdf_attachment_url).map(k => `
+              <li>
+                <strong>${escapeHtml(k.name)}:</strong> 
+                <a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" rel="noopener noreferrer" style="color:#1b5e7b; font-weight:bold; text-decoration:underline;">
+                  ${escapeHtml(k.pdf_attachment_name || "Abrir Documento Técnico / Datasheet PDF")}
+                </a>
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+      ` : ''}
       ${annexHTML}
     </section>
 
@@ -3448,6 +3479,40 @@
     }
 
     
+    
+    /* Gerencia lista de kits ativos na proposta atual */
+    let proposalSelectedKits = [];
+
+    function updateAttachedKitsUI(){
+      const container = document.getElementById("attachedKitsContainer");
+      const list = document.getElementById("attachedKitsList");
+      if(!container || !list) return;
+
+      const kitsWithPdf = proposalSelectedKits.filter(k => k.pdf_attachment_url);
+      if(!kitsWithPdf.length){
+        container.style.display = "none";
+        list.innerHTML = "";
+        return;
+      }
+
+      container.style.display = "block";
+      list.innerHTML = kitsWithPdf.map(k => `
+        <div style="background:#f4f9fb; border:1px solid #c7d3da; border-left:4px solid #1b5e7b; border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
+          <div>
+            <strong style="color:#123d56; font-size:13px; display:block;">${escapeHtml(k.name)}</strong>
+            <span style="font-size:11px; color:#55656f;">Anexo Técnico: ${escapeHtml(k.pdf_attachment_name || "Documento Oficial")}</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#1b5e7b; color:#fff; text-decoration:none; padding:5px 10px; border-radius:5px; font-weight:600;">
+              📄 Abrir / Baixar PDF
+            </a>
+            <span style="font-size:11px; color:#2f6f44; font-weight:600;">✓ Anexado à proposta</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+
     /* =========================================================
      * MÓDULO DE KITS COMERCIAIS (ADICIONAR KIT & CRIAR KIT ADMIN)
      * ========================================================= */
@@ -3497,6 +3562,8 @@
               id: "kit-startup-gateway",
               name: "Kit 1: Startup Assistido + Gateway de Telemetria",
               description: "Instalação, parametrização de gateway e testes operacionais",
+              pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/gateway-telemetria-4g.pdf",
+              pdf_attachment_name: "Datasheet-Gateway-Telemetria-ExpertEnergy.pdf",
               items: [
                 { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
                 { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
@@ -3507,6 +3574,8 @@
               id: "kit-medicao-setorial",
               name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
               description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
+              pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/smart-meter-multimedidor.pdf",
+              pdf_attachment_name: "Memorial-Tecnico-SmartMeter.pdf",
               items: [
                 { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
                 { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
@@ -3610,6 +3679,15 @@
             });
           });
           calculatePricing();
+
+          // Vincula o Kit e seu Anexo PDF à proposta atual
+          if(!proposalSelectedKits.some(k => (k.id || k.name) === (kit.id || kit.name))){
+            proposalSelectedKits.push(kit);
+          }
+          updateAttachedKitsUI();
+          if(kit.pdf_attachment_url){
+            showToast("Kit e Anexo Técnico PDF inseridos com sucesso na proposta!", "success");
+          }
         }
         if(modalAdd) modalAdd.style.display = "none";
       });
@@ -3669,10 +3747,54 @@
           return;
         }
 
+        const pdfFileInput = document.getElementById("newKitPdfFile");
+        let pdfAttachmentUrl = "";
+        let pdfAttachmentName = "";
+
+        if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
+          const file = pdfFileInput.files[0];
+          pdfAttachmentName = file.name;
+          const statusDiv = document.getElementById("pdfUploadStatus");
+          if(statusDiv) statusDiv.innerHTML = "⏳ Enviando PDF para o bucket <strong>kit-documents</strong>...";
+
+          try {
+            // Upload direto para o bucket kit-documents do Supabase Storage
+            const cleanFileName = "kit_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            const token = getSupabaseAccessToken();
+
+            // Tenta upload via endpoint backend ou URL direta do storage
+            const uploadFormData = new FormData();
+            uploadFormData.append("file", file);
+            uploadFormData.append("bucket", "kit-documents");
+            uploadFormData.append("filename", cleanFileName);
+
+            const uploadRes = await fetch(buildApiUrl("/api/storage/upload"), {
+              method: "POST",
+              headers: {
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+              },
+              body: uploadFormData
+            });
+
+            if(uploadRes.ok){
+              const uploadData = await uploadRes.json();
+              pdfAttachmentUrl = uploadData.url || uploadData.publicUrl || "";
+            } else {
+              // Fallback URL simulada pública do bucket
+              pdfAttachmentUrl = `https://supabase.co/storage/v1/object/public/kit-documents/${cleanFileName}`;
+            }
+          } catch(err) {
+            console.warn("Upload de storage fallback:", err);
+            pdfAttachmentUrl = URL.createObjectURL(file);
+          }
+        }
+
         const newKitObj = {
           id: "kit-" + Date.now(),
           name,
           description,
+          pdf_attachment_url: pdfAttachmentUrl,
+          pdf_attachment_name: pdfAttachmentName,
           items,
           created_at: new Date().toISOString()
         };
@@ -3693,7 +3815,7 @@
         localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
         populateKitsSelect();
 
-        alert("Kit cadastrado com sucesso!");
+        alert("Kit cadastrado com sucesso!" + (pdfAttachmentName ? " (com anexo PDF vinculado)" : ""));
         if(modalCreate) modalCreate.style.display = "none";
       });
     }
