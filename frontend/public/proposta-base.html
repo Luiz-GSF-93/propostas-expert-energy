@@ -1320,98 +1320,117 @@
     </div>
 
     <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
-    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#ffffff; border-radius:14px; max-width:920px; width:100%; max-height:92vh; overflow-y:auto; padding:24px; box-shadow:0 24px 48px rgba(0,0,0,0.3); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <div>
-            <h3 id="adminKitModalTitle" style="margin:0; color:#123d56; font-size:18px;">Gerenciar Kits Comerciais (Admin)</h3>
-            <p style="margin:4px 0 0 0; font-size:12px; color:#55656f;">Cadastre novos kits, edite itens e anexos existentes ou exclua kits obsoletos.</p>
-          </div>
-          <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:4px 10px; border-radius:12px; font-weight:bold;">Acesso: Administrador</span>
-        </div>
-
-        <!-- ABAS: FORMULÁRIO DO KIT vs LISTA DE KITS CADASTRADOS -->
-        <div style="display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #eef2f4; padding-bottom:8px;">
-          <button type="button" id="tabFormKitBtn" style="background:#1b5e7b; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Formulário do Kit</button>
-          <button type="button" id="tabListKitsBtn" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Kits Cadastrados (<span id="countKitsBadge">0</span>)</button>
-        </div>
-
-        <!-- ABA 1: FORMULÁRIO DE CADASTRO E EDIÇÃO -->
-        <div id="sectionFormKit">
-          <input type="hidden" id="editingKitId" value="" />
-
-          <div style="margin-bottom:14px;">
-            <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
-            <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; box-sizing:border-box;" />
-          </div>
-
-          <div style="margin-bottom:14px;">
-            <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
-            <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
-          </div>
-
-          <div style="margin-bottom:16px; background:#f4f9fb; border:1px dashed #1b5e7b; border-radius:8px; padding:12px;">
-            <label for="newKitPdfFile" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#123d56;">
-              📄 Anexo Técnico em PDF do Kit (Bucket Supabase 'kit-documents')
-            </label>
-            <div id="currentKitPdfInfo" style="display:none; font-size:12px; color:#1b5e7b; margin-bottom:6px; font-weight:bold;">
-              PDF atual: <a id="currentKitPdfLink" href="#" target="_blank" style="text-decoration:underline;"></a>
-            </div>
-            <input type="file" id="newKitPdfFile" accept=".pdf" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:6px; background:#fff; box-sizing:border-box;" />
-            <div id="pdfUploadStatus" style="font-size:11px; color:#55656f; margin-top:4px;">
-              Ao salvar, o PDF será hospedado no bucket <strong>kit-documents</strong> e anexado automaticamente na proposta.
-            </div>
-          </div>
-
-          <div style="margin-bottom:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
-              <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">+ Adicionar Linha ao Kit</button>
-            </div>
-            <table style="width:100%; border-collapse:collapse; font-size:12px;">
-              <thead>
-                <tr style="background:#eef2f4; border-bottom:1px solid #c7d3da; text-align:left;">
-                  <th style="padding:6px; width:120px;">Categoria</th>
-                  <th style="padding:6px;">Descrição do serviço/material</th>
-                  <th style="padding:6px; width:70px;">Qtd</th>
-                  <th style="padding:6px; width:60px;">Un</th>
-                  <th style="padding:6px; width:110px;">Valor unitário (R$)</th>
-                  <th style="padding:6px; width:50px; text-align:center;">Ação</th>
-                </tr>
-              </thead>
-              <tbody id="kitModalRowsBody"></tbody>
-            </table>
-          </div>
-
-          <!-- BARRA DE AÇÃO FIXA DO FORMULÁRIO DE CADASTRO/EDIÇÃO DO KIT -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:22px; border-top:2px solid #dceaf2; padding-top:16px; background:#fbfdfe; border-radius:8px; padding:12px;">
+    <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
+    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; border-radius:14px; max-width:940px; width:100%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box; overflow:hidden;">
+        
+        <!-- 1. HEADER FIXO DO MODAL (SEMPRE VISÍVEL) -->
+        <div style="padding:18px 24px 14px; border-bottom:1px solid #eef2f4; background:#ffffff; flex-shrink:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div>
-              <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold; display:none;">+ Cadastrar Outro Kit</button>
+              <h3 id="adminKitModalTitle" style="margin:0; color:#123d56; font-size:18px; font-weight:bold;">Gerenciar Kits Comerciais (Admin)</h3>
+              <p style="margin:4px 0 0 0; font-size:12px; color:#55656f;">Cadastre novos kits, edite itens e anexos existentes ou exclua kits obsoletos.</p>
             </div>
-            <div style="display:flex; gap:12px; align-items:center;">
-              <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar / Fechar</button>
-              <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 24px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 12px rgba(47,111,68,0.3); display:inline-flex; align-items:center; gap:6px;">
-                💾 Salvar Kit Comercial
-              </button>
-            </div>
+            <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:4px 12px; border-radius:12px; font-weight:bold;">Acesso: Administrador</span>
+          </div>
+
+          <!-- ABAS FIXAS NO TOPO -->
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="tabFormKitBtn" style="background:#1b5e7b; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Formulário do Kit</button>
+            <button type="button" id="tabListKitsBtn" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Kits Cadastrados (<span id="countKitsBadge">0</span>)</button>
           </div>
         </div>
 
-        <!-- ABA 2: LISTA DE KITS COM BOTÕES EDITAR / EXCLUIR -->
-        <div id="sectionListKits" style="display:none;">
-          <div id="adminKitsTableContainer" style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:12px;">
-              <thead>
-                <tr style="background:#eef2f4; border-bottom:1px solid #c7d3da; text-align:left;">
-                  <th style="padding:8px;">Nome do Kit</th>
-                  <th style="padding:8px;">Descrição</th>
-                  <th style="padding:8px; width:80px; text-align:center;">Qtd Itens</th>
-                  <th style="padding:8px; width:110px; text-align:center;">Anexo PDF</th>
-                  <th style="padding:8px; width:140px; text-align:center;">Ações (Admin)</th>
-                </tr>
-              </thead>
-              <tbody id="adminKitsTableBody"></tbody>
-            </table>
+        <!-- 2. CORPO DO MODAL COM ROLAGEM INDEPENDENTE -->
+        <div style="padding:20px 24px; overflow-y:auto; flex:1; max-height:calc(92vh - 170px);">
+          
+          <!-- ABA 1: FORMULÁRIO DE CADASTRO E EDIÇÃO -->
+          <div id="sectionFormKit">
+            <input type="hidden" id="editingKitId" value="" />
+
+            <div style="margin-bottom:14px;">
+              <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
+              <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
+              <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:16px; background:#f4f9fb; border:1px dashed #1b5e7b; border-radius:8px; padding:12px;">
+              <label for="newKitPdfFile" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#123d56;">
+                📄 Anexo Técnico em PDF do Kit (Bucket Supabase 'kit-documents')
+              </label>
+              <div id="currentKitPdfInfo" style="display:none; font-size:12px; color:#1b5e7b; margin-bottom:6px; font-weight:bold;">
+                PDF atual: <a id="currentKitPdfLink" href="#" target="_blank" style="text-decoration:underline;"></a>
+              </div>
+              <input type="file" id="newKitPdfFile" accept=".pdf" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:6px; background:#fff; box-sizing:border-box;" />
+              <div id="pdfUploadStatus" style="font-size:11px; color:#55656f; margin-top:4px;">
+                Ao salvar, o PDF será hospedado no bucket <strong>kit-documents</strong> e anexado automaticamente na proposta.
+              </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
+                <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#ffffff; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;">
+                  + Adicionar Item ao Kit
+                </button>
+              </div>
+
+              <!-- TABELA COM ROLAGEM DEDICADA QUANDO TIVER MUITAS LINHAS -->
+              <div style="border:1px solid #c7d3da; border-radius:8px; overflow:hidden; background:#fff;">
+                <div style="max-height:280px; overflow-y:auto;">
+                  <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead style="position:sticky; top:0; z-index:10; background:#eef2f4;">
+                      <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
+                        <th style="padding:8px; width:120px;">Categoria</th>
+                        <th style="padding:8px;">Descrição do serviço/material</th>
+                        <th style="padding:8px; width:75px;">Qtd</th>
+                        <th style="padding:8px; width:65px;">Un</th>
+                        <th style="padding:8px; width:115px;">Valor unitário (R$)</th>
+                        <th style="padding:8px; width:55px; text-align:center;">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kitModalRowsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ABA 2: LISTA DE KITS COM BOTÕES EDITAR / EXCLUIR -->
+          <div id="sectionListKits" style="display:none;">
+            <div id="adminKitsTableContainer" style="overflow-x:auto; border:1px solid #c7d3da; border-radius:8px;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead style="background:#eef2f4;">
+                  <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
+                    <th style="padding:10px 8px;">Nome do Kit</th>
+                    <th style="padding:10px 8px;">Descrição</th>
+                    <th style="padding:10px 8px; width:80px; text-align:center;">Qtd Itens</th>
+                    <th style="padding:10px 8px; width:110px; text-align:center;">Anexo PDF</th>
+                    <th style="padding:10px 8px; width:140px; text-align:center;">Ações (Admin)</th>
+                  </tr>
+                </thead>
+                <tbody id="adminKitsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. RODAPÉ FIXO (STICKY FOOTER) - BOTÃO SALVAR NUNCA SOME -->
+        <div style="padding:14px 24px; border-top:1px solid #c7d3da; background:#fbfdfe; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; box-shadow:0 -4px 12px rgba(0,0,0,0.04);">
+          <div>
+            <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; display:none;">+ Novo Kit em Branco</button>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Fechar</button>
+            <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 26px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 14px rgba(47,111,68,0.35); display:inline-flex; align-items:center; gap:6px;">
+              💾 Salvar Kit Comercial
+            </button>
           </div>
         </div>
 
