@@ -3486,10 +3486,10 @@
           <h3 style="margin:0 0 10px 0; color:#123d56; font-size:14px;">Documentos Técnicos e Datasheets em Anexo</h3>
           <ul style="margin:0; padding-left:20px; font-size:13px; line-height:1.6;">
             ${proposalSelectedKits.filter(k => k.pdf_attachment_url).map(k => `
-              <li>
+              <li style="margin-bottom:8px;">
                 <strong>${escapeHtml(k.name)}:</strong> 
-                <a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" rel="noopener noreferrer" style="color:#1b5e7b; font-weight:bold; text-decoration:underline;">
-                  ${escapeHtml(k.pdf_attachment_name || "Abrir Documento Técnico / Datasheet PDF")}
+                <a href="${escapeHtml(k.pdf_attachment_url)}" download="${escapeHtml(k.pdf_attachment_name || "anexo-tecnico.pdf")}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-left:6px; color:#1b5e7b; font-weight:bold; text-decoration:underline;">
+                  📄 Baixar Anexo Técnico (${escapeHtml(k.pdf_attachment_name || "Documento PDF")})
                 </a>
               </li>
             `).join("")}
@@ -3704,34 +3704,38 @@
         const file = pdfFileInput.files[0];
         pdfAttachmentName = file.name;
         const statusDiv = document.getElementById("pdfUploadStatus");
-        if(statusDiv) statusDiv.innerHTML = "⏳ Enviando PDF para o bucket <strong>kit-documents</strong>...";
+        if(statusDiv) statusDiv.innerHTML = "⏳ Processando e vinculando anexo PDF...";
 
         try {
+          // Converte o arquivo PDF diretamente para Base64 Data URL (Garante abertura 100% offline e sem erro 404)
+          pdfAttachmentUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
+            reader.readAsDataURL(file);
+          });
+
+          // Tenta também upload para a API de storage caso o backend esteja ativo
           const cleanFileName = "kit_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
           const token = getSupabaseAccessToken();
-
           const uploadFormData = new FormData();
           uploadFormData.append("file", file);
           uploadFormData.append("bucket", "kit-documents");
           uploadFormData.append("filename", cleanFileName);
 
-          const uploadRes = await fetch(buildApiUrl("/api/storage/upload"), {
+          fetch(buildApiUrl("/api/storage/upload"), {
             method: "POST",
-            headers: {
-              ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            },
+            headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
             body: uploadFormData
-          });
+          }).then(res => res.ok ? res.json() : null).then(data => {
+            if(data && (data.url || data.publicUrl)){
+              // Se o backend retornou URL pública do Supabase, pode usar
+              console.log("PDF hospedado no Supabase:", data.url || data.publicUrl);
+            }
+          }).catch(() => {});
 
-          if(uploadRes.ok){
-            const uploadData = await uploadRes.json();
-            pdfAttachmentUrl = uploadData.url || uploadData.publicUrl || "";
-          } else {
-            pdfAttachmentUrl = `https://supabase.co/storage/v1/object/public/kit-documents/${cleanFileName}`;
-          }
         } catch(err) {
-          console.warn("Upload de storage fallback:", err);
-          pdfAttachmentUrl = URL.createObjectURL(file);
+          console.warn("Erro ao converter PDF:", err);
         }
       }
 
@@ -4173,34 +4177,17 @@
           const file = pdfFileInput.files[0];
           pdfAttachmentName = file.name;
           const statusDiv = document.getElementById("pdfUploadStatus");
-          if(statusDiv) statusDiv.innerHTML = "⏳ Enviando PDF para o bucket <strong>kit-documents</strong>...";
+          if(statusDiv) statusDiv.innerHTML = "⏳ Processando e vinculando anexo PDF...";
 
           try {
-            const cleanFileName = "kit_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-            const token = getSupabaseAccessToken();
-
-            const uploadFormData = new FormData();
-            uploadFormData.append("file", file);
-            uploadFormData.append("bucket", "kit-documents");
-            uploadFormData.append("filename", cleanFileName);
-
-            const uploadRes = await fetch(buildApiUrl("/api/storage/upload"), {
-              method: "POST",
-              headers: {
-                ...(token ? { "Authorization": `Bearer ${token}` } : {})
-              },
-              body: uploadFormData
+            pdfAttachmentUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
+              reader.readAsDataURL(file);
             });
-
-            if(uploadRes.ok){
-              const uploadData = await uploadRes.json();
-              pdfAttachmentUrl = uploadData.url || uploadData.publicUrl || "";
-            } else {
-              pdfAttachmentUrl = `https://supabase.co/storage/v1/object/public/kit-documents/${cleanFileName}`;
-            }
           } catch(err) {
-            console.warn("Upload de storage fallback:", err);
-            pdfAttachmentUrl = URL.createObjectURL(file);
+            console.warn("Erro ao converter PDF:", err);
           }
         }
 
