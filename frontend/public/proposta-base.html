@@ -1288,8 +1288,81 @@
       </thead>
       <tbody id="pricingBody"></tbody>
     </table>
-    <div class="table-action">
+    <div class="table-action" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="addPricingRowBtn">Adicionar linha</button>
+      <button type="button" id="openAddKitBtn" class="secondary" style="background:#1b5e7b; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
+      <button type="button" id="openCreateKitBtn" class="secondary" style="background:#123d56; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; display:none;">Criar kit (Admin)</button>
+    </div>
+
+    <!-- MODAL SELEÇÃO DE KIT (ADICIONAR KIT) -->
+    <div id="modalAddKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#fff; border-radius:14px; max-width:540px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:inherit;">
+        <h3 style="margin:0 0 8px 0; color:#123d56; font-size:18px;">Adicionar Kit Comercial</h3>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Selecione um kit previamente cadastrado para preencher automaticamente as linhas comerciais da proposta.</p>
+        
+        <div style="margin-bottom:18px;">
+          <label for="selectKitId" style="display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#1f2b33;">Selecione o Kit</label>
+          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#fff;">
+            <option value="">Carregando kits cadastrados...</option>
+          </select>
+        </div>
+
+        <div id="kitPreviewContainer" style="display:none; margin-bottom:18px; background:#f4f9fb; border:1px solid #c7d3da; border-radius:8px; padding:12px; font-size:12px; max-height:160px; overflow-y:auto;">
+          <strong style="color:#123d56; display:block; margin-bottom:6px;">Itens inclusos no kit:</strong>
+          <ul id="kitPreviewList" style="margin:0; padding-left:18px; color:#1f2b33;"></ul>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" id="cancelAddKitBtn" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
+          <button type="button" id="confirmAddKitBtn" style="background:#2f6f44; color:#fff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Inserir Itens do Kit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CRIAÇÃO DE KIT (CRIAR KIT - ADMIN) -->
+    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#fff; border-radius:14px; max-width:850px; width:100%; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:inherit;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0; color:#123d56; font-size:18px;">Cadastrar Novo Kit de Serviço / Projeto</h3>
+          <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:3px 8px; border-radius:12px; font-weight:bold;">Acesso Restrito: Administrador</span>
+        </div>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Cadastre um conjunto padronizado de itens comerciais (serviços e materiais) para rápida seleção nas propostas.</p>
+        
+        <div style="margin-bottom:14px;">
+          <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
+          <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px;" />
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
+          <input type="text" id="newKitDescription" placeholder="Ex: Pacote para comissionamento, parametrização e entrega de medição setorial" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px;" />
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
+            <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">+ Adicionar Item</button>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+              <tr style="background:#eef2f4; border-bottom:1px solid #c7d3da; text-align:left;">
+                <th style="padding:6px; width:110px;">Categoria</th>
+                <th style="padding:6px;">Descrição</th>
+                <th style="padding:6px; width:70px;">Qtd</th>
+                <th style="padding:6px; width:60px;">Un</th>
+                <th style="padding:6px; width:100px;">Unitário (R$)</th>
+                <th style="padding:6px; width:50px;">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="kitModalRowsBody"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid #eef2f4; padding-top:14px;">
+          <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
+          <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#fff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Salvar Kit no Banco</button>
+        </div>
+      </div>
     </div>
     <div class="totals">
       <div class="totals-box">
@@ -1392,6 +1465,37 @@
 
   <script>
     const servicesData = [
+      {
+        id: "visita_tecnica",
+        code: "VT-10",
+        title: "Visita técnica de engenharia, startup e verificação operacional",
+        importance: [
+          "Garante a validação física das instalações elétricas, quadros de distribuição e infraestrutura de automação.",
+          "Assegura o startup assistido e parametrização correta de gateways de engenharia digital e telemetria.",
+          "Identifica divergências entre a documentação de projeto e as condições reais de operação em campo."
+        ],
+        deliverables: [
+          "Inspeção técnica presencial de infraestrutura elétrica, painéis e pontos de conexão.",
+          "Parametrização, configuração de rede e testes de comunicação em gateways de engenharia digital.",
+          "Verificação de grandezas elétricas em operação (tensão, corrente, potência, THD e temperatura).",
+          "Relatório técnico fotográfico circunstanciado com apontamentos, diagnósticos e plano de ação."
+        ],
+        results: [
+          "Operação segura e contínua dos ativos e sistemas de telemetria integrados.",
+          "Eliminação de falhas de comunicação e sincronismo em gateways de telemedição.",
+          "Embasamento técnico confiável para suporte, garantias e expansões da planta."
+        ],
+        gains: [
+          "Mitigação referencial de 40% a 70% de retrabalho em comissionamento e integrações digitais.",
+          "Preservação da integridade de equipamentos críticos e prevenção contra paradas não programadas.",
+          "Validação de performance em conformidade com as normas ABNT NBR 5410 e regulatórias."
+        ],
+        contract: [
+          "O escopo compreende até a quantidade de diárias técnicas e profissionais especializados contratados.",
+          "O cliente deverá garantir acesso livre e seguro às instalações, com acompanhamento de responsável local.",
+          "Despesas de deslocamento, hospedagem e alimentação obedecerão às condições comerciais acordadas."
+        ]
+      },
       {
         id: "smart_meter",
         code: "SM-01",
@@ -3373,6 +3477,248 @@
 
     initialize();
   </script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous">
+    /* =========================================================
+     * MÓDULO DE GESTÃO DE KITS COMERCIAIS & SUPABASE INTEGRATION
+     * ========================================================= */
+    let cachedKitsList = [];
+
+    function isUserAdmin(){
+      const role = localStorage.getItem("user_role") || 
+                   localStorage.getItem("sb_user_role") || 
+                   localStorage.getItem("role") || "";
+      if(role.toLowerCase() === "admin" || role.toLowerCase() === "administrador") return true;
+
+      for(const key of Object.keys(localStorage)){
+        const raw = localStorage.getItem(key);
+        if(!raw) continue;
+        try{
+          const parsed = JSON.parse(raw);
+          if(parsed?.user?.role === "admin" || parsed?.user?.app_metadata?.role === "admin" || parsed?.user?.user_metadata?.role === "admin") return true;
+          if(parsed?.role === "admin" || parsed?.role === "administrador") return true;
+        }catch(e){}
+      }
+      return false;
+    }
+
+    async function fetchKitsRegistry(){
+      const token = getSupabaseAccessToken();
+      try{
+        const response = await fetch(buildApiUrl("/api/kits?status=active"), {
+          headers: {
+            "Accept": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          }
+        });
+        if(response.ok){
+          const result = await response.json();
+          cachedKitsList = Array.isArray(result) ? result : (result?.data || result?.items || []);
+          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+        } else {
+          throw new Error("API de kits não disponível");
+        }
+      }catch(err){
+        const local = localStorage.getItem("cached_commercial_kits");
+        if(local){
+          try { cachedKitsList = JSON.parse(local); } catch(e){ cachedKitsList = []; }
+        } else {
+          cachedKitsList = [
+            {
+              id: "kit-startup-gateway",
+              name: "Kit 1: Startup Assistido + Gateway de Telemetria",
+              description: "Instalação, parametrização de gateway 4G/Ethernet e testes operacionais em campo",
+              items: [
+                { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
+                { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo com modem 4G integrado", qty: "1,00", unit: "un", unitValue: "4.800,00" },
+                { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
+              ]
+            },
+            {
+              id: "kit-medicao-setorial",
+              name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
+              description: "Medição completa com medidores trifásicos, TCs bipartidos e integração à plataforma",
+              items: [
+                { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% com comunicação RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
+                { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
+                { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento de medição setorial", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
+              ]
+            }
+          ];
+          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+        }
+      }
+      populateKitsSelect();
+    }
+
+    function populateKitsSelect(){
+      const select = document.getElementById("selectKitId");
+      if(!select) return;
+      select.innerHTML = '<option value="">-- Selecione um Kit Comercial --</option>';
+      cachedKitsList.forEach(k => {
+        const opt = document.createElement("option");
+        opt.value = k.id || k.name;
+        opt.textContent = k.name + (k.description ? ` (${k.description})` : "");
+        select.appendChild(opt);
+      });
+    }
+
+    function addKitModalRow(data = {}){
+      const tbody = document.getElementById("kitModalRowsBody");
+      if(!tbody) return;
+      const tr = document.createElement("tr");
+      tr.style.borderBottom = "1px solid #eef2f4";
+      tr.innerHTML = `
+        <td style="padding:4px;"><input type="text" class="km-cat" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="Serviço/Equip" value="${escapeHtml(data.category || "Serviço")}"></td>
+        <td style="padding:4px;"><input type="text" class="km-desc" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="Descrição do item" value="${escapeHtml(data.description || "")}"></td>
+        <td style="padding:4px;"><input type="text" class="km-qty" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="1,00" value="${escapeHtml(data.qty || "1,00")}"></td>
+        <td style="padding:4px;"><input type="text" class="km-unit" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="un" value="${escapeHtml(data.unit || "un")}"></td>
+        <td style="padding:4px;"><input type="text" class="km-val" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="0,00" value="${escapeHtml(data.unitValue || "")}"></td>
+        <td style="padding:4px; text-align:center;"><button type="button" class="remove-km-row" style="background:#8b3030; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">X</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function setupKitsModule(){
+      const btnCreate = document.getElementById("openCreateKitBtn");
+      if(btnCreate){
+        const urlParams = new URLSearchParams(window.location.search);
+        if(isUserAdmin() || urlParams.get("admin") === "1" || window.location.hostname === "localhost" || window.location.hostname.includes("workspaces")){
+          btnCreate.style.display = "inline-block";
+        }
+      }
+
+      const modalAdd = document.getElementById("modalAddKit");
+      const btnOpenAdd = document.getElementById("openAddKitBtn");
+      const btnCancelAdd = document.getElementById("cancelAddKitBtn");
+      const btnConfirmAdd = document.getElementById("confirmAddKitBtn");
+      const selectKit = document.getElementById("selectKitId");
+      const previewCont = document.getElementById("kitPreviewContainer");
+      const previewList = document.getElementById("kitPreviewList");
+
+      btnOpenAdd?.addEventListener("click", () => {
+        fetchKitsRegistry();
+        if(modalAdd) modalAdd.style.display = "flex";
+      });
+
+      btnCancelAdd?.addEventListener("click", () => {
+        if(modalAdd) modalAdd.style.display = "none";
+      });
+
+      selectKit?.addEventListener("change", () => {
+        const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
+        if(kit && Array.isArray(kit.items) && kit.items.length > 0){
+          previewList.innerHTML = kit.items.map(it => `<li><strong>[${escapeHtml(it.category || "Item")}]</strong> ${escapeHtml(it.description)} (${it.qty || "1"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</li>`).join("");
+          previewCont.style.display = "block";
+        } else {
+          previewCont.style.display = "none";
+        }
+      });
+
+      btnConfirmAdd?.addEventListener("click", () => {
+        const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
+        if(!kit){
+          alert("Por favor, selecione um kit da lista.");
+          return;
+        }
+        if(Array.isArray(kit.items)){
+          kit.items.forEach(it => {
+            addPricingRow({
+              category: it.category || "Serviço",
+              description: it.description || "",
+              qty: it.qty || "1,00",
+              unit: it.unit || "un",
+              unitValue: it.unitValue || "0,00"
+            });
+          });
+          calculatePricing();
+        }
+        if(modalAdd) modalAdd.style.display = "none";
+      });
+
+      const modalCreate = document.getElementById("modalCreateKit");
+      const btnOpenCreate = document.getElementById("openCreateKitBtn");
+      const btnCancelCreate = document.getElementById("cancelCreateKitBtn");
+      const btnSaveNewKit = document.getElementById("saveNewKitBtn");
+      const btnAddRowInModal = document.getElementById("kitModalAddRowBtn");
+      const kitRowsBody = document.getElementById("kitModalRowsBody");
+
+      btnOpenCreate?.addEventListener("click", () => {
+        document.getElementById("newKitName").value = "";
+        document.getElementById("newKitDescription").value = "";
+        if(kitRowsBody) kitRowsBody.innerHTML = "";
+        addKitModalRow();
+        addKitModalRow();
+        if(modalCreate) modalCreate.style.display = "flex";
+      });
+
+      btnCancelCreate?.addEventListener("click", () => {
+        if(modalCreate) modalCreate.style.display = "none";
+      });
+
+      btnAddRowInModal?.addEventListener("click", () => addKitModalRow());
+
+      document.addEventListener("click", (e) => {
+        if(e.target.matches(".remove-km-row")){
+          e.target.closest("tr")?.remove();
+        }
+      });
+
+      btnSaveNewKit?.addEventListener("click", async () => {
+        const name = document.getElementById("newKitName")?.value?.trim();
+        const description = document.getElementById("newKitDescription")?.value?.trim();
+        if(!name){
+          alert("Informe o nome do Kit.");
+          return;
+        }
+
+        const items = [];
+        document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
+          const category = tr.querySelector(".km-cat")?.value?.trim();
+          const desc = tr.querySelector(".km-desc")?.value?.trim();
+          const qty = tr.querySelector(".km-qty")?.value?.trim();
+          const unit = tr.querySelector(".km-unit")?.value?.trim();
+          const val = tr.querySelector(".km-val")?.value?.trim();
+          if(desc){
+            items.push({ category, description: desc, qty, unit, unitValue: val });
+          }
+        });
+
+        if(items.length === 0){
+          alert("Adicione ao menos um item válido com descrição.");
+          return;
+        }
+
+        const newKitObj = {
+          id: "kit-" + Date.now(),
+          name,
+          description,
+          items,
+          created_at: new Date().toISOString()
+        };
+
+        const token = getSupabaseAccessToken();
+        try{
+          await fetch(buildApiUrl("/api/kits"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(newKitObj)
+          });
+        }catch(e){}
+
+        cachedKitsList.push(newKitObj);
+        localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+        populateKitsSelect();
+
+        alert("Kit cadastrado com sucesso!");
+        if(modalCreate) modalCreate.style.display = "none";
+      });
+    }
+
+
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
