@@ -3585,18 +3585,6 @@
 
     
     /* Funções globais diretas para os modais */
-    
-    /* Função para remover anexo PDF do kit em edição */
-    window.removeCurrentKitPdfDirect = function(){
-      if(window.confirm("Deseja remover o anexo PDF atual deste kit?")){
-        document.getElementById("removeCurrentPdfFlag").value = "1";
-        const pdfInfo = document.getElementById("currentKitPdfInfo");
-        const statusDiv = document.getElementById("pdfUploadStatus");
-        if(pdfInfo) pdfInfo.style.display = "none";
-        if(statusDiv) statusDiv.innerHTML = "<span style='color:#8b3030; font-weight:bold;'>Anexo anterior marcado para remoção.</span> Você pode salvar sem anexo ou selecionar um novo PDF abaixo.";
-      }
-    };
-
     window.closeAddKitModalDirect = function(){
       const modal = document.getElementById("modalAddKit");
       if(modal) modal.style.display = "none";
@@ -3672,11 +3660,8 @@
       document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
       document.getElementById("newKitName").value = "";
       document.getElementById("newKitDescription").value = "";
-      document.getElementById("removeCurrentPdfFlag").value = "0";
       document.getElementById("newKitPdfFile").value = "";
       document.getElementById("currentKitPdfInfo").style.display = "none";
-      const st = document.getElementById("pdfUploadStatus");
-      if(st) st.textContent = "O arquivo PDF enviado será vinculado ao kit e anexado automaticamente na proposta.";
       document.getElementById("btnNewKitReset").style.display = "none";
       const kitRowsBody = document.getElementById("kitModalRowsBody");
       if(kitRowsBody) kitRowsBody.innerHTML = "";
@@ -3711,9 +3696,8 @@
       }
 
       const existingKit = editingId ? cachedKitsList.find(k => (k.id || k.name) === editingId) : null;
-      const removePdf = document.getElementById("removeCurrentPdfFlag")?.value === "1";
-      let pdfAttachmentUrl = removePdf ? "" : (existingKit?.pdf_attachment_url || "");
-      let pdfAttachmentName = removePdf ? "" : (existingKit?.pdf_attachment_name || "");
+      let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
+      let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
 
       const pdfFileInput = document.getElementById("newKitPdfFile");
       if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
@@ -4110,20 +4094,14 @@
           document.getElementById("newKitDescription").value = kit.description || "";
           document.getElementById("btnNewKitReset").style.display = "inline-block";
 
-          document.getElementById("removeCurrentPdfFlag").value = "0";
           const pdfInfo = document.getElementById("currentKitPdfInfo");
           const pdfLink = document.getElementById("currentKitPdfLink");
-          const statusDiv = document.getElementById("pdfUploadStatus");
-          if(statusDiv) statusDiv.textContent = "O arquivo PDF enviado será vinculado ao kit e anexado automaticamente na proposta.";
-
           if(kit.pdf_attachment_url){
-            if(pdfInfo) pdfInfo.style.display = "flex";
-            if(pdfLink){
-              pdfLink.href = kit.pdf_attachment_url;
-              pdfLink.textContent = kit.pdf_attachment_name || "Visualizar PDF Anexo Atual";
-            }
+            pdfInfo.style.display = "block";
+            pdfLink.href = kit.pdf_attachment_url;
+            pdfLink.textContent = kit.pdf_attachment_name || "Visualizar PDF Anexo Atual";
           } else {
-            if(pdfInfo) pdfInfo.style.display = "none";
+            pdfInfo.style.display = "none";
           }
 
           if(kitRowsBody) kitRowsBody.innerHTML = "";
