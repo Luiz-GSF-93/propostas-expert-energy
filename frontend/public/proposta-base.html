@@ -1399,6 +1399,151 @@
     Estimativas de ganhos, eficiência, redução de custos, mitigação de penalidades e melhorias operacionais apresentadas neste modelo possuem caráter referencial e dependem de diagnóstico, baseline, perfil tarifário, condições de mercado, regime operacional, qualidade dos dados, disponibilidade de infraestrutura e efetiva implementação das recomendações e soluções adotadas.
   </div>
 
+  
+
+  <!-- MODAL 1: SELEÇÃO DE KIT (ADICIONAR KIT NA PROPOSTA) -->
+    <div id="modalAddKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; border-radius:14px; max-width:540px; width:100%; padding:24px; box-shadow:0 24px 48px rgba(0,0,0,0.3); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box;">
+        <h3 style="margin:0 0 8px 0; color:#123d56; font-size:18px;">Adicionar Kit Comercial</h3>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Selecione um kit previamente cadastrado para preencher automaticamente as linhas da planilha comercial.</p>
+        
+        <div style="margin-bottom:16px;">
+          <label for="selectKitId" style="display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#1f2b33;">Selecione o Kit</label>
+          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#ffffff; box-sizing:border-box;">
+            <option value="">Carregando kits...</option>
+          </select>
+        </div>
+
+        <div id="kitPreviewContainer" style="display:none; margin-bottom:18px; background:#f4f9fb; border:1px solid #c7d3da; border-radius:8px; padding:12px; font-size:12px; max-height:160px; overflow-y:auto;">
+          <strong style="color:#123d56; display:block; margin-bottom:6px;">Itens inclusos no kit:</strong>
+          <ul id="kitPreviewList" style="margin:0; padding-left:18px; color:#1f2b33; line-height:1.5;"></ul>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" id="cancelAddKitBtn" onclick="closeAddKitModalDirect()" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
+          <button type="button" id="confirmAddKitBtn" onclick="confirmAddKitDirect()" style="background:#2f6f44; color:#ffffff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Inserir Itens do Kit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
+    <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
+    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; border-radius:14px; max-width:940px; width:100%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box; overflow:hidden;">
+        
+        <!-- 1. HEADER FIXO DO MODAL (SEMPRE VISÍVEL) -->
+        <div style="padding:18px 24px 14px; border-bottom:1px solid #eef2f4; background:#ffffff; flex-shrink:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+              <h3 id="adminKitModalTitle" style="margin:0; color:#123d56; font-size:18px; font-weight:bold;">Gerenciar Kits Comerciais (Admin)</h3>
+              <p style="margin:4px 0 0 0; font-size:12px; color:#55656f;">Cadastre novos kits, edite itens e anexos existentes ou exclua kits obsoletos.</p>
+            </div>
+            <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:4px 12px; border-radius:12px; font-weight:bold;">Acesso: Administrador</span>
+          </div>
+
+          <!-- ABAS FIXAS NO TOPO -->
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="tabFormKitBtn" onclick="switchAdminKitTab('form')" style="background:#1b5e7b; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Formulário do Kit</button>
+            <button type="button" id="tabListKitsBtn" onclick="switchAdminKitTab('list')" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Kits Cadastrados (<span id="countKitsBadge">0</span>)</button>
+          </div>
+        </div>
+
+        <!-- 2. CORPO DO MODAL COM ROLAGEM INDEPENDENTE -->
+        <div style="padding:20px 24px; overflow-y:auto; flex:1; max-height:calc(92vh - 170px);">
+          
+          <!-- ABA 1: FORMULÁRIO DE CADASTRO E EDIÇÃO -->
+          <div id="sectionFormKit">
+            <input type="hidden" id="editingKitId" value="" />
+
+            <div style="margin-bottom:14px;">
+              <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
+              <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
+              <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:16px; background:#f4f9fb; border:1px dashed #1b5e7b; border-radius:8px; padding:12px;">
+              <label for="newKitPdfFile" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#123d56;">
+                📄 Anexo Técnico em PDF do Kit (Bucket Supabase 'kit-documents')
+              </label>
+              <div id="currentKitPdfInfo" style="display:none; font-size:12px; color:#1b5e7b; margin-bottom:6px; font-weight:bold;">
+                PDF atual: <a id="currentKitPdfLink" href="#" target="_blank" style="text-decoration:underline;"></a>
+              </div>
+              <input type="file" id="newKitPdfFile" accept=".pdf" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:6px; background:#fff; box-sizing:border-box;" />
+              <div id="pdfUploadStatus" style="font-size:11px; color:#55656f; margin-top:4px;">
+                Ao salvar, o PDF será hospedado no bucket <strong>kit-documents</strong> e anexado automaticamente na proposta.
+              </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
+                <button type="button" id="kitModalAddRowBtn" onclick="addKitModalRow()" style="background:#1b5e7b; color:#ffffff; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;">
+                  + Adicionar Item ao Kit
+                </button>
+              </div>
+
+              <!-- TABELA COM ROLAGEM DEDICADA QUANDO TIVER MUITAS LINHAS -->
+              <div style="border:1px solid #c7d3da; border-radius:8px; overflow:hidden; background:#fff;">
+                <div style="max-height:280px; overflow-y:auto;">
+                  <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead style="position:sticky; top:0; z-index:10; background:#eef2f4;">
+                      <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
+                        <th style="padding:8px; width:120px;">Categoria</th>
+                        <th style="padding:8px;">Descrição do serviço/material</th>
+                        <th style="padding:8px; width:75px;">Qtd</th>
+                        <th style="padding:8px; width:65px;">Un</th>
+                        <th style="padding:8px; width:115px;">Valor unitário (R$)</th>
+                        <th style="padding:8px; width:55px; text-align:center;">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kitModalRowsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ABA 2: LISTA DE KITS COM BOTÕES EDITAR / EXCLUIR -->
+          <div id="sectionListKits" style="display:none;">
+            <div id="adminKitsTableContainer" style="overflow-x:auto; border:1px solid #c7d3da; border-radius:8px;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead style="background:#eef2f4;">
+                  <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
+                    <th style="padding:10px 8px;">Nome do Kit</th>
+                    <th style="padding:10px 8px;">Descrição</th>
+                    <th style="padding:10px 8px; width:80px; text-align:center;">Qtd Itens</th>
+                    <th style="padding:10px 8px; width:110px; text-align:center;">Anexo PDF</th>
+                    <th style="padding:10px 8px; width:140px; text-align:center;">Ações (Admin)</th>
+                  </tr>
+                </thead>
+                <tbody id="adminKitsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. RODAPÉ FIXO (STICKY FOOTER) - BOTÃO SALVAR NUNCA SOME -->
+        <div style="padding:14px 24px; border-top:1px solid #c7d3da; background:#fbfdfe; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; box-shadow:0 -4px 12px rgba(0,0,0,0.04);">
+          <div>
+            <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; display:none;">+ Novo Kit em Branco</button>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Fechar</button>
+            <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 26px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 14px rgba(47,111,68,0.35); display:inline-flex; align-items:center; gap:6px;">
+              💾 Salvar Kit Comercial
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   <script>
     const servicesData = [
       {
@@ -3438,6 +3583,196 @@
     }
 
 
+    
+    /* Funções globais diretas para os modais */
+    window.closeAddKitModalDirect = function(){
+      const modal = document.getElementById("modalAddKit");
+      if(modal) modal.style.display = "none";
+    };
+
+    window.closeCreateKitModalDirect = function(){
+      const modal = document.getElementById("modalCreateKit");
+      if(modal) modal.style.display = "none";
+    };
+
+    window.confirmAddKitDirect = function(){
+      const selectKit = document.getElementById("selectKitId");
+      const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
+      if(!kit){
+        alert("Por favor, selecione um kit da lista.");
+        return;
+      }
+      if(Array.isArray(kit.items)){
+        const tbody = document.getElementById("pricingBody");
+        const existingRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+        const allEmpty = existingRows.every(tr => {
+          const desc = tr.querySelector(".price-description")?.value?.trim();
+          const val = tr.querySelector(".price-unitvalue")?.value?.trim();
+          return !desc && (!val || val === "0,00" || val === "0");
+        });
+        if(allEmpty && tbody){
+          tbody.innerHTML = "";
+        }
+
+        kit.items.forEach(it => {
+          addPricingRow({
+            category: it.category || "Serviço",
+            description: it.description || "",
+            qty: it.qty || "1,00",
+            unit: it.unit || "un",
+            unitValue: it.unitValue || "0,00"
+          });
+        });
+        calculatePricing();
+
+        if(!proposalSelectedKits.some(k => (k.id || k.name) === (kit.id || kit.name))){
+          proposalSelectedKits.push(kit);
+        }
+        updateAttachedKitsUI();
+        if(kit.pdf_attachment_url){
+          showToast("Kit e Anexo Técnico PDF inseridos com sucesso na proposta!", "success");
+        }
+      }
+      window.closeAddKitModalDirect();
+    };
+
+    window.switchAdminKitTab = function(tab){
+      const secForm = document.getElementById("sectionFormKit");
+      const secList = document.getElementById("sectionListKits");
+      const tabForm = document.getElementById("tabFormKitBtn");
+      const tabList = document.getElementById("tabListKitsBtn");
+      if(tab === "form"){
+        if(secForm) secForm.style.display = "block";
+        if(secList) secList.style.display = "none";
+        if(tabForm){ tabForm.style.background = "#1b5e7b"; tabForm.style.color = "#fff"; }
+        if(tabList){ tabList.style.background = "#eef2f4"; tabList.style.color = "#123d56"; }
+      } else {
+        if(secForm) secForm.style.display = "none";
+        if(secList) secList.style.display = "block";
+        if(tabList){ tabList.style.background = "#1b5e7b"; tabList.style.color = "#fff"; }
+        if(tabForm){ tabForm.style.background = "#eef2f4"; tabForm.style.color = "#123d56"; }
+        renderAdminKitsTable();
+      }
+    };
+
+    window.resetKitFormDirect = function(){
+      document.getElementById("editingKitId").value = "";
+      document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
+      document.getElementById("newKitName").value = "";
+      document.getElementById("newKitDescription").value = "";
+      document.getElementById("newKitPdfFile").value = "";
+      document.getElementById("currentKitPdfInfo").style.display = "none";
+      document.getElementById("btnNewKitReset").style.display = "none";
+      const kitRowsBody = document.getElementById("kitModalRowsBody");
+      if(kitRowsBody) kitRowsBody.innerHTML = "";
+      addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
+      addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
+    };
+
+    window.saveNewKitDirect = async function(){
+      const editingId = document.getElementById("editingKitId")?.value?.trim();
+      const name = document.getElementById("newKitName")?.value?.trim();
+      const description = document.getElementById("newKitDescription")?.value?.trim();
+      if(!name){
+        alert("Informe o nome do Kit.");
+        return;
+      }
+
+      const items = [];
+      document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
+        const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
+        const desc = tr.querySelector(".km-desc")?.value?.trim();
+        const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
+        const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
+        const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
+        if(desc){
+          items.push({ category, description: desc, qty, unit, unitValue: val });
+        }
+      });
+
+      if(items.length === 0){
+        alert("Adicione ao menos um item comercial válido com descrição.");
+        return;
+      }
+
+      const existingKit = editingId ? cachedKitsList.find(k => (k.id || k.name) === editingId) : null;
+      let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
+      let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
+
+      const pdfFileInput = document.getElementById("newKitPdfFile");
+      if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
+        const file = pdfFileInput.files[0];
+        pdfAttachmentName = file.name;
+        const statusDiv = document.getElementById("pdfUploadStatus");
+        if(statusDiv) statusDiv.innerHTML = "⏳ Enviando PDF para o bucket <strong>kit-documents</strong>...";
+
+        try {
+          const cleanFileName = "kit_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const token = getSupabaseAccessToken();
+
+          const uploadFormData = new FormData();
+          uploadFormData.append("file", file);
+          uploadFormData.append("bucket", "kit-documents");
+          uploadFormData.append("filename", cleanFileName);
+
+          const uploadRes = await fetch(buildApiUrl("/api/storage/upload"), {
+            method: "POST",
+            headers: {
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: uploadFormData
+          });
+
+          if(uploadRes.ok){
+            const uploadData = await uploadRes.json();
+            pdfAttachmentUrl = uploadData.url || uploadData.publicUrl || "";
+          } else {
+            pdfAttachmentUrl = `https://supabase.co/storage/v1/object/public/kit-documents/${cleanFileName}`;
+          }
+        } catch(err) {
+          console.warn("Upload de storage fallback:", err);
+          pdfAttachmentUrl = URL.createObjectURL(file);
+        }
+      }
+
+      const kitObj = {
+        id: editingId || ("kit-" + Date.now()),
+        name,
+        description,
+        pdf_attachment_url: pdfAttachmentUrl,
+        pdf_attachment_name: pdfAttachmentName,
+        items,
+        updated_at: new Date().toISOString()
+      };
+
+      const token = getSupabaseAccessToken();
+      try{
+        await fetch(buildApiUrl(editingId ? `/api/kits/${editingId}` : "/api/kits"), {
+          method: editingId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(kitObj)
+        });
+      }catch(e){}
+
+      if(editingId){
+        const idx = cachedKitsList.findIndex(k => (k.id || k.name) === editingId);
+        if(idx !== -1) cachedKitsList[idx] = kitObj;
+        else cachedKitsList.push(kitObj);
+      } else {
+        cachedKitsList.push(kitObj);
+      }
+
+      localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+      populateKitsSelect();
+
+      alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
+      window.closeCreateKitModalDirect();
+    };
+
+
     /* =========================================================
      * MÓDULO DE KITS COMERCIAIS (ADICIONAR KIT & CRIAR KIT ADMIN)
      * ========================================================= */
@@ -3941,148 +4276,6 @@ async function initialize(){
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 
 
-  <!-- MODAL 1: SELEÇÃO DE KIT (ADICIONAR KIT NA PROPOSTA) -->
-    <div id="modalAddKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#ffffff; border-radius:14px; max-width:540px; width:100%; padding:24px; box-shadow:0 24px 48px rgba(0,0,0,0.3); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box;">
-        <h3 style="margin:0 0 8px 0; color:#123d56; font-size:18px;">Adicionar Kit Comercial</h3>
-        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Selecione um kit previamente cadastrado para preencher automaticamente as linhas da planilha comercial.</p>
-        
-        <div style="margin-bottom:16px;">
-          <label for="selectKitId" style="display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#1f2b33;">Selecione o Kit</label>
-          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#ffffff; box-sizing:border-box;">
-            <option value="">Carregando kits...</option>
-          </select>
-        </div>
-
-        <div id="kitPreviewContainer" style="display:none; margin-bottom:18px; background:#f4f9fb; border:1px solid #c7d3da; border-radius:8px; padding:12px; font-size:12px; max-height:160px; overflow-y:auto;">
-          <strong style="color:#123d56; display:block; margin-bottom:6px;">Itens inclusos no kit:</strong>
-          <ul id="kitPreviewList" style="margin:0; padding-left:18px; color:#1f2b33; line-height:1.5;"></ul>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <button type="button" id="cancelAddKitBtn" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
-          <button type="button" id="confirmAddKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Inserir Itens do Kit</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
-    <!-- MODAL 2: GESTÃO COMPLETA DE KITS (CRIAR, EDITAR E EXCLUIR - EXCLUSIVO ADMIN) -->
-    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#ffffff; border-radius:14px; max-width:940px; width:100%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box; overflow:hidden;">
-        
-        <!-- 1. HEADER FIXO DO MODAL (SEMPRE VISÍVEL) -->
-        <div style="padding:18px 24px 14px; border-bottom:1px solid #eef2f4; background:#ffffff; flex-shrink:0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div>
-              <h3 id="adminKitModalTitle" style="margin:0; color:#123d56; font-size:18px; font-weight:bold;">Gerenciar Kits Comerciais (Admin)</h3>
-              <p style="margin:4px 0 0 0; font-size:12px; color:#55656f;">Cadastre novos kits, edite itens e anexos existentes ou exclua kits obsoletos.</p>
-            </div>
-            <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:4px 12px; border-radius:12px; font-weight:bold;">Acesso: Administrador</span>
-          </div>
-
-          <!-- ABAS FIXAS NO TOPO -->
-          <div style="display:flex; gap:8px;">
-            <button type="button" id="tabFormKitBtn" style="background:#1b5e7b; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Formulário do Kit</button>
-            <button type="button" id="tabListKitsBtn" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">Kits Cadastrados (<span id="countKitsBadge">0</span>)</button>
-          </div>
-        </div>
-
-        <!-- 2. CORPO DO MODAL COM ROLAGEM INDEPENDENTE -->
-        <div style="padding:20px 24px; overflow-y:auto; flex:1; max-height:calc(92vh - 170px);">
-          
-          <!-- ABA 1: FORMULÁRIO DE CADASTRO E EDIÇÃO -->
-          <div id="sectionFormKit">
-            <input type="hidden" id="editingKitId" value="" />
-
-            <div style="margin-bottom:14px;">
-              <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
-              <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; box-sizing:border-box;" />
-            </div>
-
-            <div style="margin-bottom:14px;">
-              <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
-              <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
-            </div>
-
-            <div style="margin-bottom:16px; background:#f4f9fb; border:1px dashed #1b5e7b; border-radius:8px; padding:12px;">
-              <label for="newKitPdfFile" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#123d56;">
-                📄 Anexo Técnico em PDF do Kit (Bucket Supabase 'kit-documents')
-              </label>
-              <div id="currentKitPdfInfo" style="display:none; font-size:12px; color:#1b5e7b; margin-bottom:6px; font-weight:bold;">
-                PDF atual: <a id="currentKitPdfLink" href="#" target="_blank" style="text-decoration:underline;"></a>
-              </div>
-              <input type="file" id="newKitPdfFile" accept=".pdf" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:6px; background:#fff; box-sizing:border-box;" />
-              <div id="pdfUploadStatus" style="font-size:11px; color:#55656f; margin-top:4px;">
-                Ao salvar, o PDF será hospedado no bucket <strong>kit-documents</strong> e anexado automaticamente na proposta.
-              </div>
-            </div>
-
-            <div style="margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
-                <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#ffffff; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;">
-                  + Adicionar Item ao Kit
-                </button>
-              </div>
-
-              <!-- TABELA COM ROLAGEM DEDICADA QUANDO TIVER MUITAS LINHAS -->
-              <div style="border:1px solid #c7d3da; border-radius:8px; overflow:hidden; background:#fff;">
-                <div style="max-height:280px; overflow-y:auto;">
-                  <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                    <thead style="position:sticky; top:0; z-index:10; background:#eef2f4;">
-                      <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
-                        <th style="padding:8px; width:120px;">Categoria</th>
-                        <th style="padding:8px;">Descrição do serviço/material</th>
-                        <th style="padding:8px; width:75px;">Qtd</th>
-                        <th style="padding:8px; width:65px;">Un</th>
-                        <th style="padding:8px; width:115px;">Valor unitário (R$)</th>
-                        <th style="padding:8px; width:55px; text-align:center;">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody id="kitModalRowsBody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- ABA 2: LISTA DE KITS COM BOTÕES EDITAR / EXCLUIR -->
-          <div id="sectionListKits" style="display:none;">
-            <div id="adminKitsTableContainer" style="overflow-x:auto; border:1px solid #c7d3da; border-radius:8px;">
-              <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead style="background:#eef2f4;">
-                  <tr style="border-bottom:1px solid #c7d3da; text-align:left;">
-                    <th style="padding:10px 8px;">Nome do Kit</th>
-                    <th style="padding:10px 8px;">Descrição</th>
-                    <th style="padding:10px 8px; width:80px; text-align:center;">Qtd Itens</th>
-                    <th style="padding:10px 8px; width:110px; text-align:center;">Anexo PDF</th>
-                    <th style="padding:10px 8px; width:140px; text-align:center;">Ações (Admin)</th>
-                  </tr>
-                </thead>
-                <tbody id="adminKitsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- 3. RODAPÉ FIXO (STICKY FOOTER) - BOTÃO SALVAR NUNCA SOME -->
-        <div style="padding:14px 24px; border-top:1px solid #c7d3da; background:#fbfdfe; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; box-shadow:0 -4px 12px rgba(0,0,0,0.04);">
-          <div>
-            <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; display:none;">+ Novo Kit em Branco</button>
-          </div>
-          <div style="display:flex; gap:12px; align-items:center;">
-            <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Fechar</button>
-            <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 26px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 14px rgba(47,111,68,0.35); display:inline-flex; align-items:center; gap:6px;">
-              💾 Salvar Kit Comercial
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
