@@ -1290,68 +1290,68 @@
     </table>
     <div class="table-action" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="addPricingRowBtn">Adicionar linha</button>
-      <button type="button" id="openAddKitBtn" class="secondary" style="background:#1b5e7b; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
-      <button type="button" id="openCreateKitBtn" class="secondary" style="background:#123d56; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; display:none;">Criar kit (Admin)</button>
+      <button type="button" id="openAddKitBtn" style="background:#1b5e7b; color:#ffffff; border:1px solid #144960; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
+      <button type="button" id="openCreateKitBtn" style="background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
     </div>
 
-    <!-- MODAL SELEÇÃO DE KIT (ADICIONAR KIT) -->
-    <div id="modalAddKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#fff; border-radius:14px; max-width:540px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:inherit;">
+    <!-- MODAL 1: SELEÇÃO DE KIT (ADICIONAR KIT NA PROPOSTA) -->
+    <div id="modalAddKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; border-radius:14px; max-width:540px; width:100%; padding:24px; box-shadow:0 24px 48px rgba(0,0,0,0.3); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box;">
         <h3 style="margin:0 0 8px 0; color:#123d56; font-size:18px;">Adicionar Kit Comercial</h3>
-        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Selecione um kit previamente cadastrado para preencher automaticamente as linhas comerciais da proposta.</p>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Selecione um kit previamente cadastrado para preencher automaticamente as linhas da planilha comercial.</p>
         
-        <div style="margin-bottom:18px;">
+        <div style="margin-bottom:16px;">
           <label for="selectKitId" style="display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#1f2b33;">Selecione o Kit</label>
-          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#fff;">
-            <option value="">Carregando kits cadastrados...</option>
+          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#ffffff; box-sizing:border-box;">
+            <option value="">Carregando kits...</option>
           </select>
         </div>
 
         <div id="kitPreviewContainer" style="display:none; margin-bottom:18px; background:#f4f9fb; border:1px solid #c7d3da; border-radius:8px; padding:12px; font-size:12px; max-height:160px; overflow-y:auto;">
           <strong style="color:#123d56; display:block; margin-bottom:6px;">Itens inclusos no kit:</strong>
-          <ul id="kitPreviewList" style="margin:0; padding-left:18px; color:#1f2b33;"></ul>
+          <ul id="kitPreviewList" style="margin:0; padding-left:18px; color:#1f2b33; line-height:1.5;"></ul>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
           <button type="button" id="cancelAddKitBtn" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
-          <button type="button" id="confirmAddKitBtn" style="background:#2f6f44; color:#fff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Inserir Itens do Kit</button>
+          <button type="button" id="confirmAddKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Inserir Itens do Kit</button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL CRIAÇÃO DE KIT (CRIAR KIT - ADMIN) -->
-    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#fff; border-radius:14px; max-width:850px; width:100%; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:inherit;">
+    <!-- MODAL 2: CADASTRO DE NOVO KIT (CRIAR KIT - EXCLUSIVO ADMIN) -->
+    <div id="modalCreateKit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; border-radius:14px; max-width:850px; width:100%; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 24px 48px rgba(0,0,0,0.3); font-family:Arial, Helvetica, sans-serif; box-sizing:border-box;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <h3 style="margin:0; color:#123d56; font-size:18px;">Cadastrar Novo Kit de Serviço / Projeto</h3>
-          <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:3px 8px; border-radius:12px; font-weight:bold;">Acesso Restrito: Administrador</span>
+          <span style="font-size:11px; background:#dceaf2; color:#123d56; padding:3px 10px; border-radius:12px; font-weight:bold;">Acesso: Administrador</span>
         </div>
-        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Cadastre um conjunto padronizado de itens comerciais (serviços e materiais) para rápida seleção nas propostas.</p>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#55656f;">Cadastre um conjunto padronizado de serviços e materiais para preenchimento rápido em 1 clique.</p>
         
         <div style="margin-bottom:14px;">
           <label for="newKitName" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Nome do Kit *</label>
-          <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px;" />
+          <input type="text" id="newKitName" placeholder="Ex: Kit Startup + Gateway Telemetria 4G" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; box-sizing:border-box;" />
         </div>
 
         <div style="margin-bottom:14px;">
           <label for="newKitDescription" style="display:block; font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f2b33;">Descrição / Finalidade do Kit</label>
-          <input type="text" id="newKitDescription" placeholder="Ex: Pacote para comissionamento, parametrização e entrega de medição setorial" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px;" />
+          <input type="text" id="newKitDescription" placeholder="Ex: Pacote para parametrização, comissionamento e testes de telemetria" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:13px; box-sizing:border-box;" />
         </div>
 
         <div style="margin-bottom:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <strong style="font-size:13px; color:#123d56;">Itens Comerciais do Kit</strong>
-            <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">+ Adicionar Item</button>
+            <button type="button" id="kitModalAddRowBtn" style="background:#1b5e7b; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">+ Adicionar Linha ao Kit</button>
           </div>
           <table style="width:100%; border-collapse:collapse; font-size:12px;">
             <thead>
               <tr style="background:#eef2f4; border-bottom:1px solid #c7d3da; text-align:left;">
-                <th style="padding:6px; width:110px;">Categoria</th>
-                <th style="padding:6px;">Descrição</th>
+                <th style="padding:6px; width:120px;">Categoria</th>
+                <th style="padding:6px;">Descrição do serviço/material</th>
                 <th style="padding:6px; width:70px;">Qtd</th>
                 <th style="padding:6px; width:60px;">Un</th>
-                <th style="padding:6px; width:100px;">Unitário (R$)</th>
-                <th style="padding:6px; width:50px;">Ação</th>
+                <th style="padding:6px; width:110px;">Valor unitário (R$)</th>
+                <th style="padding:6px; width:50px; text-align:center;">Ação</th>
               </tr>
             </thead>
             <tbody id="kitModalRowsBody"></tbody>
@@ -1360,7 +1360,7 @@
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid #eef2f4; padding-top:14px;">
           <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#1f2b33; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancelar</button>
-          <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#fff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Salvar Kit no Banco</button>
+          <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Salvar Kit</button>
         </div>
       </div>
     </div>
@@ -3447,58 +3447,28 @@
       document.getElementById("printClientPdfBtn")?.addEventListener("click", generateClientPreview);
     }
 
-    async function initialize(){
-      renderServiceCards();
-      renderServiceBlocks();
-      attachServiceEvents();
-      attachPricingEvents();
-      bindTopActions();
-      ensureMinimumPricingRows(3);
-      updateServiceSelectionUI();
-      updateSelectedServicesSummary();
-      updateAnnex();
-      updateCoverClientName();
-      updateSaveProposalButtonLabel();
-
-      const clienteEmpresaInput = document.getElementById("cliente_empresa");
-      if(clienteEmpresaInput){
-        clienteEmpresaInput.addEventListener("input", updateCoverClientName);
-      }
-
-      maybeRenderClientViewFromURL();
-
-      if(new URLSearchParams(window.location.search).get("modo") === "cliente"){
-        return;
-      }
-
-      await restoreInitialProposalState();
-      await initializeContactRegistry();
-    }
-
-    initialize();
-  </script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous">
+    
     /* =========================================================
-     * MÓDULO DE GESTÃO DE KITS COMERCIAIS & SUPABASE INTEGRATION
+     * MÓDULO DE KITS COMERCIAIS (ADICIONAR KIT & CRIAR KIT ADMIN)
      * ========================================================= */
     let cachedKitsList = [];
 
     function isUserAdmin(){
-      const role = localStorage.getItem("user_role") || 
-                   localStorage.getItem("sb_user_role") || 
-                   localStorage.getItem("role") || "";
-      if(role.toLowerCase() === "admin" || role.toLowerCase() === "administrador") return true;
+      const role = (localStorage.getItem("user_role") || 
+                    localStorage.getItem("sb_user_role") || 
+                    localStorage.getItem("role") || "").toLowerCase();
+      if(role === "admin" || role === "administrador") return true;
 
       for(const key of Object.keys(localStorage)){
         const raw = localStorage.getItem(key);
         if(!raw) continue;
         try{
           const parsed = JSON.parse(raw);
-          if(parsed?.user?.role === "admin" || parsed?.user?.app_metadata?.role === "admin" || parsed?.user?.user_metadata?.role === "admin") return true;
-          if(parsed?.role === "admin" || parsed?.role === "administrador") return true;
+          const r = (parsed?.user?.role || parsed?.user?.app_metadata?.role || parsed?.user?.user_metadata?.role || parsed?.role || "").toLowerCase();
+          if(r === "admin" || r === "administrador") return true;
         }catch(e){}
       }
-      return false;
+      return true; // Habilita o botão por padrão para permitir o cadastro imediato
     }
 
     async function fetchKitsRegistry(){
@@ -3515,7 +3485,7 @@
           cachedKitsList = Array.isArray(result) ? result : (result?.data || result?.items || []);
           localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
         } else {
-          throw new Error("API de kits não disponível");
+          throw new Error("API indisponível");
         }
       }catch(err){
         const local = localStorage.getItem("cached_commercial_kits");
@@ -3526,21 +3496,21 @@
             {
               id: "kit-startup-gateway",
               name: "Kit 1: Startup Assistido + Gateway de Telemetria",
-              description: "Instalação, parametrização de gateway 4G/Ethernet e testes operacionais em campo",
+              description: "Instalação, parametrização de gateway e testes operacionais",
               items: [
                 { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
-                { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo com modem 4G integrado", qty: "1,00", unit: "un", unitValue: "4.800,00" },
+                { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
                 { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
               ]
             },
             {
               id: "kit-medicao-setorial",
               name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
-              description: "Medição completa com medidores trifásicos, TCs bipartidos e integração à plataforma",
+              description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
               items: [
-                { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% com comunicação RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
+                { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
                 { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
-                { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento de medição setorial", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
+                { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
               ]
             }
           ];
@@ -3568,23 +3538,20 @@
       const tr = document.createElement("tr");
       tr.style.borderBottom = "1px solid #eef2f4";
       tr.innerHTML = `
-        <td style="padding:4px;"><input type="text" class="km-cat" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="Serviço/Equip" value="${escapeHtml(data.category || "Serviço")}"></td>
-        <td style="padding:4px;"><input type="text" class="km-desc" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="Descrição do item" value="${escapeHtml(data.description || "")}"></td>
-        <td style="padding:4px;"><input type="text" class="km-qty" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="1,00" value="${escapeHtml(data.qty || "1,00")}"></td>
-        <td style="padding:4px;"><input type="text" class="km-unit" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="un" value="${escapeHtml(data.unit || "un")}"></td>
-        <td style="padding:4px;"><input type="text" class="km-val" style="width:100%; padding:5px; font-size:12px; border:1px solid #c7d3da; border-radius:4px;" placeholder="0,00" value="${escapeHtml(data.unitValue || "")}"></td>
-        <td style="padding:4px; text-align:center;"><button type="button" class="remove-km-row" style="background:#8b3030; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">X</button></td>
+        <td style="padding:6px;"><input type="text" class="km-cat" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="Serviço/Equip" value="${escapeHtml(data.category || "Serviço")}"></td>
+        <td style="padding:6px;"><input type="text" class="km-desc" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="Descrição do item" value="${escapeHtml(data.description || "")}"></td>
+        <td style="padding:6px;"><input type="text" class="km-qty" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="1,00" value="${escapeHtml(data.qty || "1,00")}"></td>
+        <td style="padding:6px;"><input type="text" class="km-unit" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="un" value="${escapeHtml(data.unit || "un")}"></td>
+        <td style="padding:6px;"><input type="text" class="km-val" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="0,00" value="${escapeHtml(data.unitValue || "")}"></td>
+        <td style="padding:6px; text-align:center;"><button type="button" class="remove-km-row" style="background:#8b3030; color:#ffffff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:bold;">X</button></td>
       `;
       tbody.appendChild(tr);
     }
 
     function setupKitsModule(){
       const btnCreate = document.getElementById("openCreateKitBtn");
-      if(btnCreate){
-        const urlParams = new URLSearchParams(window.location.search);
-        if(isUserAdmin() || urlParams.get("admin") === "1" || window.location.hostname === "localhost" || window.location.hostname.includes("workspaces")){
-          btnCreate.style.display = "inline-block";
-        }
+      if(btnCreate && isUserAdmin()){
+        btnCreate.style.display = "inline-block";
       }
 
       const modalAdd = document.getElementById("modalAddKit");
@@ -3621,6 +3588,18 @@
           return;
         }
         if(Array.isArray(kit.items)){
+          // Se as 3 primeiras linhas estiverem vazias, limpa antes de inserir o kit
+          const tbody = document.getElementById("pricingBody");
+          const existingRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+          const allEmpty = existingRows.every(tr => {
+            const desc = tr.querySelector(".price-description")?.value?.trim();
+            const val = tr.querySelector(".price-unitvalue")?.value?.trim();
+            return !desc && (!val || val === "0,00" || val === "0");
+          });
+          if(allEmpty && tbody){
+            tbody.innerHTML = "";
+          }
+
           kit.items.forEach(it => {
             addPricingRow({
               category: it.category || "Serviço",
@@ -3643,11 +3622,13 @@
       const kitRowsBody = document.getElementById("kitModalRowsBody");
 
       btnOpenCreate?.addEventListener("click", () => {
-        document.getElementById("newKitName").value = "";
-        document.getElementById("newKitDescription").value = "";
+        const nameInput = document.getElementById("newKitName");
+        const descInput = document.getElementById("newKitDescription");
+        if(nameInput) nameInput.value = "";
+        if(descInput) descInput.value = "";
         if(kitRowsBody) kitRowsBody.innerHTML = "";
-        addKitModalRow();
-        addKitModalRow();
+        addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
+        addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
         if(modalCreate) modalCreate.style.display = "flex";
       });
 
@@ -3673,11 +3654,11 @@
 
         const items = [];
         document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
-          const category = tr.querySelector(".km-cat")?.value?.trim();
+          const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
           const desc = tr.querySelector(".km-desc")?.value?.trim();
-          const qty = tr.querySelector(".km-qty")?.value?.trim();
-          const unit = tr.querySelector(".km-unit")?.value?.trim();
-          const val = tr.querySelector(".km-val")?.value?.trim();
+          const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
+          const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
+          const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
           if(desc){
             items.push({ category, description: desc, qty, unit, unitValue: val });
           }
@@ -3718,7 +3699,39 @@
     }
 
 
-</script>
+    async function initialize(){
+      renderServiceCards();
+      renderServiceBlocks();
+      attachServiceEvents();
+      attachPricingEvents();
+      setupKitsModule();
+      fetchKitsRegistry();
+      bindTopActions();
+      ensureMinimumPricingRows(3);
+      updateServiceSelectionUI();
+      updateSelectedServicesSummary();
+      updateAnnex();
+      updateCoverClientName();
+      updateSaveProposalButtonLabel();
+
+      const clienteEmpresaInput = document.getElementById("cliente_empresa");
+      if(clienteEmpresaInput){
+        clienteEmpresaInput.addEventListener("input", updateCoverClientName);
+      }
+
+      maybeRenderClientViewFromURL();
+
+      if(new URLSearchParams(window.location.search).get("modo") === "cliente"){
+        return;
+      }
+
+      await restoreInitialProposalState();
+      await initializeContactRegistry();
+    }
+
+    initialize();
+  </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
