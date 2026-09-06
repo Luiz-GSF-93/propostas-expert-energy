@@ -279,7 +279,7 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("");
 
   lines.push("## DADOS OFICIAIS APURADOS NO SIMULADOR (ENERGIAPRO):");
-  lines.push("1. PERFIL OPERACIONAL & BASELINE:");
+  lines.push("1. PERFIL OPERACIONAL & BASELINE (QUADRO BASELINE DO SIMULADOR):");
   lines.push("- Fatura Mensal Atual (Baseline): " + brl(faturaBaseMensal) + "/mês (" + brl(faturaBaseMensal * 12) + "/ano).");
   lines.push("- Consumo Elétrico: " + fmt0.format(consumoMensalKwh) + " kWh/mês (" + fmt0.format(consumoAnualKwh) + " kWh/ano).");
   lines.push("- Custo Térmico Atual: " + brl(custoTermicoAno) + "/ano (Potencial de redução/eficiência: " + brl(ganhoTermicoAno) + "/ano).");
@@ -312,7 +312,7 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("3. CENÁRIO PROPOSTO, ECONOMIA E RETORNO:");
   lines.push("- Nova Fatura Mensal Projetada (Cenário): " + brl(faturaCenMensal) + "/mês.");
   lines.push("- Economia Mensal na Conta de Energia: " + brl(ecoFaturaMensal) + "/mês (" + brl(ecoFaturaAnual) + "/ano).");
-  lines.push("- Economia Anual Integrada Total: " + brl(totalGanhosAno) + "/ano.");
+  lines.push("- Economia Anual Integrada Total (Soma dos 6 Vetores): " + brl(totalGanhosAno) + "/ano.");
   lines.push("- Investimento Total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Zero CAPEX)"));
   lines.push("- OPEX Anual: " + (opexAnual > 0 ? brl(opexAnual) + "/ano" : "R$ 0,00"));
   lines.push("- VPL (20 anos, WACC 12%): " + (vpl20Anos > 0 ? brl(vpl20Anos) : "R$ 0,00"));
@@ -323,13 +323,13 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   }
   lines.push("");
 
-  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA:");
-  lines.push("1. Escreva com parágrafos fluídos, técnicos e analíticos. NÃO utilize tópicos com marcadores, hífens ou asteriscos.");
-  lines.push("2. Em cada uma das 5 seções, justifique detalhadamente o contexto real e benefícios apurados para " + empresaNome + ".");
-  lines.push("3. Destaque o compromisso ESG com a descarbonização (" + num(co2Evitado, 1) + " tCO2/ano evitadas) e gestão da planta de energia.");
-  lines.push("4. Explique que a consultoria e assessoria da Expert Energy Performance oferece suporte integral em engenharia de aplicação, implantação, telemetria setorizada e gestão regulatória contínua.");
-  lines.push("5. NÃO utilize asteriscos duplos (**) para negrito ou qualquer formatação Markdown especial no texto.");
-  lines.push("6. Estruture rigorosamente nas 5 seções Markdown com exatamente estes títulos:");
+  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA (VISÃO CFO):");
+  lines.push("1. Escreva em parágrafos analíticos contínuos, técnicos e fluidos, SEM qualquer tipo de marcador, asterisco ou hífen.");
+  lines.push("2. ANÁLISE REALISTA DE VIABILIDADE FINANCEIRA:");
+  lines.push("   - Se o Payback for longo (> 6 a 8 anos) e o CAPEX elevado, informe de forma consultiva e realista que o investimento em ativos pesados de geração própria pode ter retorno diluído no tempo.");
+  lines.push("   - Nestes casos, recomende expressamente priorizar medidas imediatas de ALTO GANHO E BAIXO/ZERO CAPEX (como a eliminação da multa de reativo de " + brl(multaReativoAno) + "/ano via banco automático, ajuste de demanda e gestão tarifária no ACL).");
+  lines.push("3. Destaque o valor estratégico da sustentabilidade ESG (" + num(co2Evitado, 1) + " tCO2/ano) e a assessoria contínua da Expert Energy Performance em engenharia de aplicação e governança.");
+  lines.push("4. Estruture rigorosamente nas 5 seções Markdown com exatamente estes títulos:");
   lines.push("   ### 1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)");
   lines.push("   ### 2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto");
   lines.push("   ### 3. Viabilidade Econômico-Financeira e Sensibilidade de Retorno");
@@ -417,7 +417,8 @@ async function buildReportPdf(args: {
   const custoTermicoAno = Number(s.thermalCostAnnual || 0);
   const ecoTermicaAno = Number(s.thermalReductionAnnual || 0);
 
-  const totalGanhosAno = Number(s.potentialGainAnnual || (ecoFaturaAno + ecoDemandaAno + ultrapassAno + multaReativoAno + ecoQeeThdAno + ecoTermicaAno));
+  // Soma dos 6 vetores de ganho (denominador do Donut e da Economia Total)
+  const totalGanhosAno = ecoFaturaAno + ecoDemandaAno + ultrapassAno + multaReativoAno + ecoQeeThdAno + ecoTermicaAno;
   const totalGanhosMes = totalGanhosAno / 12;
 
   const capexTotal = Number(s.capexTotal || 0);
@@ -712,7 +713,7 @@ async function buildReportPdf(args: {
     pY += 21;
   });
 
-  // COLUNA 2: POTENCIAL FINANCEIRO & GANHOS
+  // COLUNA 2: POTENCIAL FINANCEIRO & GANHOS (6 VETORES COM SOMA EXATA = 100%)
   const col2X = margin + col3W + 6;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "F");
@@ -725,6 +726,7 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text("2. POTENCIAL FINANCEIRO & GANHOS", col2X + 10, curY + 16);
 
+  // Percentuais reais calculados com base em totalGanhosAno (soma dos 6 vetores)
   const pEcoFat = totalGanhosAno > 0 ? (ecoFaturaAno / totalGanhosAno) : 0;
   const pEcoTer = totalGanhosAno > 0 ? (ecoTermicaAno / totalGanhosAno) : 0;
   const pEcoRea = totalGanhosAno > 0 ? (multaReativoAno / totalGanhosAno) : 0;
@@ -892,9 +894,9 @@ async function buildReportPdf(args: {
     {
       title: "RECOMENDAÇÕES PRIORITÁRIAS",
       items: [
-        ecoDemandaAno > 0 ? "1. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW" : "1. Eficiência Energética: gestão de ponta a ponta",
-        multaReativoAno > 0 ? "2. Correção Reativo: banco de capacitores automático" : "2. Governança: telemetria setorizada e automação",
-        capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária contínua",
+        multaReativoAno > 0 ? "1. Correção Reativo: banco de capacitores automático (Retorno Imediato)" : (ecoDemandaAno > 0 ? "1. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW" : "1. Eficiência Energética: gestão de ponta a ponta"),
+        (ecoDemandaAno > 0 && multaReativoAno > 0) ? "2. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW (RN 1.000)" : "2. Governança: telemetria setorizada e automação",
+        (paybackAnos > 6 && capexTotal > 0) ? "3. Geração On-site: avaliar modelo PPA/Locação sem CAPEX próprio" : (capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária contínua"),
       ]
     }
   ];
@@ -1060,16 +1062,15 @@ async function buildReportPdf(args: {
     .replace(/\*/g, "")
     .replace(/^[#\s]+PARECER.*$/gim, "")
     .replace(/^[#\s]+EMPRESA.*$/gim, "")
-    .replace(/^\s*[-–—•▪▸▹%ª]+\s*/gm, ""); // remove marcações no início de parágrafos
+    .replace(/^\s*[-–—•▪▸▹%ª]+\s*/gm, "");
 
   const secoesIa = parseIaReport(cleanText);
   let p2Y = margin + 44;
 
-  // Cálculo de dimensões dos 5 blocos separados
-  const totalAvailableH = pageH - margin - p2Y; // ~730pt
+  const totalAvailableH = pageH - margin - p2Y;
   const blockGap = 6;
   const numBlocks = Math.max(secoesIa.length, 5);
-  const blockH = Math.floor((totalAvailableH - (numBlocks - 1) * blockGap) / numBlocks); // ~140pt por bloco
+  const blockH = Math.floor((totalAvailableH - (numBlocks - 1) * blockGap) / numBlocks);
 
   const fallbackTitles = [
     "1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)",
@@ -1116,9 +1117,9 @@ async function buildReportPdf(args: {
       for (let wl of wrapped) {
         if (cY > p2Y + blockH - 8) break;
         doc.text(wl, margin + 10, cY);
-        cY += 8.2; // Espaçamento entrelinhas rigorosamente calibrado para caber no bloco
+        cY += 8.2;
       }
-      cY += 2; // Respiro entre parágrafos
+      cY += 2;
     }
 
     p2Y += blockH + blockGap;
@@ -1205,7 +1206,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   const ecoFaturaMensal = safeNumber(result.eco_m ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 0));
   const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
-  // 4. Multas e Penalidades Reais do Simulador (Garantir anual = mensal * 12)
+  // 4. Multas e Penalidades Reais do Simulador
   const multaReativoMes = safeNumber(result.multaReativo_mes ?? 0);
   const multaReativoAnual = safeNumber(result.multaReativo_ano ?? (multaReativoMes * 12));
   
@@ -1236,7 +1237,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     thermalReductionFromItems ?? 0
   );
 
-  // 6. Total de Ganhos Integrados
+  // 6. Total de Ganhos Integrados (Soma dos 6 vetores)
   const totalGanhosAnual = safeNumber(
     result.eco_anual_bruto ??
     result.totalGanhosAno ??
