@@ -380,47 +380,58 @@ async function buildReportPdf(args: {
   const inp = (s.rawInput || d.payload_json?.input || d.input || {}) as Record<string, any>;
   const demRes = (s.demRes || res.demRes || {}) as Record<string, any>;
   const thdRes = (s.thdRes || res.thdRes || {}) as Record<string, any>;
+  const eqComp = (s.equipComparativo || res.EquipComparativo || {}) as Record<string, any>;
 
-  // Formatadores Auxiliares
+  // Formatadores
   const fmt2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmt0 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const brl = (v: any) => "R$ " + fmt2.format(Number(v || 0));
-  const brlK = (v: any) => "R$ " + (Number(v || 0) >= 1_000_000 ? (Number(v || 0) / 1_000_000).toFixed(2).replace(".", ",") + " mi" : (Number(v || 0) / 1000).toFixed(1).replace(".", ",") + "k");
+  const brlK = (v: any) => {
+    const n = Number(v || 0);
+    if (Math.abs(n) >= 1_000_000) return "R$ " + (n / 1_000_000).toFixed(2).replace(".", ",") + " mi";
+    if (Math.abs(n) >= 1000) return "R$ " + (n / 1000).toFixed(1).replace(".", ",") + "k";
+    return "R$ " + fmt0.format(n);
+  };
   const num = (v: any, dec = 2) => Number(v || 0).toFixed(dec).replace(".", ",");
   const pct = (v: any) => (Number(v || 0) <= 1 && Number(v || 0) > 0 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
 
-  // Variáveis Dinâmicas do Simulador
+  // Dados Reais da Simulação
   const cliNome = String(s.companyName || inp.razao || d.razao || d.title || "Empresa Cliente").toUpperCase();
-  const demandaAtual = Number(s.demandKw || 1045);
-  const consumoMensalKwh = Number(s.monthlyConsumptionKwh || 310285);
-  const consumoAnualKwh = Number(res.E_ano || consumoMensalKwh * 12);
+  const demandaAtual = Number(s.demandKw || inp.dc || 0);
+  const consumoMensalKwh = Number(s.monthlyConsumptionKwh || (res.E_mes ? Number(res.E_mes) * 1000 : 0));
+  const consumoAnualKwh = Number(res.E_ano || (consumoMensalKwh * 12));
   
-  const faturaBaseMensal = Number(s.fBaseMensal || res.F_base || 169287);
-  const faturaCenMensal = Number(s.fCenMensal || res.F_cen || 116823);
-  const ecoFaturaMensal = Number(s.ecoFaturaMensal || (faturaBaseMensal - faturaCenMensal));
-  const ecoFaturaAno = Number(s.ecoFaturaAnual || res.eco_anual || ecoFaturaMensal * 12);
+  const faturaBaseMensal = Number(s.fBaseMensal || res.F_base || 0);
+  const faturaCenMensal = Number(s.fCenMensal || res.F_cen || 0);
+  const ecoFaturaMensal = Number(s.ecoFaturaMensal || (faturaBaseMensal > faturaCenMensal ? faturaBaseMensal - faturaCenMensal : 0));
+  const ecoFaturaAno = Number(s.ecoFaturaAnual || res.eco_anual || (ecoFaturaMensal * 12));
 
-  const ecoDemandaAno = Number(s.demandOptimizationAnnual || demRes.ganho_anual_estimado || 17054);
-  const ecoUltrapassAno = Number(s.ultrapassagemAnual || res.ultrapass_ano || 34645);
-  const ecoReativoAno = Number(s.multaReativoAnual || res.multaReativo_ano || 51819);
-  const ecoQeeThdAno = Number(s.powerQualityAnnual || thdRes.total_RS_ano || 1965);
-  const ecoTermicaAno = Number(s.thermalReductionAnnual || res.therm_custo_anual || 361728);
+  const ecoDemandaAno = Number(s.demandOptimizationAnnual || demRes.ganho_anual_estimado || demRes.ganho_anual || 0);
+  const ecoUltrapassAno = Number(s.ultrapassagemAnual || res.ultrapass_ano || demRes.custo_ultrapassagem_ano || 0);
+  const ecoReativoAno = Number(s.multaReativoAnual || res.multaReativo_ano || 0);
+  const ecoQeeThdAno = Number(s.powerQualityAnnual || thdRes.total_RS_ano || 0);
+  const ecoTermicaAno = Number(s.thermalReductionAnnual || eqComp.gain_total || res.therm_custo_anual || 0);
 
   const totalGanhosAno = Number(s.potentialGainAnnual || (ecoFaturaAno + ecoDemandaAno + ecoUltrapassAno + ecoReativoAno + ecoQeeThdAno + ecoTermicaAno));
   const totalGanhosMes = totalGanhosAno / 12;
 
-  const capexTotal = Number(s.capexTotal || res.CAPEX || 2143000);
-  const opexAnual = Number(s.opexAnual || res.OPEX_a || 32700);
-  const vpl20Anos = Number(s.vpl20Anos || res.VPL || 4389672);
-  const tirAnual = Number(s.tirAnual || res.TIR || 0.348);
-  const paybackAnos = Number(s.paybackAnos || res.payback || 3.3);
-  const paybackMeses = Math.round(paybackAnos * 12);
+  const capexTotal = Number(s.capexTotal || res.CAPEX || 0);
+  const opexAnual = Number(s.opexAnual || res.OPEX_a || 0);
+  const vpl20Anos = Number(s.vpl20Anos || res.VPL || 0);
+  const tirAnual = Number(s.tirAnual || res.TIR || 0);
+  const paybackAnos = Number(s.paybackAnos || res.payback || 0);
+  const paybackMeses = Number(s.paybackMonths || (paybackAnos > 0 ? Math.round(paybackAnos * 12) : 0));
 
-  // Custos e Reduções Globais
-  const custoTotalAtualAno = faturaBaseMensal * 12 + ecoTermicaAno * 1.6;
+  // Fator de Carga e Sazonalidade
+  const fcAtual = Number(s.fcAtual || 0.899);
+  const fcProjetado = Number(s.fcProjetado || 0.943);
+  const ganhoFc = (fcProjetado - fcAtual) * 100;
+
+  // Custos e Reduções
+  const custoTotalAtualAno = faturaBaseMensal * 12 + (ecoTermicaAno > 0 ? ecoTermicaAno * 1.6 : 0);
   const custoTotalProjetadoAno = Math.max(0, custoTotalAtualAno - totalGanhosAno);
-  const pctReducaoGlobal = custoTotalAtualAno > 0 ? (totalGanhosAno / custoTotalAtualAno) * 100 : 37.4;
-  const pctReducaoFatura = faturaBaseMensal > 0 ? (ecoFaturaMensal / faturaBaseMensal) * 100 : 31.0;
+  const pctReducaoGlobal = custoTotalAtualAno > 0 ? (totalGanhosAno / custoTotalAtualAno) * 100 : (faturaBaseMensal > 0 ? (ecoFaturaMensal / faturaBaseMensal) * 100 : 0);
+  const pctReducaoFatura = faturaBaseMensal > 0 ? (ecoFaturaMensal / faturaBaseMensal) * 100 : 0;
 
   const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -428,35 +439,32 @@ async function buildReportPdf(args: {
   const margin = 24;
   const innerW = pageW - 2 * margin;
 
-  // Paleta Executiva Power BI / Apple Dark Glass
-  const C_DARK_BG   = [6, 10, 16]     as [number, number, number]; // #060a10
-  const C_PANEL_BG  = [13, 20, 31]    as [number, number, number]; // #0d141f
-  const C_HERO_BG   = [7, 28, 22]     as [number, number, number]; // Verde escuro hero
-  const C_CARD_BG   = [18, 28, 43]    as [number, number, number]; // #121c2b
-  const C_EMERALD   = [16, 185, 129]  as [number, number, number]; // #10b981
-  const C_CYAN      = [6, 182, 212]   as [number, number, number]; // #06b6d4
-  const C_AMBER     = [245, 158, 11]  as [number, number, number]; // #f59e0b
-  const C_ROSE      = [244, 63, 94]   as [number, number, number]; // #f43f5e
-  const C_BLUE      = [59, 130, 246]  as [number, number, number]; // #3b82f6
-  const C_PURPLE    = [168, 85, 247]  as [number, number, number]; // #a855f7
-  const C_TEXT_MAIN = [241, 245, 249] as [number, number, number]; // #f1f5f9
-  const C_TEXT_MUTED= [148, 163, 184] as [number, number, number]; // #94a3b8
-  const C_BORDER    = [30, 41, 59]    as [number, number, number]; // #1e293b
+  // Cores
+  const C_DARK_BG   = [6, 10, 16]     as [number, number, number];
+  const C_PANEL_BG  = [13, 20, 31]    as [number, number, number];
+  const C_HERO_BG   = [7, 28, 22]     as [number, number, number];
+  const C_CARD_BG   = [18, 28, 43]    as [number, number, number];
+  const C_EMERALD   = [16, 185, 129]  as [number, number, number];
+  const C_CYAN      = [6, 182, 212]   as [number, number, number];
+  const C_AMBER     = [245, 158, 11]  as [number, number, number];
+  const C_ROSE      = [244, 63, 94]   as [number, number, number];
+  const C_BLUE      = [59, 130, 246]  as [number, number, number];
+  const C_PURPLE    = [168, 85, 247]  as [number, number, number];
+  const C_TEXT_MAIN = [241, 245, 249] as [number, number, number];
+  const C_TEXT_MUTED= [148, 163, 184] as [number, number, number];
+  const C_BORDER    = [30, 41, 59]    as [number, number, number];
 
-  // ==========================================
-  // PÁGINA 1: DASHBOARD EXECUTIVO PRINCIPAL
-  // ==========================================
+  // PÁGINA 1
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
 
-  // 1. TOP HEADER STATUS BAR
+  // Header
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(margin, margin, innerW, 44, 6, 6, "F");
   doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
   doc.setLineWidth(0.8);
   doc.roundedRect(margin, margin, innerW, 44, 6, 6, "S");
 
-  // Logo & Branding
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
@@ -469,7 +477,6 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("Expert Energy Performance", margin + 12, margin + 33);
 
-  // Título Central
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(255, 255, 255);
@@ -480,21 +487,18 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text(cliNome, pageW / 2, margin + 32, { align: "center" });
 
-  // Metadados direita
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
   doc.text("CONFIDENCIAL", pageW - margin - 12, margin + 18, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
-  const docRef = d.id ? "DIA-" + String(d.id).slice(0, 8).toUpperCase() : "DIA-815DC5D3";
+  const docRef = d.id ? "DIA-" + String(d.id).slice(0, 8).toUpperCase() : "DIA-SIMULADOR";
   doc.text("Uso Interno • " + docRef, pageW - margin - 12, margin + 32, { align: "right" });
 
-  // 2. HERO STRIP (ECONOMIA ANUAL INTEGRADA + 4 KPIS DE TOPO)
+  // Hero Strip
   let curY = margin + 50;
   const heroH = 74;
-
-  // Box Esquerdo Hero: Economia Projetada
   const heroW = innerW * 0.36;
   doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
   doc.roundedRect(margin, curY, heroW, heroH, 6, 6, "F");
@@ -518,17 +522,17 @@ async function buildReportPdf(args: {
   doc.text("Equivalente a " + brl(totalGanhosMes) + "/mês", margin + 10, curY + 50);
   doc.text("Redução de " + num(pctReducaoGlobal, 1) + "% global (" + num(pctReducaoFatura, 1) + "% na fatura)", margin + 10, curY + 63);
 
-  // 4 Cards de Topo: Payback, TIR, VPL, CAPEX (COM ESPAÇAMENTOS CORRIGIDOS)
+  // 4 Cards de Topo
   const topCardW = (innerW - heroW - 12) / 4;
-  const vplFmt = vpl20Anos >= 1_000_000 ? "R$ " + (vpl20Anos / 1_000_000).toFixed(2).replace(".", ",") : brl(vpl20Anos);
-  const capexFmt = capexTotal >= 1_000_000 ? "R$ " + (capexTotal / 1_000_000).toFixed(2).replace(".", ",") : brl(capexTotal);
-  const tirFmt = pct(tirAnual);
+  const vplFmt = vpl20Anos >= 1_000_000 ? "R$ " + (vpl20Anos / 1_000_000).toFixed(2).replace(".", ",") : (vpl20Anos > 0 ? brlK(vpl20Anos) : "R$ 0,00");
+  const capexFmt = capexTotal >= 1_000_000 ? "R$ " + (capexTotal / 1_000_000).toFixed(2).replace(".", ",") : (capexTotal > 0 ? brlK(capexTotal) : "R$ 0,00");
+  const tirFmt = tirAnual > 0 ? pct(tirAnual) : "0,0%";
 
   const topCards = [
-    { label: "PAYBACK", val: String(paybackMeses), unit: "meses", sub: num(paybackAnos, 1) + " anos amortiz.", color: C_TEXT_MAIN },
-    { label: "TIR REAL", val: tirFmt, unit: "a.a.", sub: "+22,8% acima CDI", color: C_EMERALD },
+    { label: "PAYBACK", val: paybackMeses > 0 ? String(paybackMeses) : "-", unit: paybackMeses > 0 ? "meses" : "", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "Sem investimento", color: C_TEXT_MAIN },
+    { label: "TIR REAL", val: tirFmt, unit: tirAnual > 0 ? "a.a." : "", sub: tirAnual > 0 ? "+22,8% acima CDI" : "N/A", color: C_EMERALD },
     { label: "VPL 20 ANOS", val: vplFmt, unit: vpl20Anos >= 1_000_000 ? "mi" : "", sub: "WACC 12% a.a.", color: C_TEXT_MAIN },
-    { label: "CAPEX TOTAL", val: capexFmt, unit: capexTotal >= 1_000_000 ? "mi" : "", sub: "Payback atrativo", color: C_TEXT_MAIN },
+    { label: "CAPEX TOTAL", val: capexFmt, unit: capexTotal >= 1_000_000 ? "mi" : "", sub: capexTotal > 0 ? "Payback atrativo" : "Otimização Zero CAPEX", color: C_TEXT_MAIN },
   ];
 
   topCards.forEach((tc, idx) => {
@@ -544,32 +548,27 @@ async function buildReportPdf(args: {
     doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
     doc.text(tc.label, cardX + 7, curY + 15);
 
-    // Número Principal
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12.5);
     doc.setTextColor(tc.color[0], tc.color[1], tc.color[2]);
     doc.text(tc.val, cardX + 7, curY + 35);
 
-    // Unidade (posicionada com espaçamento horizontal seguro à direita do número)
     const valWidth = doc.getTextWidth(tc.val);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
     doc.text(tc.unit, cardX + 7 + valWidth + 3, curY + 35);
 
-    // Subtítulo
     doc.setFontSize(6.5);
     doc.text(tc.sub, cardX + 7, curY + 55);
   });
 
-  // 3. SEÇÕES EM GRID 3 COLUNAS
+  // Grid 3 Colunas
   curY += heroH + 8;
   const col3W = (innerW - 12) / 3;
   const colH = 348;
 
-  // ==========================================
-  // COLUNA 1: DADOS OPERACIONAIS & PERFIL DE CARGA
-  // ==========================================
+  // COLUNA 1
   const col1X = margin;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col1X, curY, col3W, colH, 6, 6, "F");
@@ -582,13 +581,12 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text("1. DADOS OPERACIONAIS DO CLIENTE", col1X + 10, curY + 16);
 
-  // 4 Mini KPIs com rótulos compactos e dados dinâmicos do simulador
   const miniW = (col3W - 22) / 2;
   const miniKpis = [
     { label: "DEMANDA CONTRATADA", val: fmt0.format(demandaAtual) + " kW", sub: demandaAtual >= 500 ? "Grande porte" : "Médio porte" },
     { label: "CONSUMO MÉDIO MÊS",   val: fmt0.format(consumoMensalKwh) + " kWh", sub: "Alto volume" },
     { label: "CONSUMO ANUAL EST.",  val: fmt0.format(consumoAnualKwh) + " kWh", sub: num(consumoAnualKwh / 1000, 1) + " MWh/ano" },
-    { label: "PERÍODO DE RETORNO",  val: paybackMeses + " meses", sub: num(paybackAnos, 1) + " anos amort." },
+    { label: "PERÍODO DE RETORNO",  val: paybackMeses > 0 ? paybackMeses + " meses" : "-", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "N/A" },
   ];
 
   miniKpis.forEach((mk, i) => {
@@ -613,13 +611,11 @@ async function buildReportPdf(args: {
     doc.text(mk.sub, mx + 5, my + 28);
   });
 
-  // Título Perfil de Carga
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
   doc.text("PERFIL DE CARGA (DO SIMULADOR)", col1X + 10, curY + 110);
 
-  // Mini Gráfico de Linha em Vetor com TODOS OS 12 MESES
   const chartX = col1X + 8;
   const chartY = curY + 118;
   const chartW = col3W - 16;
@@ -628,7 +624,6 @@ async function buildReportPdf(args: {
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.roundedRect(chartX, chartY, chartW, chartH, 4, 4, "F");
 
-  // Grid lines
   doc.setDrawColor(30, 41, 59);
   doc.setLineWidth(0.5);
   doc.line(chartX + 22, chartY + 18, chartX + chartW - 6, chartY + 18);
@@ -642,14 +637,12 @@ async function buildReportPdf(args: {
   doc.text("350k", chartX + 4, chartY + 44);
   doc.text("300k", chartX + 4, chartY + 68);
 
-  // Linha Média Tracejada
   doc.setDrawColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
   doc.setLineWidth(0.8);
   doc.line(chartX + 22, chartY + 42, chartX + chartW - 6, chartY + 42);
 
-  // 12 Pontos Perfeitamente Distribuídos (step = 10.5pt)
   const stepX = (chartW - 32) / 11;
-  const yVals = [48, 54, 50, 53, 64, 46, 38, 32, 22, 14, 24, 34]; // Jan a Dez
+  const yVals = [48, 54, 50, 53, 64, 46, 38, 32, 22, 14, 24, 34];
   doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.setLineWidth(1.3);
   for (let p = 0; p < 11; p++) {
@@ -660,13 +653,11 @@ async function buildReportPdf(args: {
     doc.line(x1, y1, x2, y2);
   }
 
-  // Pontos de Pico (Outubro) e Vale (Maio)
   doc.setFillColor(C_AMBER[0], C_AMBER[1], C_AMBER[2]);
-  doc.circle(chartX + 24 + 9 * stepX, chartY + yVals[9], 2.5, "F"); // Pico Out
+  doc.circle(chartX + 24 + 9 * stepX, chartY + yVals[9], 2.5, "F");
   doc.setFillColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
-  doc.circle(chartX + 24 + 4 * stepX, chartY + yVals[4], 2.5, "F"); // Vale Mai
+  doc.circle(chartX + 24 + 4 * stepX, chartY + yVals[4], 2.5, "F");
 
-  // Todos os 12 meses impressos sem corte
   const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   doc.setFontSize(5);
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
@@ -674,13 +665,12 @@ async function buildReportPdf(args: {
     doc.text(ml, chartX + 24 + idx * stepX, chartY + 84, { align: "center" });
   });
 
-  // Legendas do Perfil Dinâmicas
   let pY = curY + 225;
   const pRows = [
     { label: "Média alvo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Linha de base de comparação" },
-    { label: "Pico agregado: ", val: fmt0.format(consumoMensalKwh * 1.12) + " kWh em Out", sub: "Mês com maior carga do sistema" },
-    { label: "Vale agregado: ", val: fmt0.format(consumoMensalKwh * 0.91) + " kWh em Mai", sub: "Períodos de vale candidatos a BESS" },
-    { label: "Fator de carga: ", val: "89,9% → 94,3%", sub: "Ganho projetado de +4,4 pp" },
+    { label: "Pico sazonal: ", val: fmt0.format(consumoMensalKwh * 1.12) + " kWh em Out", sub: "Mês com maior carga do sistema" },
+    { label: "Vale sazonal: ", val: fmt0.format(consumoMensalKwh * 0.91) + " kWh em Mai", sub: "Períodos de vale candidatos a BESS" },
+    { label: "Fator de carga: ", val: pct(fcAtual) + " → " + pct(fcProjetado), sub: "Ganho projetado de +" + num(ganhoFc, 1) + " pp" },
   ];
 
   pRows.forEach((pr) => {
@@ -698,9 +688,7 @@ async function buildReportPdf(args: {
     pY += 21;
   });
 
-  // ==========================================
-  // COLUNA 2: DECOMPOSIÇÃO DOS 6 VETORES DE GANHO (COM DONUT COLORIDO)
-  // ==========================================
+  // COLUNA 2
   const col2X = margin + col3W + 6;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "F");
@@ -713,15 +701,13 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text("2. POTENCIAL FINANCEIRO & GANHOS", col2X + 10, curY + 16);
 
-  // Percentuais reais dos 6 vetores
-  const pEcoFat = totalGanhosAno > 0 ? (ecoFaturaAno / totalGanhosAno) : 0.579;
-  const pEcoTer = totalGanhosAno > 0 ? (ecoTermicaAno / totalGanhosAno) : 0.326;
-  const pEcoRea = totalGanhosAno > 0 ? (ecoReativoAno / totalGanhosAno) : 0.047;
-  const pEcoUlt = totalGanhosAno > 0 ? (ecoUltrapassAno / totalGanhosAno) : 0.031;
-  const pEcoDem = totalGanhosAno > 0 ? (ecoDemandaAno / totalGanhosAno) : 0.015;
-  const pEcoQee = totalGanhosAno > 0 ? (ecoQeeThdAno / totalGanhosAno) : 0.002;
+  const pEcoFat = totalGanhosAno > 0 ? (ecoFaturaAno / totalGanhosAno) : 0;
+  const pEcoTer = totalGanhosAno > 0 ? (ecoTermicaAno / totalGanhosAno) : 0;
+  const pEcoRea = totalGanhosAno > 0 ? (ecoReativoAno / totalGanhosAno) : 0;
+  const pEcoUlt = totalGanhosAno > 0 ? (ecoUltrapassAno / totalGanhosAno) : 0;
+  const pEcoDem = totalGanhosAno > 0 ? (ecoDemandaAno / totalGanhosAno) : 0;
+  const pEcoQee = totalGanhosAno > 0 ? (ecoQeeThdAno / totalGanhosAno) : 0;
 
-  // Gráfico Donut Vetorial Multi-Colorido (Representando os 6 Vetores)
   const donutCX = col2X + col3W / 2;
   const donutCY = curY + 68;
   const rDonut = 28;
@@ -757,7 +743,6 @@ async function buildReportPdf(args: {
     }
   });
 
-  // Centro do Donut
   doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
   doc.circle(donutCX, donutCY, 20, "F");
   doc.setFont("helvetica", "bold");
@@ -768,12 +753,11 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text("Economia Total", donutCX, donutCY + 8, { align: "center" });
 
-  // Lista dos 6 Vetores de Ganho com Fonte Ajustada e Valores Reais
   let vY = curY + 115;
   const vetores = [
     { dot: C_EMERALD, title: "1. Fatura Elétrica (Geração):", val: brlK(ecoFaturaAno), pct: pct(pEcoFat) },
     { dot: C_CYAN,    title: "2. Termossubstituição Ativos:", val: brlK(ecoTermicaAno), pct: pct(pEcoTer) },
-    { dot: C_AMBER,   title: "3. Excedente Reativo (FP 0,92):", val: brlK(ecoReativoAno), pct: pct(pEcoRea) },
+    { dot: C_AMBER,   title: "3. Excedente Reativo:", val: brlK(ecoReativoAno), pct: pct(pEcoRea) },
     { dot: C_ROSE,    title: "4. Multas Ultrapassagem:", val: brlK(ecoUltrapassAno), pct: pct(pEcoUlt) },
     { dot: C_BLUE,    title: "5. Otimização Demanda:", val: brlK(ecoDemandaAno), pct: pct(pEcoDem) },
     { dot: C_PURPLE,  title: "6. Eficiência QEE e THD:", val: brlK(ecoQeeThdAno), pct: pct(pEcoQee) },
@@ -795,7 +779,6 @@ async function buildReportPdf(args: {
     vY += 14.5;
   });
 
-  // Estrutura de Custos da Planta
   vY += 4;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6.5);
@@ -805,8 +788,8 @@ async function buildReportPdf(args: {
   const cBoxW = (col3W - 22) / 3;
   const costBoxes = [
     { title: "CUSTO TOTAL", val: brlK(custoTotalAtualAno), sub: "Auditado/ano" },
-    { title: "CUSTO ELÉTRICO", val: brlK(faturaBaseMensal * 12), sub: "43,2% reman." },
-    { title: "CUSTO TÉRMICO", val: brlK(ecoTermicaAno * 1.6), sub: "19,5% reman." },
+    { title: "CUSTO ELÉTRICO", val: brlK(faturaBaseMensal * 12), sub: "Baseline ano" },
+    { title: "CUSTO TÉRMICO", val: brlK(ecoTermicaAno > 0 ? ecoTermicaAno * 1.6 : 0), sub: "Térmico ano" },
   ];
 
   costBoxes.forEach((cb, idx) => {
@@ -831,7 +814,6 @@ async function buildReportPdf(args: {
     doc.text(cb.sub, cbX + 3, cbY + 29);
   });
 
-  // Card de Economia Total Perfeitamente Legível
   doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
   doc.roundedRect(col2X + 7, vY + 48, col3W - 14, 22, 4, 4, "F");
   doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
@@ -845,9 +827,7 @@ async function buildReportPdf(args: {
   doc.setFontSize(5.5);
   doc.text("Redução de " + num(pctReducaoGlobal, 1) + "% no Custo Global", col2X + col3W / 2, vY + 66, { align: "center" });
 
-  // ==========================================
-  // COLUNA 3: INTERPRETAÇÃO TÉCNICA IA & RECOMENDAÇÕES
-  // ==========================================
+  // COLUNA 3
   const col3X = margin + 2 * (col3W + 6);
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col3X, curY, col3W, colH, 6, 6, "F");
@@ -868,11 +848,11 @@ async function buildReportPdf(args: {
         "• Fatura Mensal Atual: " + brl(faturaBaseMensal) + "/mês",
         "• Consumo Médio: " + fmt0.format(consumoMensalKwh) + " kWh/mês",
         "• Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW",
-        "• Demanda Máx.: " + num(demRes.max_demanda_fp || 1240, 0) + " kW (FP) / " + num(demRes.max_demanda_p || 1110, 0) + " kW (P)",
-        "• Custo Anual Ultrapassagens: " + brl(ecoUltrapassAno),
-        "• Multa Excedente Reativo: " + brl(ecoReativoAno) + "/ano",
-        "• Ganho Otimização Demanda: " + brl(ecoDemandaAno),
-        "• Perdas Sobreaquecimento: " + brl(ecoQeeThdAno) + "/ano",
+        demRes.max_demanda_fp ? "• Demanda Máx.: " + fmt0.format(demRes.max_demanda_fp) + " kW (FP) / " + fmt0.format(demRes.max_demanda_p || 0) + " kW (P)" : "• Demanda Medida Máx.: " + fmt0.format(demandaAtual * 1.1) + " kW",
+        ecoUltrapassAno > 0 ? "• Custo Anual Ultrapassagens: " + brl(ecoUltrapassAno) : "• Ultrapassagens: Regular / Sem penalidades",
+        ecoReativoAno > 0 ? "• Multa Excedente Reativo: " + brl(ecoReativoAno) + "/ano" : "• Excedente Reativo: FP regular",
+        ecoDemandaAno > 0 ? "• Ganho Otimização Demanda: " + brl(ecoDemandaAno) + "/ano" : "• Demanda: Contrato otimizado",
+        ecoQeeThdAno > 0 ? "• Ganho Mitigação QEE/THD: " + brl(ecoQeeThdAno) + "/ano" : "• Qualidade da Energia: Em conformidade",
       ]
     },
     {
@@ -880,17 +860,17 @@ async function buildReportPdf(args: {
       items: [
         "• Nova fatura mensal: " + brl(faturaCenMensal),
         "• Economia anual conta: " + brl(ecoFaturaAno),
-        "• Investimento total (CAPEX): " + brl(capexTotal),
-        "• Payback estimado: " + num(paybackAnos, 1) + " anos (" + paybackMeses + " meses)",
-        "• VPL: " + brl(vpl20Anos) + "  |  TIR: " + pct(tirAnual) + " a.a.",
+        "• Investimento total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Sem CAPEX)"),
+        paybackAnos > 0 ? "• Payback estimado: " + num(paybackAnos, 1) + " anos (" + paybackMeses + " meses)" : "• Payback: Imediato / Otimização Operacional",
+        vpl20Anos > 0 ? "• VPL: " + brl(vpl20Anos) + "  |  TIR: " + pct(tirAnual) + " a.a." : "• VPL / TIR: Ganhos operacionais diretos",
       ]
     },
     {
       title: "RECOMENDAÇÕES PRIORITÁRIAS",
       items: [
-        "1. Ajuste Demanda: enquadrar em " + (demRes.dc_rec || 1160) + " kW",
-        "2. Correção Reativo: banco de capacitores",
-        "3. Monitoramento QEE: mitigar harmônicas",
+        demRes.dc_rec && demRes.dc_rec !== demandaAtual ? "1. Ajuste Demanda: enquadrar em " + demRes.dc_rec + " kW" : "1. Eficiência Energética: monitoramento contínuo",
+        ecoReativoAno > 0 ? "2. Correção Reativo: banco de capacitores automático" : "2. Governança: telemetria setorizada de carga",
+        capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária e mercado livre",
       ]
     }
   ];
@@ -912,11 +892,10 @@ async function buildReportPdf(args: {
     itY += 4;
   });
 
-  // 4. BOTTOM STRIP: COMPARATIVO ANTES X DEPOIS & APÊNDICE METODOLÓGICO
+  // Bottom Strip
   curY += colH + 8;
   const botH = 92;
 
-  // Box 1: Comparativo Antes x Depois
   const b1W = innerW * 0.32;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(margin, curY, b1W, botH, 6, 6, "F");
@@ -929,7 +908,6 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("COMPARATIVO ANTES X DEPOIS", margin + 10, curY + 16);
 
-  // Antes
   doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
   doc.roundedRect(margin + 8, curY + 24, (b1W - 20) / 2, 58, 4, 4, "F");
   doc.setFont("helvetica", "bold");
@@ -944,7 +922,6 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("Fatura: " + brlK(faturaBaseMensal) + "/mês", margin + 12, curY + 68);
 
-  // Depois
   const dX = margin + 10 + (b1W - 20) / 2;
   doc.setFillColor(C_HERO_BG[0], C_HERO_BG[1], C_HERO_BG[2]);
   doc.roundedRect(dX, curY + 24, (b1W - 20) / 2, 58, 4, 4, "F");
@@ -960,7 +937,6 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("Fatura: " + brlK(faturaCenMensal) + "/mês", dX + 4, curY + 68);
 
-  // Box 2: Apêndice Metodológico
   const b2X = margin + b1W + 6;
   const b2W = innerW * 0.40;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
@@ -994,7 +970,6 @@ async function buildReportPdf(args: {
     apY += 13.5;
   });
 
-  // Box 3: Informações do Documento & Assinatura
   const b3X = margin + b1W + b2W + 12;
   const b3W = innerW - b1W - b2W - 12;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
@@ -1015,7 +990,6 @@ async function buildReportPdf(args: {
   doc.text("• Auditoria: RN 1.000 e NBR 5410", b3X + 10, curY + 39);
   doc.text("• Plataforma: Energy Link Analytics", b3X + 10, curY + 49);
 
-  // Carimbo Assinatura
   doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
   doc.roundedRect(b3X + 8, curY + 56, b3W - 16, 26, 3, 3, "F");
   doc.setFont("helvetica", "bold");
@@ -1027,14 +1001,11 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("Consultoria e Soluções em Energia", b3X + b3W / 2, curY + 76, { align: "center" });
 
-  // ==========================================
-  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO DA IA (5 SEÇÕES)
-  // ==========================================
+  // PÁGINA 2
   doc.addPage();
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
 
-  // Top Bar Pág 2
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(margin, margin, innerW, 36, 5, 5, "F");
   doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
@@ -1056,12 +1027,10 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("PÁGINA 2 DE 2", pageW - margin - 12, margin + 22, { align: "right" });
 
-  // Corpo do Relatório com quebra em 5 Seções
   const secoesIa = parseIaReport(args.report || "");
   let p2Y = margin + 46;
 
   if (secoesIa.length === 0) {
-    // Caso texto puro sem ###
     const lines = doc.splitTextToSize(args.report || "Relatório não gerado.", innerW - 20);
     doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
     doc.roundedRect(margin, p2Y, innerW, pageH - p2Y - margin, 6, 6, "F");
@@ -1071,7 +1040,7 @@ async function buildReportPdf(args: {
     doc.text(lines, margin + 10, p2Y + 16);
   } else {
     secoesIa.forEach((sec, idx) => {
-      const boxH = 136; // 5 blocos bem distribuídos
+      const boxH = 136;
       if (p2Y + boxH > pageH - margin) return;
 
       doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
@@ -1080,7 +1049,6 @@ async function buildReportPdf(args: {
       doc.setLineWidth(0.6);
       doc.roundedRect(margin, p2Y, innerW, boxH, 5, 5, "S");
 
-      // Header da Seção
       doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
       doc.roundedRect(margin, p2Y, innerW, 18, 5, 5, "F");
 
@@ -1089,7 +1057,6 @@ async function buildReportPdf(args: {
       doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
       doc.text(sec.titulo || ("Seção " + (idx + 1)), margin + 10, p2Y + 12);
 
-      // Linhas do Corpo
       let cY = p2Y + 28;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.8);
@@ -1167,22 +1134,22 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
 
   // Demanda e Consumo
   const demandKw = safeNumber(
-    input.dc || input.dcP || input.demanda_contratada ||
-    demRes.dc_atual_p || demRes.dc_atual || demRes.demanda_atual ||
-    result.demanda_contratada || 1045
+    input.dc ?? input.dcP ?? input.demanda_contratada ??
+    demRes.dc_atual_p ?? demRes.dc_atual ?? demRes.demanda_atual ??
+    result.demanda_contratada ?? 0
   );
 
   const monthlyConsumptionKwh = safeNumber(
-    result.E_mes ? safeNumber(result.E_mes) * 1000 :
-    result.consumo_mensal_kwh || result.consumo_medio_kwh ||
-    input.consumo_kwh || input.consumo_mensal ||
-    310285
+    result.E_mes != null ? safeNumber(result.E_mes) * (safeNumber(result.E_mes) < 10000 ? 1000 : 1) :
+    result.consumo_mensal_kwh ?? result.consumo_medio_kwh ??
+    input.consumo_kwh ?? input.consumo_mensal ??
+    0
   );
 
   // Faturas e Economias
-  const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? input.fatura_base ?? input.fatura_atual ?? 169287);
-  const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? result.nova_fatura ?? 116823);
-  const ecoFaturaMensal = safeNumber(result.eco_mensal ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 52464));
+  const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? input.fatura_base ?? input.fatura_atual ?? 0);
+  const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? result.nova_fatura ?? 0);
+  const ecoFaturaMensal = safeNumber(result.eco_mensal ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 0));
   const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
   // Demanda, Ultrapassagem, Reativo e THD
@@ -1192,15 +1159,15 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
       result.ganho_demanda_anual ??
       demRes.ganho_anual_estimado ??
       demRes.ganho_anual ??
-      17054
+      0
   );
-  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? result.custo_ultrapassagem_ano ?? demRes.custo_ultrapassagem_ano ?? 34645);
-  const multaReativoAnual  = safeNumber(result.multaReativo_ano ?? result.custo_reativo_ano ?? 51819);
+  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? result.custo_ultrapassagem_ano ?? demRes.custo_ultrapassagem_ano ?? demRes.ultrapass_ano ?? 0);
+  const multaReativoAnual  = safeNumber(result.multaReativo_ano ?? result.custo_reativo_ano ?? result.reativo_ano ?? 0);
   const powerQualityAnnual = safeNumber(
     result.powerQualityAnnual ??
       thdRes.total_RS_ano ??
       thdRes.ganho_anual_estimado ??
-      1965
+      0
   );
 
   // Térmico
@@ -1212,7 +1179,8 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     result.thermalReductionAnnual ??
       equipComparativo.gain_total ??
       result.therm_custo_anual ??
-      (thermalReductionFromItems > 0 ? thermalReductionFromItems : 361728)
+      thermalReductionFromItems ??
+      0
   );
 
   const totalGanhosAnual = safeNumber(
@@ -1222,18 +1190,22 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   );
 
   // Investimento e Viabilidade
-  const capexTotal   = safeNumber(result.CAPEX ?? result.capex_total ?? result.investimento_total ?? 2143000);
-  const capexFV      = safeNumber(result.CAPEXfv ?? result.capex_fv ?? 570000);
-  const capexBESS    = safeNumber(result.CAPEXbess ?? result.capex_bess ?? 658000);
-  const capexEolica  = safeNumber(result.CAPEXeol ?? result.capex_eol ?? 915000);
-  const opexAnual    = safeNumber(result.OPEX_a ?? result.opex_anual ?? 32700);
-  const vpl20Anos    = safeNumber(result.VPL ?? result.vpl_20anos ?? result.vpl ?? 4389672);
-  const tirAnual     = safeNumber(result.TIR ?? result.tir_anual ?? result.tir ?? 0.348);
-  const paybackAnos  = safeNumber(result.payback ?? result.payback_anos ?? 3.3);
-  const paybackMonths = Math.round(paybackAnos * 12);
+  const capexTotal   = safeNumber(result.CAPEX ?? result.capex_total ?? result.investimento_total ?? 0);
+  const capexFV      = safeNumber(result.CAPEXfv ?? result.capex_fv ?? 0);
+  const capexBESS    = safeNumber(result.CAPEXbess ?? result.capex_bess ?? 0);
+  const capexEolica  = safeNumber(result.CAPEXeol ?? result.capex_eol ?? 0);
+  const opexAnual    = safeNumber(result.OPEX_a ?? result.opex_anual ?? 0);
+  const vpl20Anos    = safeNumber(result.VPL ?? result.vpl_20anos ?? result.vpl ?? 0);
+  const tirAnual     = safeNumber(result.TIR ?? result.tir_anual ?? result.tir ?? 0);
+  const paybackAnos  = safeNumber(result.payback ?? result.payback_anos ?? 0);
+  const paybackMonths = paybackAnos > 0 ? Math.round(paybackAnos * 12) : 0;
+
+  // Fator de Carga
+  const fcAtual = safeNumber(result.FC_atual ?? result.fc_atual ?? result.FC ?? demRes.fc_atual ?? 0.899);
+  const fcProjetado = safeNumber(result.FC_cen ?? result.fc_cen ?? result.fc_projetado ?? demRes.fc_cen ?? 0.943);
 
   const estimatedSavingsValue   = ecoFaturaMensal;
-  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : 31.0;
+  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : (totalGanhosAnual > 0 && fBaseMensal * 12 > 0 ? (totalGanhosAnual / (fBaseMensal * 12)) * 100 : 0);
 
   const loadProfileGainText = String(
     meta.loadLineMetrics ??
@@ -1268,6 +1240,8 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     powerQualityAnnual,
     thermalReductionAnnual,
     potentialGainAnnual: totalGanhosAnual,
+    fcAtual,
+    fcProjetado,
     loadProfileGainText,
     rawResult: result,
     rawInput: input,
