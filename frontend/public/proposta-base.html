@@ -3581,6 +3581,14 @@
     /* Gerencia lista de kits ativos na proposta atual */
     let proposalSelectedKits = [];
 
+    
+    /* Remove um kit/anexo da proposta atual */
+    window.removeKitAttachmentFromProposal = function(kitId){
+      proposalSelectedKits = proposalSelectedKits.filter(k => (k.id || k.name) !== kitId);
+      updateAttachedKitsUI();
+      showToast("Anexo desvinculado desta proposta com sucesso.", "info");
+    };
+
     function updateAttachedKitsUI(){
       const container = document.getElementById("attachedKitsContainer");
       const list = document.getElementById("attachedKitsList");
@@ -3598,13 +3606,18 @@
         <div style="background:#f4f9fb; border:1px solid #c7d3da; border-left:4px solid #1b5e7b; border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
           <div>
             <strong style="color:#123d56; font-size:13px; display:block;">${escapeHtml(k.name)}</strong>
-            <span style="font-size:11px; color:#55656f;">Anexo Técnico: ${escapeHtml(k.pdf_attachment_name || "Documento Oficial")}</span>
+            <span style="font-size:11px; color:#55656f;">Anexo Técnico: <strong>${escapeHtml(k.pdf_attachment_name || "Documento Oficial")}</strong></span>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#1b5e7b; color:#fff; text-decoration:none; padding:5px 10px; border-radius:5px; font-weight:600;">
-              📄 Abrir / Baixar PDF
-            </a>
-            <span style="font-size:11px; color:#2f6f44; font-weight:600;">✓ Anexado à proposta</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <a href="${escapeHtml(k.pdf_attachment_url)}" download="${escapeHtml(k.pdf_attachment_name || "anexo-tecnico.pdf")}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#1b5e7b; color:#fff; text-decoration:none; padding:5px 10px; border-radius:5px; font-weight:600;">
+                📄 Baixar PDF (${escapeHtml(k.pdf_attachment_name || "PDF")})
+              </a>
+              <span style="font-size:11px; color:#2f6f44; font-weight:600;">✓ Anexado</span>
+            </div>
+            <button type="button" onclick="removeKitAttachmentFromProposal('${escapeHtml(k.id || k.name)}')" style="background:transparent; color:#8b3030; border:1px solid #8b3030; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">
+              🗑️ Desvincular da Proposta
+            </button>
           </div>
         </div>
       `).join("");
@@ -3653,7 +3666,11 @@
         });
         calculatePricing();
 
-        if(!proposalSelectedKits.some(k => (k.id || k.name) === (kit.id || kit.name))){
+        // Atualiza ou insere o kit selecionado com a versão mais recente do PDF
+        const existingIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === (kit.id || kit.name));
+        if(existingIdx !== -1){
+          proposalSelectedKits[existingIdx] = kit;
+        } else {
           proposalSelectedKits.push(kit);
         }
         updateAttachedKitsUI();
@@ -3793,6 +3810,13 @@
         const idx = cachedKitsList.findIndex(k => (k.id || k.name) === editingId);
         if(idx !== -1) cachedKitsList[idx] = kitObj;
         else cachedKitsList.push(kitObj);
+
+        // Se o kit editado estiver atualmente na proposta aberta, atualiza o anexo na Seção 10 imediatamente
+        const propIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === editingId);
+        if(propIdx !== -1){
+          proposalSelectedKits[propIdx] = kitObj;
+          updateAttachedKitsUI();
+        }
       } else {
         cachedKitsList.push(kitObj);
       }
