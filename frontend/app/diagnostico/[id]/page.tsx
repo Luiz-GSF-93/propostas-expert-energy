@@ -279,7 +279,7 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("");
 
   lines.push("## DADOS OFICIAIS APURADOS NO SIMULADOR (ENERGIAPRO):");
-  lines.push("1. PERFIL OPERACIONAL & BASELINE (QUADRO BASELINE DO SIMULADOR):");
+  lines.push("1. PERFIL OPERACIONAL & BASELINE:");
   lines.push("- Fatura Mensal Atual (Baseline): " + brl(faturaBaseMensal) + "/mês (" + brl(faturaBaseMensal * 12) + "/ano).");
   lines.push("- Consumo Elétrico: " + fmt0.format(consumoMensalKwh) + " kWh/mês (" + fmt0.format(consumoAnualKwh) + " kWh/ano).");
   lines.push("- Custo Térmico Atual: " + brl(custoTermicoAno) + "/ano (Potencial de redução/eficiência: " + brl(ganhoTermicoAno) + "/ano).");
@@ -323,12 +323,14 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   }
   lines.push("");
 
-  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA (VISÃO CFO):");
+  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA (VISÃO CFO & ENERGY LINK):");
   lines.push("1. Escreva em parágrafos analíticos contínuos, técnicos e fluidos, SEM qualquer tipo de marcador, asterisco ou hífen.");
-  lines.push("2. ANÁLISE REALISTA DE VIABILIDADE FINANCEIRA:");
-  lines.push("   - Se o Payback for longo (> 6 a 8 anos) e o CAPEX elevado, informe de forma consultiva e realista que o investimento em ativos pesados de geração própria pode ter retorno diluído no tempo.");
-  lines.push("   - Nestes casos, recomende expressamente priorizar medidas imediatas de ALTO GANHO E BAIXO/ZERO CAPEX (como a eliminação da multa de reativo de " + brl(multaReativoAno) + "/ano via banco automático, ajuste de demanda e gestão tarifária no ACL).");
-  lines.push("3. Destaque o valor estratégico da sustentabilidade ESG (" + num(co2Evitado, 1) + " tCO2/ano) e a assessoria contínua da Expert Energy Performance em engenharia de aplicação e governança.");
+  lines.push("2. ANÁLISE REALISTA DE VIABILIDADE FINANCEIRA (SEÇÃO 3):");
+  lines.push("   - Se o Payback for longo (> 6 a 8 anos) e o CAPEX elevado (" + brl(capexTotal) + "), aponte com clareza de CFO que ativos pesados de geração on-site podem não ser a prioridade imediata.");
+  lines.push("   - Recomende enfaticamente focar em ações de ALTO RETORNO E BAIXO CAPEX: eliminar a multa de reativo de " + brl(multaReativoAno) + "/ano via banco automático e otimizar demanda.");
+  lines.push("3. DESTAQUE OBRIGATÓRIO NA SEÇÃO 5 (ENERGY LINK BRASIL):");
+  lines.push("   - Na Seção 5 (Matriz de Riscos e Plano de Ação), enfatize a importância estratégica de digitalizar a planta através da plataforma Energy Link Brasil.");
+  lines.push("   - Destaque que o software Energy Link Brasil proporciona telemetria setorizada em tempo real, monitoramento contínuo de demanda/reativo, auditoria de faturas e inteligência de dados, suportado pela assessoria e engenharia de aplicação da Expert Energy Performance.");
   lines.push("4. Estruture rigorosamente nas 5 seções Markdown com exatamente estes títulos:");
   lines.push("   ### 1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)");
   lines.push("   ### 2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto");
@@ -407,8 +409,10 @@ async function buildReportPdf(args: {
   const ecoFaturaMensal = Number(s.ecoFaturaMensal || (faturaBaseMensal > faturaCenMensal ? faturaBaseMensal - faturaCenMensal : 0));
   const ecoFaturaAno = Number(s.ecoFaturaAnual || (ecoFaturaMensal * 12));
 
-  const multaReativoMes = Number(s.multaReativoMes || 0);
+  // Multa de reativo fiel do simulador: R$ 2.624,24/mês -> R$ 31.490,87/ano
+  const multaReativoMes = Number(s.multaReativoMes || (res.multaReativo_mes ? res.multaReativo_mes : 0));
   const multaReativoAno = Number(s.multaReativoAnual || (multaReativoMes * 12));
+
   const ultrapassMes = Number(s.ultrapassMes || 0);
   const ultrapassAno = Number(s.ultrapassagemAnual || (ultrapassMes * 12));
 
@@ -417,7 +421,7 @@ async function buildReportPdf(args: {
   const custoTermicoAno = Number(s.thermalCostAnnual || 0);
   const ecoTermicaAno = Number(s.thermalReductionAnnual || 0);
 
-  // Soma dos 6 vetores de ganho (denominador do Donut e da Economia Total)
+  // Soma dos 6 vetores de ganho reais
   const totalGanhosAno = ecoFaturaAno + ecoDemandaAno + ultrapassAno + multaReativoAno + ecoQeeThdAno + ecoTermicaAno;
   const totalGanhosMes = totalGanhosAno / 12;
 
@@ -504,7 +508,7 @@ async function buildReportPdf(args: {
   const docRef = d.id ? "DIA-" + String(d.id).slice(0, 8).toUpperCase() : "DIA-SIMULADOR";
   doc.text("Uso Interno • " + docRef, pageW - margin - 12, margin + 32, { align: "right" });
 
-  // 2. HERO STRIP (ECONOMIA ANUAL INTEGRADA + 4 KPIS DE TOPO)
+  // 2. HERO STRIP
   let curY = margin + 50;
   const heroH = 74;
   const heroW = innerW * 0.36;
@@ -726,7 +730,7 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.text("2. POTENCIAL FINANCEIRO & GANHOS", col2X + 10, curY + 16);
 
-  // Percentuais reais calculados com base em totalGanhosAno (soma dos 6 vetores)
+  // Percentuais reais calculados com base em totalGanhosAno
   const pEcoFat = totalGanhosAno > 0 ? (ecoFaturaAno / totalGanhosAno) : 0;
   const pEcoTer = totalGanhosAno > 0 ? (ecoTermicaAno / totalGanhosAno) : 0;
   const pEcoRea = totalGanhosAno > 0 ? (multaReativoAno / totalGanhosAno) : 0;
@@ -853,7 +857,7 @@ async function buildReportPdf(args: {
   doc.setFontSize(5.5);
   doc.text("Redução de " + num(pctReducaoGlobal, 1) + "% no Custo Global", col2X + col3W / 2, vY + 66, { align: "center" });
 
-  // COLUNA 3: INTERPRETAÇÃO TÉCNICA IA & RECOMENDAÇÕES
+  // COLUNA 3: INTERPRETAÇÃO TÉCNICA IA & RECOMENDAÇÕES (COM QUEBRA DE LINHA SEGURA E VALORES SINCRONIZADOS)
   const col3X = margin + 2 * (col3W + 6);
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col3X, curY, col3W, colH, 6, 6, "F");
@@ -876,7 +880,7 @@ async function buildReportPdf(args: {
         "• Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW",
         (drPMax > 0 || drFpMax > 0) ? "• Demanda Máx.: " + fmt0.format(drFpMax) + " kW (FP) / " + fmt0.format(drPMax) + " kW (P)" : "• Demanda Máx. Registrada: " + fmt0.format(demandaAtual) + " kW",
         ultrapassAno > 0 ? "• Custo Anual Ultrapassagens: " + brl(ultrapassAno) : "• Ultrapassagens: Regular / Sem penalidades",
-        multaReativoAno > 0 ? "• Multa Excedente Reativo: " + brl(multaReativoAno) + "/ano" : "• Excedente Reativo: FP regular / Sem multa",
+        multaReativoAno > 0 ? "• Multa Excedente Reativo: " + brl(multaReativoMes) + "/mês (" + brl(multaReativoAno) + "/ano)" : "• Excedente Reativo: FP regular / Sem multa",
         ecoDemandaAno > 0 ? "• Ganho Otimização Demanda: " + brl(ecoDemandaAno) + "/ano" : "• Demanda: Contrato otimizado",
         ecoQeeThdAno > 0 ? "• Ganho Mitigação QEE/THD: " + brl(ecoQeeThdAno) + "/ano" : "• Qualidade da Energia: Em conformidade",
       ]
@@ -894,28 +898,32 @@ async function buildReportPdf(args: {
     {
       title: "RECOMENDAÇÕES PRIORITÁRIAS",
       items: [
-        multaReativoAno > 0 ? "1. Correção Reativo: banco de capacitores automático (Retorno Imediato)" : (ecoDemandaAno > 0 ? "1. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW" : "1. Eficiência Energética: gestão de ponta a ponta"),
-        (ecoDemandaAno > 0 && multaReativoAno > 0) ? "2. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW (RN 1.000)" : "2. Governança: telemetria setorizada e automação",
-        (paybackAnos > 6 && capexTotal > 0) ? "3. Geração On-site: avaliar modelo PPA/Locação sem CAPEX próprio" : (capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária contínua"),
+        multaReativoAno > 0 ? "1. Correção Reativo: banco automático (Retorno Imediato)" : (ecoDemandaAno > 0 ? "1. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW" : "1. Eficiência Energética: gestão ponta a ponta"),
+        (ecoDemandaAno > 0 && multaReativoAno > 0) ? "2. Ajuste Demanda: adequar contrato (RN 1.000)" : "2. Governança: telemetria com Energy Link Brasil",
+        (paybackAnos > 6 && capexTotal > 0) ? "3. Geração On-site: avaliar modelo PPA/Locação" : (capexTotal > 0 ? "3. Implantação de Soluções On-site: geração/baterias" : "3. Gestão e Governança: monitoramento ativo"),
       ]
     }
   ];
 
+  const maxCol3TextW = col3W - 20;
   itSections.forEach((sec) => {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.2);
+    doc.setFontSize(6.0);
     doc.setTextColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
     doc.text(sec.title, col3X + 10, itY);
-    itY += 9;
+    itY += 8;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5.4);
+    doc.setFontSize(5.1);
     doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
     sec.items.forEach((it) => {
-      doc.text(it, col3X + 10, itY);
-      itY += 7.5;
+      const wrapped = doc.splitTextToSize(it, maxCol3TextW);
+      for (let wl of wrapped) {
+        doc.text(wl, col3X + 10, itY);
+        itY += 6.5;
+      }
     });
-    itY += 4;
+    itY += 3;
   });
 
   // Bottom Strip
@@ -1207,7 +1215,8 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
   // 4. Multas e Penalidades Reais do Simulador
-  const multaReativoMes = safeNumber(result.multaReativo_mes ?? 0);
+  // O simulador calcula multaReativo_mes (ex: R$ 2.624,24/mes) e multaReativo_ano = multaReativo_mes * 12 (ex: R$ 31.490,87/ano)
+  const multaReativoMes = safeNumber(result.multaReativo_mes ?? (result.multaReativo_ano ? result.multaReativo_ano / 12 : 0));
   const multaReativoAnual = safeNumber(result.multaReativo_ano ?? (multaReativoMes * 12));
   
   const ultrapassMes = safeNumber((result.ultrapassP_mes ?? 0) + (result.ultrapassFP_mes ?? 0));
@@ -1237,7 +1246,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     thermalReductionFromItems ?? 0
   );
 
-  // 6. Total de Ganhos Integrados (Soma dos 6 vetores)
+  // 6. Total de Ganhos Integrados (Soma dos 6 vetores reais)
   const totalGanhosAnual = safeNumber(
     result.eco_anual_bruto ??
     result.totalGanhosAno ??
