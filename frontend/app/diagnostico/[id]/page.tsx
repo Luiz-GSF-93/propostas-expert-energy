@@ -445,7 +445,7 @@ async function buildReportPdf(args: {
   const margin = 24;
   const innerW = pageW - 2 * margin;
 
-  // Cores
+  // Paleta Executiva Apple Dark Glass
   const C_DARK_BG   = [6, 10, 16]     as [number, number, number];
   const C_PANEL_BG  = [13, 20, 31]    as [number, number, number];
   const C_HERO_BG   = [7, 28, 22]     as [number, number, number];
@@ -460,11 +460,11 @@ async function buildReportPdf(args: {
   const C_TEXT_MUTED= [148, 163, 184] as [number, number, number];
   const C_BORDER    = [30, 41, 59]    as [number, number, number];
 
-  // PÁGINA 1
+  // PÁGINA 1: DASHBOARD EXECUTIVO PRINCIPAL
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
 
-  // Header
+  // 1. TOP HEADER STATUS BAR
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(margin, margin, innerW, 44, 6, 6, "F");
   doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
@@ -502,7 +502,7 @@ async function buildReportPdf(args: {
   const docRef = d.id ? "DIA-" + String(d.id).slice(0, 8).toUpperCase() : "DIA-SIMULADOR";
   doc.text("Uso Interno • " + docRef, pageW - margin - 12, margin + 32, { align: "right" });
 
-  // Hero Strip
+  // 2. HERO STRIP (ECONOMIA ANUAL INTEGRADA + 4 KPIS DE TOPO)
   let curY = margin + 50;
   const heroH = 74;
   const heroW = innerW * 0.36;
@@ -569,7 +569,7 @@ async function buildReportPdf(args: {
     doc.text(tc.sub, cardX + 7, curY + 55);
   });
 
-  // Grid 3 Colunas
+  // 3. GRID 3 COLUNAS
   curY += heroH + 8;
   const col3W = (innerW - 12) / 3;
   const colH = 348;
@@ -622,6 +622,7 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("CURVA SAZONAL & FATOR DE CARGA", col1X + 10, curY + 110);
 
+  // GRÁFICO DE CURVA SAZONAL RIGOROSAMENTE PROPORCIONAL AO SIMULADOR
   const chartX = col1X + 8;
   const chartY = curY + 118;
   const chartW = col3W - 16;
@@ -630,56 +631,75 @@ async function buildReportPdf(args: {
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.roundedRect(chartX, chartY, chartW, chartH, 4, 4, "F");
 
+  // Multiplicadores mensais reais do perfil sazonal
+  const sazoFactors = [0.88, 0.92, 0.95, 0.98, 0.85, 0.90, 1.02, 1.08, 1.15, 1.20, 1.10, 0.97];
+  const maxFact = Math.max(...sazoFactors); // 1.20 (Outubro / Mês 9)
+  const minFact = Math.min(...sazoFactors); // 0.85 (Maio / Mês 4)
+  const idxPico = sazoFactors.indexOf(maxFact);
+  const idxVale = sazoFactors.indexOf(minFact);
+
+  const consPicoKwh = Math.round(consumoMensalKwh * maxFact);
+  const consValeKwh = Math.round(consumoMensalKwh * minFact);
+
+  // Escala dinâmica do eixo Y
+  const yTopVal = Math.round((consumoMensalKwh * 1.35) / 1000);
+  const yMidVal = Math.round((consumoMensalKwh * 1.00) / 1000);
+  const yBotVal = Math.round((consumoMensalKwh * 0.65) / 1000);
+
+  // Grid lines
   doc.setDrawColor(30, 41, 59);
   doc.setLineWidth(0.5);
-  doc.line(chartX + 22, chartY + 18, chartX + chartW - 6, chartY + 18);
-  doc.line(chartX + 22, chartY + 42, chartX + chartW - 6, chartY + 42);
-  doc.line(chartX + 22, chartY + 66, chartX + chartW - 6, chartY + 66);
-
-  const maxConsK = Math.max(Math.round(consumoMensalKwh * 1.25 / 1000), 100);
-  const midConsK = Math.round(maxConsK * 0.75);
-  const minConsK = Math.round(maxConsK * 0.50);
+  doc.line(chartX + 24, chartY + 18, chartX + chartW - 6, chartY + 18);
+  doc.line(chartX + 24, chartY + 44, chartX + chartW - 6, chartY + 44);
+  doc.line(chartX + 24, chartY + 68, chartX + chartW - 6, chartY + 68);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(5);
+  doc.setFontSize(4.8);
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
-  doc.text(maxConsK + "k", chartX + 4, chartY + 20);
-  doc.text(midConsK + "k", chartX + 4, chartY + 44);
-  doc.text(minConsK + "k", chartX + 4, chartY + 68);
+  doc.text(yTopVal + "k", chartX + 3, chartY + 20);
+  doc.text(yMidVal + "k", chartX + 3, chartY + 46);
+  doc.text(yBotVal + "k", chartX + 3, chartY + 70);
 
+  // Linha Média Real Exata (Média = 100% = chartY + 44)
   doc.setDrawColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
   doc.setLineWidth(0.8);
-  doc.line(chartX + 22, chartY + 42, chartX + chartW - 6, chartY + 42);
+  doc.line(chartX + 24, chartY + 44, chartX + chartW - 6, chartY + 44);
 
-  const stepX = (chartW - 32) / 11;
-  const yVals = [48, 54, 50, 53, 64, 46, 38, 32, 22, 14, 24, 34];
+  // Mapeamento das posições Y dos 12 meses
+  // 1.0 = 44, 1.2 = 20 (-24pt), 0.85 = 62 (+18pt)
+  const stepX = (chartW - 34) / 11;
+  const yPoints = sazoFactors.map(f => chartY + 44 - (f - 1.0) * 120);
+
   doc.setDrawColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
   doc.setLineWidth(1.3);
   for (let p = 0; p < 11; p++) {
-    const x1 = chartX + 24 + p * stepX;
-    const y1 = chartY + yVals[p];
-    const x2 = chartX + 24 + (p + 1) * stepX;
-    const y2 = chartY + yVals[p + 1];
+    const x1 = chartX + 26 + p * stepX;
+    const y1 = yPoints[p];
+    const x2 = chartX + 26 + (p + 1) * stepX;
+    const y2 = yPoints[p + 1];
     doc.line(x1, y1, x2, y2);
   }
 
+  // Marcador de Pico (Outubro) e Vale (Maio)
   doc.setFillColor(C_AMBER[0], C_AMBER[1], C_AMBER[2]);
-  doc.circle(chartX + 24 + 9 * stepX, chartY + yVals[9], 2.5, "F");
+  doc.circle(chartX + 26 + idxPico * stepX, yPoints[idxPico], 2.5, "F");
   doc.setFillColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
-  doc.circle(chartX + 24 + 4 * stepX, chartY + yVals[4], 2.5, "F");
+  doc.circle(chartX + 26 + idxVale * stepX, yPoints[idxVale], 2.5, "F");
 
+  // Meses sem corte
   const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   doc.setFontSize(5);
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   mLabels.forEach((ml, idx) => {
-    doc.text(ml, chartX + 24 + idx * stepX, chartY + 84, { align: "center" });
+    doc.text(ml, chartX + 26 + idx * stepX, chartY + 84, { align: "center" });
   });
 
+  // Legendas Sazonais Dinâmicas
   let pY = curY + 225;
   const pRows = [
-    { label: "Média consumo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Linha base do simulador" },
-    { label: "Pico sazonal: ", val: fmt0.format(consumoMensalKwh * 1.12) + " kWh em Out", sub: "Mês de maior demanda" },
-    { label: "Vale sazonal: ", val: fmt0.format(consumoMensalKwh * 0.91) + " kWh em Mai", sub: "Oportunidade para suavização/BESS" },
+    { label: "Média consumo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Média ajustada por sazonalidade" },
+    { label: "Pico sazonal: ", val: fmt0.format(consPicoKwh) + " kWh em Out", sub: "Mês de pico (" + pct(maxFact) + " da média)" },
+    { label: "Vale sazonal: ", val: fmt0.format(consValeKwh) + " kWh em Mai", sub: "Mês de vale (" + pct(minFact) + " da média)" },
     { label: "Fator de carga: ", val: pct(fcAtual) + " → " + pct(fcProjetado), sub: "Ganho projetado de +" + num(ganhoFc, 1) + " pp" },
   ];
 
@@ -698,7 +718,7 @@ async function buildReportPdf(args: {
     pY += 21;
   });
 
-  // COLUNA 2: POTENCIAL FINANCEIRO & GANHOS (6 VETORES)
+  // COLUNA 2: POTENCIAL FINANCEIRO & GANHOS
   const col2X = margin + col3W + 6;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "F");
@@ -1011,7 +1031,7 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("Consultoria e Soluções em Energia", b3X + b3W / 2, curY + 76, { align: "center" });
 
-  // PÁGINA 2
+  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO (COM PICTOGRAMAS FIGURATIVOS E SEM **)
   doc.addPage();
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
@@ -1037,11 +1057,17 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("PÁGINA 2 DE 2", pageW - margin - 12, margin + 22, { align: "right" });
 
-  const secoesIa = parseIaReport(args.report || "");
+  // Limpeza de asteriscos (**) e substituição por pictogramas/bullets executivos limpos
+  let cleanedReport = (args.report || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1") // remove markdown bold **texto** -> texto
+    .replace(/^\s*[-*]\s+/gm, "▪ ")     // substitui listas por pictograma quadrado executivo
+    .replace(/^\s*(\d+)\.\s+/gm, "▸ $1. "); // substitui numeracao por pictograma seta executiva
+
+  const secoesIa = parseIaReport(cleanedReport);
   let p2Y = margin + 46;
 
   if (secoesIa.length === 0) {
-    const lines = doc.splitTextToSize(args.report || "Relatório não gerado.", innerW - 20);
+    const lines = doc.splitTextToSize(cleanedReport || "Relatório não gerado.", innerW - 20);
     doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
     doc.roundedRect(margin, p2Y, innerW, pageH - p2Y - margin, 6, 6, "F");
     doc.setFont("helvetica", "normal");
@@ -1062,10 +1088,12 @@ async function buildReportPdf(args: {
       doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
       doc.roundedRect(margin, p2Y, innerW, 18, 5, 5, "F");
 
+      // Pictograma figurativo monocromático para o cabeçalho da seção
+      const secIcon = ["§ 1.0", "§ 2.0", "§ 3.0", "§ 4.0", "§ 5.0"][idx] || ("§ " + (idx + 1));
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
-      doc.text(sec.titulo || ("Seção " + (idx + 1)), margin + 10, p2Y + 12);
+      doc.text(secIcon + "  " + (sec.titulo || ("Seção " + (idx + 1))), margin + 10, p2Y + 12);
 
       let cY = p2Y + 28;
       doc.setFont("helvetica", "normal");
