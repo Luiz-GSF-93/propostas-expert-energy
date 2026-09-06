@@ -324,11 +324,11 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("");
 
   lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA:");
-  lines.push("1. Escreva com parágrafos fluídos e técnicos, sem usar tópicos soltos sem contexto.");
-  lines.push("2. Em cada uma das 5 seções, contextualize e justifique os números reais da empresa " + empresaNome + ".");
-  lines.push("3. Destaque o compromisso ESG com a descarbonização (" + num(co2Evitado, 1) + " tCO2/ano) e transição para matriz limpa.");
-  lines.push("4. Enfatize que a Expert Energy Performance oferece suporte integral de engenharia de aplicação, implantação, telemetria contínua e assessoria regulatória especializada.");
-  lines.push("5. NÃO utilize asteriscos duplos (**) para negrito no texto.");
+  lines.push("1. Escreva com parágrafos fluídos, técnicos e analíticos. NÃO utilize tópicos com marcadores, hífens ou asteriscos.");
+  lines.push("2. Em cada uma das 5 seções, justifique detalhadamente o contexto real e benefícios apurados para " + empresaNome + ".");
+  lines.push("3. Destaque o compromisso ESG com a descarbonização (" + num(co2Evitado, 1) + " tCO2/ano evitadas) e gestão da planta de energia.");
+  lines.push("4. Explique que a consultoria e assessoria da Expert Energy Performance oferece suporte integral em engenharia de aplicação, implantação, telemetria setorizada e gestão regulatória contínua.");
+  lines.push("5. NÃO utilize asteriscos duplos (**) para negrito ou qualquer formatação Markdown especial no texto.");
   lines.push("6. Estruture rigorosamente nas 5 seções Markdown com exatamente estes títulos:");
   lines.push("   ### 1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)");
   lines.push("   ### 2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto");
@@ -408,9 +408,9 @@ async function buildReportPdf(args: {
   const ecoFaturaAno = Number(s.ecoFaturaAnual || (ecoFaturaMensal * 12));
 
   const multaReativoMes = Number(s.multaReativoMes || 0);
-  const multaReativoAno = Number(s.multaReativoAnual || 0);
+  const multaReativoAno = Number(s.multaReativoAnual || (multaReativoMes * 12));
   const ultrapassMes = Number(s.ultrapassMes || 0);
-  const ultrapassAno = Number(s.ultrapassagemAnual || 0);
+  const ultrapassAno = Number(s.ultrapassagemAnual || (ultrapassMes * 12));
 
   const ecoDemandaAno = Number(s.demandOptimizationAnnual || 0);
   const ecoQeeThdAno = Number(s.powerQualityAnnual || 0);
@@ -623,7 +623,7 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("CURVA SAZONAL & FATOR DE CARGA", col1X + 10, curY + 110);
 
-  // GRÁFICO DE CURVA SAZONAL RIGOROSAMENTE PROPORCIONAL AO SIMULADOR
+  // GRÁFICO DE CURVA SAZONAL
   const chartX = col1X + 8;
   const chartY = curY + 118;
   const chartW = col3W - 16;
@@ -632,17 +632,15 @@ async function buildReportPdf(args: {
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.roundedRect(chartX, chartY, chartW, chartH, 4, 4, "F");
 
-  // Multiplicadores mensais reais do perfil sazonal
   const sazoFactors = [0.88, 0.92, 0.95, 0.98, 0.85, 0.90, 1.02, 1.08, 1.15, 1.20, 1.10, 0.97];
-  const maxFact = Math.max(...sazoFactors); // 1.20 (Outubro / Mês 9)
-  const minFact = Math.min(...sazoFactors); // 0.85 (Maio / Mês 4)
+  const maxFact = Math.max(...sazoFactors);
+  const minFact = Math.min(...sazoFactors);
   const idxPico = sazoFactors.indexOf(maxFact);
   const idxVale = sazoFactors.indexOf(minFact);
 
   const consPicoKwh = Math.round(consumoMensalKwh * maxFact);
   const consValeKwh = Math.round(consumoMensalKwh * minFact);
 
-  // Escala dinâmica do eixo Y
   const yTopVal = Math.round((consumoMensalKwh * 1.35) / 1000);
   const yMidVal = Math.round((consumoMensalKwh * 1.00) / 1000);
   const yBotVal = Math.round((consumoMensalKwh * 0.65) / 1000);
@@ -661,7 +659,7 @@ async function buildReportPdf(args: {
   doc.text(yMidVal + "k", chartX + 3, chartY + 46);
   doc.text(yBotVal + "k", chartX + 3, chartY + 70);
 
-  // Linha Média Real Exata (Média = 100% = chartY + 44)
+  // Linha Média
   doc.setDrawColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
   doc.setLineWidth(0.8);
   doc.line(chartX + 24, chartY + 44, chartX + chartW - 6, chartY + 44);
@@ -679,13 +677,11 @@ async function buildReportPdf(args: {
     doc.line(x1, y1, x2, y2);
   }
 
-  // Marcador de Pico (Outubro) e Vale (Maio)
   doc.setFillColor(C_AMBER[0], C_AMBER[1], C_AMBER[2]);
   doc.circle(chartX + 26 + idxPico * stepX, yPoints[idxPico], 2.5, "F");
   doc.setFillColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
   doc.circle(chartX + 26 + idxVale * stepX, yPoints[idxVale], 2.5, "F");
 
-  // Meses sem corte
   const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   doc.setFontSize(5);
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
@@ -693,7 +689,6 @@ async function buildReportPdf(args: {
     doc.text(ml, chartX + 26 + idx * stepX, chartY + 84, { align: "center" });
   });
 
-  // Legendas Sazonais Dinâmicas
   let pY = curY + 225;
   const pRows = [
     { label: "Média consumo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Média ajustada por sazonalidade" },
@@ -1031,12 +1026,13 @@ async function buildReportPdf(args: {
   doc.text("Consultoria e Soluções em Energia", b3X + b3W / 2, curY + 76, { align: "center" });
 
   // ==========================================
-  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO (TIPOGRAFIA LIMPA E DISCRETA)
+  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO (5 BLOCOS SEPARADOS, SEM OVERFLOW, SEM MARCAÇÕES)
   // ==========================================
   doc.addPage();
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
 
+  // Header Barra Topo
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(margin, margin, innerW, 36, 5, 5, "F");
   doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
@@ -1058,78 +1054,74 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("PÁGINA 2 DE 2", pageW - margin - 12, margin + 22, { align: "right" });
 
-  // Limpeza de caracteres especiais não suportados no WinAnsi do jsPDF
-  let cleanedReport = (args.report || "")
-    .replace(/\*\*(.*?)\*\*/g, "$1") // remove negrito markdown
-    .replace(/\*/g, "")                // remove asteriscos soltos
-    .replace(/▪|▸|▹|⬡|§|•/g, "-")        // normaliza para hífen seguro compatível com ASCII/WinAnsi
-    .replace(/^\s*[-–—]\s+/gm, "- "); // padroniza marcadores
+  // Limpeza total de Markdown, asteriscos e caracteres incompatíveis
+  let cleanText = (args.report || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*/g, "")
+    .replace(/^[#\s]+PARECER.*$/gim, "")
+    .replace(/^[#\s]+EMPRESA.*$/gim, "")
+    .replace(/^\s*[-–—•▪▸▹%ª]+\s*/gm, ""); // remove marcações no início de parágrafos
 
-  const secoesIa = parseIaReport(cleanedReport);
-  let p2Y = margin + 46;
+  const secoesIa = parseIaReport(cleanText);
+  let p2Y = margin + 44;
 
-  if (secoesIa.length === 0) {
-    const lines = doc.splitTextToSize(cleanedReport || "Relatório não gerado.", innerW - 20);
+  // Cálculo de dimensões dos 5 blocos separados
+  const totalAvailableH = pageH - margin - p2Y; // ~730pt
+  const blockGap = 6;
+  const numBlocks = Math.max(secoesIa.length, 5);
+  const blockH = Math.floor((totalAvailableH - (numBlocks - 1) * blockGap) / numBlocks); // ~140pt por bloco
+
+  const fallbackTitles = [
+    "1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)",
+    "2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto",
+    "3. Viabilidade Econômico-Financeira e Sensibilidade de Retorno",
+    "4. Ganhos Operacionais, Digitalização e Governança da Planta",
+    "5. Matriz de Riscos, Limites de Coerência e Plano de Ação Priorizado"
+  ];
+
+  for (let i = 0; i < 5; i++) {
+    const sec = secoesIa[i] || { titulo: fallbackTitles[i], corpo: [] };
+    const secTitle = sec.titulo || fallbackTitles[i];
+
+    // Bloco Separado Escuro
     doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
-    doc.roundedRect(margin, p2Y, innerW, pageH - p2Y - margin, 6, 6, "F");
+    doc.roundedRect(margin, p2Y, innerW, blockH, 5, 5, "F");
+    doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(margin, p2Y, innerW, blockH, 5, 5, "S");
+
+    // Header do Bloco Separado
+    doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
+    doc.roundedRect(margin, p2Y, innerW, 17, 5, 5, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.2);
+    doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+    doc.text(secTitle, margin + 10, p2Y + 11.5);
+
+    // Texto Narrativo do Bloco com enquadramento perfeito (sem overflow)
+    let cY = p2Y + 26;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.2);
     doc.setTextColor(C_TEXT_MAIN[0], C_TEXT_MAIN[1], C_TEXT_MAIN[2]);
-    doc.text(lines, margin + 10, p2Y + 16);
-  } else {
-    // 5 Seções com altura proporcional calculada
-    const totalBoxesH = pageH - margin - p2Y;
-    const boxH = Math.floor((totalBoxesH - 24) / 5);
 
-    secoesIa.forEach((sec, idx) => {
-      doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
-      doc.roundedRect(margin, p2Y, innerW, boxH, 5, 5, "F");
-      doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(margin, p2Y, innerW, boxH, 5, 5, "S");
+    const maxTextW = innerW - 20;
+    const blockTextLines = sec.corpo.filter(l => l.trim().length > 0);
 
-      // Barra de Título da Seção
-      doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
-      doc.roundedRect(margin, p2Y, innerW, 18, 5, 5, "F");
+    for (let rawLine of blockTextLines) {
+      if (cY > p2Y + blockH - 8) break;
+      const cleanLine = rawLine.replace(/^[#\s*\-–—•%ª]+/, "").trim();
+      const wrapped = doc.splitTextToSize(cleanLine, maxTextW);
 
-      // Marcador numérico limpo e discreto
-      const secNum = "[" + (idx + 1) + ".0]  ";
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
-      doc.text(secNum + (sec.titulo || ("Seção " + (idx + 1))), margin + 10, p2Y + 12);
-
-      // Corpo de texto em parágrafos justificados com espaçamento normal
-      let cY = p2Y + 28;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.setTextColor(C_TEXT_MAIN[0], C_TEXT_MAIN[1], C_TEXT_MAIN[2]);
-
-      for (let l of sec.corpo) {
-        if (cY > p2Y + boxH - 8) break;
-        // Desenha indicador de item caso seja lista
-        let lineText = l.trim();
-        let isBullet = lineText.startsWith("- ");
-        if (isBullet) {
-          lineText = lineText.slice(2).trim();
-          doc.setFillColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
-          doc.circle(margin + 12, cY - 2.5, 1.2, "F"); // Mini bullet desenhado em vetor (zero erro de fonte)
-        }
-
-        const textIndent = isBullet ? 18 : 10;
-        const maxTextW = innerW - textIndent - 10;
-        const wrapped = doc.splitTextToSize(lineText, maxTextW);
-
-        for (let wl of wrapped) {
-          if (cY > p2Y + boxH - 8) break;
-          doc.text(wl, margin + textIndent, cY);
-          cY += 8.5; // Espaçamento entre linhas ajustado para não transbordar o quadro
-        }
-        cY += 2; // Espaço sutil entre tópicos
+      for (let wl of wrapped) {
+        if (cY > p2Y + blockH - 8) break;
+        doc.text(wl, margin + 10, cY);
+        cY += 8.2; // Espaçamento entrelinhas rigorosamente calibrado para caber no bloco
       }
+      cY += 2; // Respiro entre parágrafos
+    }
 
-      p2Y += boxH + 6;
-    });
+    p2Y += blockH + blockGap;
   }
 
   const cleanName = cliNome.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
@@ -1188,7 +1180,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     item.title ||
     'Empresa sem nome';
 
-  // 1. Demanda Contratada e Medições Máximas Reais do Simulador
+  // 1. Demanda e Medições Máximas
   const demandKw = safeNumber(
     input.dc ?? input.dcP ?? input.demanda_contratada ??
     demRes.dc_atual_p ?? demRes.dc_atual ??
@@ -1213,7 +1205,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   const ecoFaturaMensal = safeNumber(result.eco_m ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 0));
   const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
-  // 4. Multas e Penalidades Reais do Simulador
+  // 4. Multas e Penalidades Reais do Simulador (Garantir anual = mensal * 12)
   const multaReativoMes = safeNumber(result.multaReativo_mes ?? 0);
   const multaReativoAnual = safeNumber(result.multaReativo_ano ?? (multaReativoMes * 12));
   
@@ -1231,7 +1223,7 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     thdRes.total_RS_ano ?? 0
   );
 
-  // 5. Custo Térmico e Economia Térmica do Simulador
+  // 5. Custo Térmico e Economia Térmica
   const thermalReductionFromItems = equipItems.reduce((sum, row) => {
     const current = asObject(row);
     return sum + safeNumber(current.economia_anual_num || current.economia_anual);
@@ -1269,7 +1261,6 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
   const isSazonal = result.sazonal === true || input.sazonal === 'sim';
   const indiceSazonal = safeNumber(result.indicesazonal ?? 1.0);
 
-  // Fator de Carga calculado estritamente
   const horasMes = safeNumber(input.hd || 16) * safeNumber(input.dm || 25);
   const potPico = Math.max(demandKw, drPMax, drFpMax, 1);
   const fcCalc = horasMes > 0 && potPico > 0 ? (monthlyConsumptionKwh / (potPico * horasMes)) : 0.899;
