@@ -2803,6 +2803,10 @@
         }
 
         restoreFormData(editableData);
+        if(Array.isArray(editableData.selectedKits)){
+          proposalSelectedKits = editableData.selectedKits;
+          updateAttachedKitsUI();
+        }
         setCurrentProposalId(
           result?.id ||
           result?.data?.id ||
@@ -2859,6 +2863,10 @@
         try{
           const draftData = JSON.parse(rawDraft);
           restoreFormData(draftData);
+          if(Array.isArray(draftData.selectedKits)){
+            proposalSelectedKits = draftData.selectedKits;
+            updateAttachedKitsUI();
+          }
           updateServiceSelectionUI();
           updateSelectedServicesSummary();
           updateAnnex();
@@ -2929,7 +2937,8 @@
           savedAt: new Date().toISOString(),
           fields: compactFields,
           serviceState: compactServiceState,
-          pricingRows: compactPricingRows
+          pricingRows: compactPricingRows,
+          selectedKits: Array.isArray(proposalSelectedKits) ? proposalSelectedKits : []
         };
 
         const payload = {
