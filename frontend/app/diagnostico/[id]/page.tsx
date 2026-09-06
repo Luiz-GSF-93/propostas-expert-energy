@@ -233,39 +233,41 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   const eqComp = (s.equipComparativo || res.EquipComparativo || {}) as Record<string, any>;
 
   const fmt2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const brl  = (v: any) => "R$ " + fmt2.format(Number(v || 0));
   const num  = (v: any, dec = 2) => Number(v || 0).toFixed(dec).replace(".", ",");
-  const pct  = (v: any) => (Number(v || 0) <= 1 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
+  const pct  = (v: any) => (Number(v || 0) <= 1 && Number(v || 0) > 0 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
 
   const empresaNome       = s.companyName || inp.razao || "Empresa Cliente";
-  const demandaAtual      = Number(s.demandKw || 1045);
-  const demandaRec        = Number(demRes.dc_rec || demRes.dc_rec_fp || demRes.dc_rec_p || 1160);
-  const mesesUltrapass    = Number(demRes.mesesAcimaAtual ?? demRes.meses_ultrapassados ?? 5);
+  const demandaAtual      = Number(s.demandKw || inp.dc || 0);
+  const demandaRec        = Number(demRes.dc_rec || demRes.dc_rec_fp || demRes.dc_rec_p || s.demandaRec || demandaAtual);
+  const mesesUltrapass    = Number(demRes.mesesAcimaAtual ?? demRes.meses_ultrapassados ?? s.mesesUltrapassados ?? 0);
   const totalMeses        = Number(demRes.meses_total || 12);
-  const mesesDentro       = totalMeses - mesesUltrapass;
+  const mesesDentro       = Math.max(0, totalMeses - mesesUltrapass);
 
-  const consumoMensalKwh  = Number(s.monthlyConsumptionKwh || 310285);
-  const faturaBaseMensal  = Number(s.fBaseMensal || res.F_base || 169287);
-  const faturaCenMensal   = Number(s.fCenMensal || res.F_cen || 116823);
-  const ecoFaturaMensal   = Number(s.ecoFaturaMensal || (faturaBaseMensal - faturaCenMensal));
-  const ecoFaturaAnual    = Number(res.eco_anual || (ecoFaturaMensal * 12) || 643470);
+  const consumoMensalKwh  = Number(s.monthlyConsumptionKwh || (res.E_mes ? Number(res.E_mes) * 1000 : 0));
+  const consumoAnualKwh   = Number(res.E_ano || (consumoMensalKwh * 12));
+  const faturaBaseMensal  = Number(s.fBaseMensal || res.F_base || 0);
+  const faturaCenMensal   = Number(s.fCenMensal || res.F_cen || 0);
+  const ecoFaturaMensal   = Number(s.ecoFaturaMensal || (faturaBaseMensal > faturaCenMensal ? faturaBaseMensal - faturaCenMensal : 0));
+  const ecoFaturaAnual    = Number(res.eco_anual || (ecoFaturaMensal * 12) || 0);
 
-  const ecoDemandaAno     = Number(s.demandOptimizationAnnual || 17054);
-  const custoUltrapassAno = Number(s.ultrapassagemAnual || 34645);
-  const multaReativoAno   = Number(s.multaReativoAnual || 51819);
-  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || 1965);
-  const ganhoTermicoAno   = Number(s.thermalReductionAnnual || 361728);
-  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + custoUltrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno) || 1076037);
+  const ecoDemandaAno     = Number(s.demandOptimizationAnnual || demRes.ganho_anual_estimado || demRes.ganho_anual || 0);
+  const custoUltrapassAno = Number(s.ultrapassagemAnual || res.ultrapass_ano || demRes.custo_ultrapassagem_ano || 0);
+  const multaReativoAno   = Number(s.multaReativoAnual || res.multaReativo_ano || 0);
+  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || thdRes.total_RS_ano || thdRes.ganho_anual_estimado || 0);
+  const ganhoTermicoAno   = Number(s.thermalReductionAnnual || eqComp.gain_total || res.therm_custo_anual || 0);
+  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + custoUltrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno));
 
-  const capexTotal   = Number(s.capexTotal || 2143000);
-  const capexFV      = Number(s.capexFV || 570000);
-  const capexBESS    = Number(s.capexBESS || 658000);
-  const capexEolica  = Number(s.capexEolica || 915000);
-  const opexAnual    = Number(s.opexAnual || 32700);
-  const vpl20Anos    = Number(s.vpl20Anos || 4389672);
-  const tirAnual     = Number(s.tirAnual || 0.348);
-  const paybackAnos  = Number(s.paybackAnos || 3.3);
-  const co2Evitado   = Number(res.CO_avoid || 361.8);
+  const capexTotal   = Number(s.capexTotal || res.CAPEX || 0);
+  const capexFV      = Number(s.capexFV || res.CAPEXfv || 0);
+  const capexBESS    = Number(s.capexBESS || res.CAPEXbess || 0);
+  const capexEolica  = Number(s.capexEolica || res.CAPEXeol || 0);
+  const opexAnual    = Number(s.opexAnual || res.OPEX_a || 0);
+  const vpl20Anos    = Number(s.vpl20Anos || res.VPL || 0);
+  const tirAnual     = Number(s.tirAnual || res.TIR || 0);
+  const paybackAnos  = Number(s.paybackAnos || res.payback || 0);
+  const co2Evitado   = Number(res.CO_avoid ?? res.co2_evitado ?? s.co2Evitado ?? (consumoAnualKwh > 0 ? (consumoAnualKwh * 0.000085 * (ecoFaturaAnual > 0 ? 0.35 : 0)) : 0));
 
   const lines: string[] = [];
   lines.push("# RELATÓRIO EXECUTIVO E ESTRATÉGICO DE ENGENHARIA E EFICIÊNCIA ENERGÉTICA");
@@ -275,63 +277,69 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("## AUDITORIA DE DADOS E VALORES OFICIAIS DO DIAGNÓSTICO (ENERGIAPRO)");
   lines.push("");
   lines.push("1. FATURA E CONSUMO BASELINE (SITUAÇÃO ATUAL):");
-  lines.push("- Fatura MENSAL Atual da Concessionária (Baseline): " + brl(faturaBaseMensal) + " /mês (ATENÇÃO: A fatura mensal atual do cliente é " + brl(faturaBaseMensal) + "/mês, NÃO confundir com o valor de economia!).");
-  lines.push("- Consumo Médio Mensal: " + fmtN(consumoMensalKwh) + " kWh/mês (310,28 MWh/mês).");
-  lines.push("- Demanda Contratada Atual: " + fmtN(demandaAtual) + " kW (Demanda Máxima Registrada atingiu 1.240 kW na Fora Ponta e 1.110 kW na Ponta).");
+  lines.push("- Fatura MENSAL Atual da Concessionária (Baseline): " + brl(faturaBaseMensal) + " /mês.");
+  lines.push("- Consumo Médio Mensal: " + fmt0.format(consumoMensalKwh) + " kWh/mês (" + num(consumoMensalKwh / 1000, 2) + " MWh/mês).");
+  lines.push("- Consumo Anual Estimado: " + fmt0.format(consumoAnualKwh) + " kWh/ano (" + num(consumoAnualKwh / 1000, 2) + " MWh/ano).");
+  lines.push("- Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW.");
   lines.push("");
 
   lines.push("2. DIAGNÓSTICO DE DEMANDA, ULTRAPASSAGEM E QUALIDADE DA ENERGIA (SEÇÕES 6, 7 E 8):");
-  lines.push("- Ocorrência de Ultrapassagem: A planta sofreu ultrapassagem de demanda em " + mesesUltrapass + " dos " + totalMeses + " meses analisados (apenas " + mesesDentro + "/" + totalMeses + " meses dentro da faixa contratada).");
-  lines.push("- Custo Anual com Penalidades de Ultrapassagem (RN 414/2010): " + brl(custoUltrapassAno) + " /ano.");
-  lines.push("- Ganho Anual com Adequação da Demanda Ótima (RN 1.000/2021): " + brl(ecoDemandaAno) + " /ano (ao ajustar a demanda para " + fmtN(demandaRec) + " kW).");
-  lines.push("- Multa Anual por Excedente Reativo (Baixo Fator de Potência 0,92 - PRODIST M8): " + brl(multaReativoAno) + " /ano (R$ 4.318,00/mês).");
-  lines.push("- Qualidade de Energia (QEE - THD) e Risco Operacional Crítico: Identificado sobreaquecimento grave (>60°C) em 3 alimentadores principais do QGF (QGF-Linha 1 @ 61°C, QGF-Refrigeração @ 77°C e QGF-Iluminação @ 65°C), gerando perdas anuais estimadas em " + brl(ganhoQeeThdAno) + "/ano e risco de desarme/parada de produção.");
+  if (mesesUltrapass > 0) {
+    lines.push("- Ocorrência de Ultrapassagem: A planta sofreu ultrapassagem de demanda em " + mesesUltrapass + " dos " + totalMeses + " meses analisados.");
+    lines.push("- Custo Anual com Penalidades de Ultrapassagem: " + brl(custoUltrapassAno) + " /ano.");
+  } else {
+    lines.push("- Ocorrência de Ultrapassagem: Nenhuma ultrapassagem crítica de demanda registrada no histórico analisado.");
+  }
+  if (ecoDemandaAno > 0 && demandaRec !== demandaAtual) {
+    lines.push("- Ganho Anual com Adequação da Demanda Ótima (RN 1.000/2021): " + brl(ecoDemandaAno) + " /ano (ao ajustar a demanda para " + fmt0.format(demandaRec) + " kW).");
+  }
+  if (multaReativoAno > 0) {
+    lines.push("- Multa Anual por Excedente Reativo (Fator de Potência < 0,92): " + brl(multaReativoAno) + " /ano.");
+  } else {
+    lines.push("- Excedente Reativo: Fator de potência adequado sem incidência de multas relevantes.");
+  }
+  if (ganhoQeeThdAno > 0) {
+    lines.push("- Qualidade de Energia (QEE - THD) e Eficiência: Otimização de distorções harmônicas e perdas com ganho de " + brl(ganhoQeeThdAno) + "/ano.");
+  }
   lines.push("");
 
   lines.push("3. CENÁRIO PROPOSTO E MATRIZ DE GERAÇÃO ON-SITE (SEÇÕES 5, 9 E 10):");
-  lines.push("- Portfólio de Soluções Ativas: Usina Solar FV (" + brl(capexFV) + ") + Sistema BESS Baterias (" + brl(capexBESS) + ") + Geração Eólica On-Site (" + brl(capexEolica) + ") + Eficiência Térmica (" + brl(ganhoTermicoAno) + "/ano).");
-  lines.push("- Geração Local Total: 24,99 MWh/mês (Solar FV: 17,95 MWh/mês | Eólica on-site: 7,04 MWh/mês).");
-  lines.push("- Redução do Consumo Comprado da Rede: de 310,28 MWh/mês para 285,30 MWh/mês.");
+  const solucoes = [];
+  if (capexFV > 0) solucoes.push("Usina Solar FV (" + brl(capexFV) + ")");
+  if (capexBESS > 0) solucoes.push("Sistema BESS Baterias (" + brl(capexBESS) + ")");
+  if (capexEolica > 0) solucoes.push("Geração Eólica On-Site (" + brl(capexEolica) + ")");
+  if (ganhoTermicoAno > 0) solucoes.push("Eficiência Térmica (" + brl(ganhoTermicoAno) + "/ano)");
+  lines.push("- Portfólio de Soluções Ativas: " + (solucoes.length > 0 ? solucoes.join(" + ") : "Eficiência Energética e Otimização Integrada da Planta") + ".");
   lines.push("");
 
   lines.push("4. ENGENHARIA FINANCEIRA, GANHOS E VIABILIDADE (PERSPECTIVA DE CFO) (SEÇÕES 11 E 12):");
-  lines.push("- Nova Fatura Mensal Projetada: " + brl(faturaCenMensal) + " /mês (redução de " + brl(ecoFaturaMensal) + "/mês).");
-  lines.push("- Economia Anual na Fatura de Energia: " + brl(ecoFaturaAnual) + " /ano (" + pct(31.0) + " de redução na conta).");
-  lines.push("- Total de Ganhos Anuais Integrados (Fatura + Demanda + Reativo + THD + Térmico + Ultrapassagens): " + brl(totalGanhosAno) + " /ano.");
+  lines.push("- Nova Fatura Mensal Projetada: " + brl(faturaCenMensal) + " /mês (economia de " + brl(ecoFaturaMensal) + "/mês).");
+  lines.push("- Economia Anual na Fatura de Energia: " + brl(ecoFaturaAnual) + " /ano.");
+  lines.push("- Total de Ganhos Anuais Integrados: " + brl(totalGanhosAno) + " /ano.");
   lines.push("- Investimento Total Necessário (CAPEX): " + brl(capexTotal) + ".");
   lines.push("- Custo de Operação e Manutenção (OPEX): " + brl(opexAnual) + " /ano.");
   lines.push("- VPL (Valor Presente Líquido a 20 anos, WACC 12%): " + brl(vpl20Anos) + ".");
   lines.push("- TIR (Taxa Interna de Retorno): " + pct(tirAnual) + " a.a.");
-  lines.push("- Payback Estimado: " + num(paybackAnos, 1) + " anos (39,9 meses).");
-  lines.push("- Descarbonização (ESG): " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
+  lines.push("- Payback Estimado: " + num(paybackAnos, 1) + " anos (" + Math.round(paybackAnos * 12) + " meses).");
+  if (co2Evitado > 0) {
+    lines.push("- Descarbonização (Sustentabilidade ESG): " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
+  }
   lines.push("");
 
   lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A ELABORAÇÃO DO RELATÓRIO PELA IA:");
   lines.push("1. Escreva com tom de Consultor Sênior e Especialista em Finanças de Energia com visão de CFO / Diretoria.");
-  lines.push("2. Respeite com fidelidade absoluta os números fornecidos acima, contextualizando nominalmente a empresa (" + empresaNome + ").");
-  lines.push("3. Na introdução e resumo executivo, explique o perfil de carga da planta gráfica (rotativas e turnos) e a dinâmica sazonal (pico com demanda medida até " + num(demRes.max_demanda_fp || 1240, 0) + " kW no Fora Ponta e vale de entressafra).");
-  lines.push("4. Destaque detalhadamente a decomposição dos 6 Vetores de Ganho Financeiro Integrado (totalizando " + brl(totalGanhosAno) + "/ano e " + "37,4" + "% de redução global):");
-  lines.push("   - 1. Economia na Fatura Elétrica (Geração/Mercado): " + brl(ecoFaturaAnual) + "/ano");
-  lines.push("   - 2. Termossubstituição de Ativos Térmicos: " + brl(ganhoTermicoAno) + "/ano");
-  lines.push("   - 3. Eliminação de Excedente Reativo (FP 0,92): " + brl(multaReativoAno) + "/ano");
-  lines.push("   - 4. Redução de Multas de Ultrapassagem (" + mesesUltrapass + " de 12 meses): " + brl(custoUltrapassAno) + "/ano");
-  lines.push("   - 5. Otimização da Demanda Contratada (RN 1.000/2021): " + brl(ecoDemandaAno) + "/ano");
-  lines.push("   - 6. Eficiência QEE e Distorção Harmônica THD (NBR 5410): " + brl(ganhoQeeThdAno) + "/ano");
-  lines.push("5. Apresente a viabilidade financeira para o CFO: o CAPEX de " + brl(capexTotal) + " é altamente atrativo pelo Payback de " + num(paybackAnos, 1) + " anos (39,9 meses), VPL de " + brl(vpl20Anos) + " (taxa WACC 12% a.a.) e TIR de " + pct(tirAnual) + " a.a. (superando expressivamente o CDI/Custo de Oportunidade).");
-  lines.push("6. Detalhe as Recomendações Técnicas Prioritárias (1, 2, 3) com Ação, Racional e Impacto Financeiro em R$.");
-  lines.push("7. Conclua com Governança e Digitalização Contínua pela Plataforma Energy Link do Brasil e acompanhamento consultivo da Expert Energy.");
-  lines.push("8. Estruture o parecer EXATAMENTE nas 5 seções Markdown:");
+  lines.push("2. Respeite com fidelidade absoluta os números fornecidos acima. NÃO invente valores de multas ou dados que não constam neste diagnóstico.");
+  lines.push("3. Estruture o parecer EXATAMENTE nas 5 seções Markdown:");
   lines.push("   '### 1. Resumo executivo, perfil de carga e curva sazonal'");
   lines.push("   '### 2. Diagnóstico de demanda, ultrapassagens e qualidade da energia (QEE)'");
   lines.push("   '### 3. Decomposição detalhada dos 6 vetores de economia e matriz de soluções'");
   lines.push("   '### 4. Análise econômico-financeira executiva (CAPEX, VPL, TIR e Payback - Visão CFO)'");
   lines.push("   '### 5. Governança, digitalização com Energy Link e plano de ação priorizado'");
-  lines.push("9. Utilize português do Brasil (PT-BR) perfeitamente acentuado e formatação 'R$ X.XXX,XX'.");
+  lines.push("4. Utilize português do Brasil (PT-BR) perfeitamente acentuado e formatação 'R$ X.XXX,XX'.");
 
   return lines.join("\n");
 }
 
-/** Parser leve do markdown da IA em 5 secoes. Devolve array { titulo, corpo[] }. */
 function parseIaReport(text: string): { titulo: string; corpo: string[] }[] {
   const out: { titulo: string; corpo: string[] }[] = [];
   const secRegex = /###\s*(\d+)\.\s*([^\n]+)/g;
@@ -1335,12 +1343,36 @@ export default function DiagnosticoDetalhePage() {
   const [reportError, setReportError] = useState("");
   const [lastReport, setLastReport] = useState<{ fileName: string } | null>(null);
 
-  async function handleGenerateReport() {
-    if (!summary || generatingReport) return;
+    async function handleGenerateReport() {
+    if (generatingReport) return;
     try {
       setGeneratingReport(true);
       setReportError("");
       setLastReport(null);
+
+      // 1. Extrair os dados mais recentes diretamente do simulador / iframe ao vivo
+      let activeRecord = record;
+      let activeSummary = summary;
+      try {
+        if (iframeRef.current) {
+          const rawPayload = await requestEnergiaExport(iframeRef.current);
+          if (rawPayload && (rawPayload.result || rawPayload.input)) {
+            const tempApiRecord = {
+              ...(record || {}),
+              payload_json: rawPayload,
+              result_json: rawPayload.result || (record as any)?.result_json,
+            } as any;
+            activeRecord = normalizeRecord(tempApiRecord);
+            activeSummary = activeRecord.summary as any;
+          }
+        }
+      } catch (e) {
+        console.warn("[diag] aviso ao extrair estado do simulador:", e);
+      }
+
+      if (!activeSummary) {
+        throw new Error("Nenhum dado do simulador disponível para gerar o relatório.");
+      }
 
       let token = "";
       try {
@@ -1348,8 +1380,8 @@ export default function DiagnosticoDetalhePage() {
         token = sessionRes?.data?.session?.access_token || "";
       } catch (_) { /* sem sessao -> ok */ }
 
-      const prompt = buildAnalyticalPrompt(summary as any, record as any);
-      const idStr = String(record?.id || "");
+      const prompt = buildAnalyticalPrompt(activeSummary as any, activeRecord as any);
+      const idStr = String(activeRecord?.id || record?.id || "");
       const res = await fetch("/api/diagnosticos/" + encodeURIComponent(idStr) + "/ai-report", {
         method: "POST",
         headers: {
@@ -1358,8 +1390,8 @@ export default function DiagnosticoDetalhePage() {
         },
         body: JSON.stringify({
           prompt,
-          summary,
-          diagnostic: record,
+          summary: activeSummary,
+          diagnostic: activeRecord,
         }),
       });
       const json = await res.json().catch(() => ({}));
