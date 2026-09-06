@@ -2403,6 +2403,25 @@
       return `${API_BASE_URL}${normalizedPath}`;
     }
 
+    
+    /* Helper seguro para localStorage com proteção contra QuotaExceededError */
+    function safeSetLocalStorage(key, value){
+      try{
+        localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+      }catch(err){
+        console.warn(`[Storage] Cota excedida ao salvar '${key}', usando sessionStorage como fallback.`, err);
+        try{
+          sessionStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+        }catch(e){
+          console.warn(`[Storage] Cota de sessionStorage também excedida para '${key}'.`, e);
+        }
+      }
+    }
+
+    function safeGetStorageItem(key){
+      return localStorage.getItem(key) || sessionStorage.getItem(key) || "";
+    }
+
     function getSupabaseAccessToken(){
       const directKeys = [
         "supabase.access_token",
@@ -2814,7 +2833,7 @@
           proposalId
         );
 
-        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(editableData));
+        safeSetLocalStorage(LOCAL_DRAFT_KEY, editableData);
         updateServiceSelectionUI();
         updateSelectedServicesSummary();
         updateAnnex();
@@ -2858,7 +2877,7 @@
         if(loaded) return;
       }
 
-      const rawDraft = localStorage.getItem(LOCAL_DRAFT_KEY);
+      const rawDraft = safeGetStorageItem(LOCAL_DRAFT_KEY);
       if(rawDraft){
         try{
           const draftData = JSON.parse(rawDraft);
@@ -2999,7 +3018,7 @@
           setCurrentProposalId(savedId);
         }
 
-        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(editableData));
+        safeSetLocalStorage(LOCAL_DRAFT_KEY, editableData);
         updateSaveProposalButtonLabel();
         refreshClientLinkPanel();
 
@@ -3020,7 +3039,7 @@
     function saveDraft(){
       try{
         const data = collectFormData();
-        localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(data));
+        safeSetLocalStorage(LOCAL_DRAFT_KEY, data);
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -3778,7 +3797,7 @@
         cachedKitsList.push(kitObj);
       }
 
-      localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
       populateKitsSelect();
 
       alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
@@ -3821,7 +3840,7 @@
         if(response.ok){
           const result = await response.json();
           cachedKitsList = Array.isArray(result) ? result : (result?.data || result?.items || []);
-          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+          safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
         } else {
           throw new Error("API indisponível");
         }
@@ -3856,7 +3875,7 @@
               ]
             }
           ];
-          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+          safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
         }
       }
       populateKitsSelect();
@@ -4143,7 +4162,7 @@
           }).catch(err => console.warn("Erro ao deletar kit:", err));
 
           cachedKitsList = cachedKitsList.filter(k => (k.id || k.name) !== kitId);
-          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+          safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
           populateKitsSelect();
           renderAdminKitsTable();
           showToast("Kit excluído com sucesso!", "success");
@@ -4230,7 +4249,7 @@
           cachedKitsList.push(kitObj);
         }
 
-        localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+        safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
         populateKitsSelect();
 
         alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
