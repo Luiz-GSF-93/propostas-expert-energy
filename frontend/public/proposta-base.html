@@ -3646,24 +3646,46 @@
       if(Array.isArray(kit.items)){
         const tbody = document.getElementById("pricingBody");
         const existingRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-        const allEmpty = existingRows.every(tr => {
-          const desc = tr.querySelector(".price-description")?.value?.trim();
-          const val = tr.querySelector(".price-unitvalue")?.value?.trim();
+
+        // Filtra linhas vazias (sem descrição e sem valor)
+        const emptyRows = existingRows.filter(tr => {
+          const desc = tr.querySelector(".price-description")?.value?.trim() || "";
+          const val = tr.querySelector(".price-unitvalue")?.value?.trim() || "";
           return !desc && (!val || val === "0,00" || val === "0");
         });
-        if(allEmpty && tbody){
-          tbody.innerHTML = "";
+        emptyRows.forEach(r => r.remove());
+
+        // Coleta itens válidos já existentes na tabela para evitar duplicações idênticas
+        const currentItems = Array.from(tbody ? tbody.querySelectorAll("tr") : []).map(tr => ({
+          desc: tr.querySelector(".price-description")?.value?.trim().toLowerCase() || "",
+          cat: tr.querySelector(".price-category")?.value?.trim().toLowerCase() || ""
+        }));
+
+        // Se a tabela ficou vazia após remover os placeholders ou se todos os itens atuais forem do próprio kit, limpa para reinserir limpo
+        if(currentItems.length === 0){
+          if(tbody) tbody.innerHTML = "";
         }
 
+        let insertedCount = 0;
         kit.items.forEach(it => {
-          addPricingRow({
-            category: it.category || "Serviço",
-            description: it.description || "",
-            qty: it.qty || "1,00",
-            unit: it.unit || "un",
-            unitValue: it.unitValue || "0,00"
-          });
+          const itDesc = (it.description || "").trim().toLowerCase();
+          const itCat = (it.category || "").trim().toLowerCase();
+          
+          // Verifica se este item específico do kit já está presente na tabela
+          const isAlreadyInTable = currentItems.some(ci => ci.desc === itDesc && ci.cat === itCat);
+
+          if(!isAlreadyInTable){
+            addPricingRow({
+              category: it.category || "Serviço",
+              description: it.description || "",
+              qty: it.qty || "1,00",
+              unit: it.unit || "un",
+              unitValue: it.unitValue || "0,00"
+            });
+            insertedCount++;
+          }
         });
+
         calculatePricing();
 
         // Atualiza ou insere o kit selecionado com a versão mais recente do PDF
@@ -3674,8 +3696,11 @@
           proposalSelectedKits.push(kit);
         }
         updateAttachedKitsUI();
-        if(kit.pdf_attachment_url){
-          showToast("Kit e Anexo Técnico PDF inseridos com sucesso na proposta!", "success");
+
+        if(insertedCount > 0){
+          showToast(`Kit inserido com sucesso (${insertedCount} novos itens adicionados)!`, "success");
+        } else {
+          showToast("Os itens deste kit já estavam presentes na planilha comercial. A lista e os anexos foram sincronizados.", "info");
         }
       }
       window.closeAddKitModalDirect();
