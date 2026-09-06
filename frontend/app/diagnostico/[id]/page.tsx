@@ -283,15 +283,15 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("1. PERFIL OPERACIONAL & BASELINE:");
   lines.push("- Fatura Mensal Atual: " + brl(faturaBaseMensal) + "/mês (" + brl(faturaBaseMensal * 12) + "/ano).");
   lines.push("- Consumo Elétrico Sazonal: " + num(consumoMensalKwh / 1000, 2) + " MWh/mês (" + fmt0.format(consumoMensalKwh) + " kWh/mês).");
-  lines.push("- Custo Térmico Anual: " + brl(custoTermicoAno) + "/ano (Potencial de redução/eficiência: " + brl(ganhoTermicoAno) + "/ano).");
+  lines.push("- Custo Térmico Anual: " + brl(custoTermicoAno) + "/ano (Potencial de redução: " + brl(ganhoTermicoAno) + "/ano).");
   lines.push("- Demanda Contratada: " + fmt0.format(demandaAtual) + " kW (Pico Medido: " + fmt0.format(drPico) + " kW).");
-  lines.push("- Fator de Carga: " + pct(fcAtual) + " com ganho projetado para " + pct(fcProjetado) + ".");
+  lines.push("- Fator de Carga: " + pct(fcAtual) + " com projeção para " + pct(fcProjetado) + ".");
   lines.push("- Multa por Excedente Reativo (PRODIST M8): " + brl(multaReativoMes) + "/mês (" + brl(multaReativoAno) + "/ano).");
   lines.push("- Ultrapassagem RN 414: " + brl(ultrapassAno) + "/ano.");
   lines.push("");
 
   lines.push("2. CENÁRIO PROPOSTO & GANHOS SAZONALIZADOS:");
-  lines.push("- Nova Fatura Mensal (Cenário): " + brl(faturaCenMensal) + "/mês (Economia mensal: " + brl(ecoFaturaMensal) + "/mês).");
+  lines.push("- Nova Fatura Mensal (Cenário): " + brl(faturaCenMensal) + "/mês (Economia: " + brl(ecoFaturaMensal) + "/mês).");
   lines.push("- Economia na Fatura/ano: " + brl(ecoFaturaAnual) + "/ano.");
   lines.push("- Economia Térmica/ano: " + brl(ganhoTermicoAno) + "/ano.");
   lines.push("- Economia Reativo/ano: " + brl(multaReativoAno) + "/ano.");
@@ -309,19 +309,18 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   lines.push("- Descarbonização / Sustentabilidade ESG: " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
   lines.push("");
 
-  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA (CFO & ENERGY LINK):");
-  lines.push("1. Escreva em parágrafos analíticos contínuos e justificados, SEM qualquer tipo de marcador, asterisco ou hífen.");
-  lines.push("2. ANÁLISE REALISTA DE VIABILIDADE FINANCEIRA (SEÇÃO 3):");
-  lines.push("   - O CAPEX de " + brl(capexTotal) + " com Payback de " + num(paybackAnos, 1) + " anos e TIR de " + pct(tirAnual) + " (abaixo do WACC 12%, gerando VPL negativo) indica que ativos pesados de geração própria não são a prioridade de investimento direto no momento.");
-  lines.push("   - Recomende enfaticamente focar em ações imediatas de ZERO/BAIXO CAPEX: eliminação da multa de reativo (" + brl(multaReativoAno) + "/ano) via banco automático, adequação da demanda contratada de 1.000 kW para " + fmt0.format(demandaRecP) + " kW (" + brl(ecoDemandaAno) + "/ano) e eficiência térmica.");
-  lines.push("3. DESTAQUE OBRIGATÓRIO NA SEÇÃO 5 (ENERGY LINK BRASIL):");
-  lines.push("   - Destaque a importância da digitalização da planta através do software Energy Link Brasil (telemetria em tempo real, monitoramento setorizado de FP/demanda e auditoria de faturas), suportado pela assessoria e engenharia de aplicação da Expert Energy Performance.");
-  lines.push("4. Estruture rigorosamente nas 5 seções Markdown oficiais com exatamente estes títulos:");
-  lines.push("   ### 1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)");
-  lines.push("   ### 2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto");
-  lines.push("   ### 3. Viabilidade Econômico-Financeira e Sensibilidade de Retorno");
-  lines.push("   ### 4. Ganhos Operacionais, Digitalização e Governança da Planta");
-  lines.push("   ### 5. Matriz de Riscos, Limites de Coerência e Plano de Ação Priorizado");
+  lines.push("## DIRETRIZES PERICIAIS OBRIGATÓRIAS (AVALIAÇÃO PERICIAL FINANCEIRA):");
+  lines.push("1. Escreva em parágrafos analíticos contínuos e justificados, SEM marcadores, asteriscos ou hífens.");
+  lines.push("2. NÃO mencione que o relatório foi elaborado por IA.");
+  lines.push("3. NA SEÇÃO 3 (VIABILIDADE ECONÔMICO-FINANCEIRA E SENSIBILIDADE DE RETORNO):");
+  lines.push("   - Aplique a Diretriz Pericial Financeira: avalie CAPEX, OPEX, VPL, TIR, Payback Simples/Descontado, Spread TIR vs WACC (12%) e Resiliência do Fluxo de Caixa.");
+  lines.push("   - Calcule e declare o Score Global de Investimento (0 a 100 pontos) e sua classificação oficial [ex: 70 a 79 pts: Investimento Recomendado com Mitigações | 60 a 69 pts: Necessita Revisão e Novos Estudos | Abaixo de 60 pts: Investimento Não Recomendado].");
+  lines.push("   - Critério Especial de Redução de Perdas/Multas: atribua peso prioritário aos ganhos de rápida captura e baixo CAPEX (eliminação da multa de reativo de " + brl(multaReativoAno) + "/ano e adequação de demanda contratada).");
+  lines.push("   - Teste de Robustez: analise cenários de estresse (redução de 20-30% da economia, aumento de 10% no CAPEX e 5 p.p. no WACC).");
+  lines.push("   - Apresente conclusão pericial objetiva sobre a aprovação ou priorização de etapas.");
+  lines.push("4. NA SEÇÃO 5 (MATRIZ DE RISCOS E PLANO DE AÇÃO):");
+  lines.push("   - Destaque a importância da digitalização da planta através do software Energy Link Brasil (telemetria em tempo real, monitoramento de FP/demanda e auditoria contínua de faturas), suportado pela assessoria e engenharia da Expert Energy Performance.");
+  lines.push("5. Estruture nas 5 seções Markdown oficiais sem alterar títulos.");
 
   return lines.join("\n");
 }
