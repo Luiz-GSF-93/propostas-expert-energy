@@ -239,103 +239,103 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   const pct  = (v: any) => (Number(v || 0) <= 1 && Number(v || 0) > 0 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
 
   const empresaNome       = s.companyName || inp.razao || "Empresa Cliente";
-  const demandaAtual      = Number(s.demandKw || inp.dc || 0);
-  const demandaRec        = Number(demRes.dc_rec || demRes.dc_rec_fp || demRes.dc_rec_p || s.demandaRec || demandaAtual);
-  const mesesUltrapass    = Number(demRes.mesesAcimaAtual ?? demRes.meses_ultrapassados ?? s.mesesUltrapassados ?? 0);
-  const totalMeses        = Number(demRes.meses_total || 12);
-  const mesesDentro       = Math.max(0, totalMeses - mesesUltrapass);
+  const demandaAtual      = Number(s.demandKw || 0);
+  const drPMax            = Number(s.drPMax || 0);
+  const drFpMax           = Number(s.drFpMax || 0);
+  const demandaRecP       = Number(s.demandaRecP || demandaAtual);
+  const demandaRecFp      = Number(s.demandaRecFp || demandaAtual);
 
-  const consumoMensalKwh  = Number(s.monthlyConsumptionKwh || (res.E_mes ? Number(res.E_mes) * 1000 : 0));
-  const consumoAnualKwh   = Number(res.E_ano || (consumoMensalKwh * 12));
-  const faturaBaseMensal  = Number(s.fBaseMensal || res.F_base || 0);
-  const faturaCenMensal   = Number(s.fCenMensal || res.F_cen || 0);
-  const ecoFaturaMensal   = Number(s.ecoFaturaMensal || (faturaBaseMensal > faturaCenMensal ? faturaBaseMensal - faturaCenMensal : 0));
-  const ecoFaturaAnual    = Number(res.eco_anual || (ecoFaturaMensal * 12) || 0);
+  const consumoMensalKwh  = Number(s.monthlyConsumptionKwh || 0);
+  const consumoAnualKwh   = Number(s.annualConsumptionKwh || (consumoMensalKwh * 12));
+  const faturaBaseMensal  = Number(s.fBaseMensal || 0);
+  const faturaCenMensal   = Number(s.fCenMensal || 0);
+  const ecoFaturaMensal   = Number(s.ecoFaturaMensal || 0);
+  const ecoFaturaAnual    = Number(s.ecoFaturaAnual || 0);
 
-  const ecoDemandaAno     = Number(s.demandOptimizationAnnual || demRes.ganho_anual_estimado || demRes.ganho_anual || 0);
-  const custoUltrapassAno = Number(s.ultrapassagemAnual || res.ultrapass_ano || demRes.custo_ultrapassagem_ano || 0);
-  const multaReativoAno   = Number(s.multaReativoAnual || res.multaReativo_ano || 0);
-  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || thdRes.total_RS_ano || thdRes.ganho_anual_estimado || 0);
-  const ganhoTermicoAno   = Number(s.thermalReductionAnnual || eqComp.gain_total || res.therm_custo_anual || 0);
-  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + custoUltrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno));
+  const multaReativoMes   = Number(s.multaReativoMes || 0);
+  const multaReativoAno   = Number(s.multaReativoAnual || 0);
+  const ultrapassMes      = Number(s.ultrapassMes || 0);
+  const ultrapassAno      = Number(s.ultrapassagemAnual || 0);
 
-  const capexTotal   = Number(s.capexTotal || res.CAPEX || 0);
-  const capexFV      = Number(s.capexFV || res.CAPEXfv || 0);
-  const capexBESS    = Number(s.capexBESS || res.CAPEXbess || 0);
-  const capexEolica  = Number(s.capexEolica || res.CAPEXeol || 0);
-  const opexAnual    = Number(s.opexAnual || res.OPEX_a || 0);
-  const vpl20Anos    = Number(s.vpl20Anos || res.VPL || 0);
-  const tirAnual     = Number(s.tirAnual || res.TIR || 0);
-  const paybackAnos  = Number(s.paybackAnos || res.payback || 0);
-  const co2Evitado   = Number(res.CO_avoid ?? res.co2_evitado ?? s.co2Evitado ?? (consumoAnualKwh > 0 ? (consumoAnualKwh * 0.000085 * (ecoFaturaAnual > 0 ? 0.35 : 0)) : 0));
+  const ecoDemandaAno     = Number(s.demandOptimizationAnnual || 0);
+  const ganhoQeeThdAno    = Number(s.powerQualityAnnual || 0);
+  const custoTermicoAno   = Number(s.thermalCostAnnual || 0);
+  const ganhoTermicoAno   = Number(s.thermalReductionAnnual || 0);
+  const totalGanhosAno    = Number(s.potentialGainAnnual || (ecoFaturaAnual + ecoDemandaAno + ultrapassAno + multaReativoAno + ganhoQeeThdAno + ganhoTermicoAno));
+
+  const capexTotal   = Number(s.capexTotal || 0);
+  const opexAnual    = Number(s.opexAnual || 0);
+  const vpl20Anos    = Number(s.vpl20Anos || 0);
+  const tirAnual     = Number(s.tirAnual || 0);
+  const paybackAnos  = Number(s.paybackAnos || 0);
+  const co2Evitado   = Number(s.co2Evitado || 0);
+
+  const fcAtual      = Number(s.fcAtual || 0.899);
+  const fcProjetado  = Number(s.fcProjetado || 0.943);
 
   const lines: string[] = [];
   lines.push("# RELATÓRIO EXECUTIVO E ESTRATÉGICO DE ENGENHARIA E EFICIÊNCIA ENERGÉTICA");
   lines.push("EMPRESA CLIENTE: " + empresaNome);
   lines.push("");
 
-  lines.push("## AUDITORIA DE DADOS E VALORES OFICIAIS DO DIAGNÓSTICO (ENERGIAPRO)");
+  lines.push("## AUDITORIA DE DADOS E RESULTADOS REAIS DO SIMULADOR (ENERGIAPRO)");
   lines.push("");
-  lines.push("1. FATURA E CONSUMO BASELINE (SITUAÇÃO ATUAL):");
+  lines.push("1. FATURA E CONSUMO BASELINE (QUADRO BASELINE DO SIMULADOR):");
   lines.push("- Fatura MENSAL Atual da Concessionária (Baseline): " + brl(faturaBaseMensal) + " /mês.");
-  lines.push("- Consumo Médio Mensal: " + fmt0.format(consumoMensalKwh) + " kWh/mês (" + num(consumoMensalKwh / 1000, 2) + " MWh/mês).");
-  lines.push("- Consumo Anual Estimado: " + fmt0.format(consumoAnualKwh) + " kWh/ano (" + num(consumoAnualKwh / 1000, 2) + " MWh/ano).");
+  lines.push("- Consumo Médio Mensal: " + fmt0.format(consumoMensalKwh) + " kWh/mês.");
+  lines.push("- Consumo Anual Estimado: " + fmt0.format(consumoAnualKwh) + " kWh/ano.");
   lines.push("- Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW.");
+  if (drPMax > 0 || drFpMax > 0) {
+    lines.push("- Demanda Máxima Registrada (Histórico): Ponta = " + fmt0.format(drPMax) + " kW | Fora Ponta = " + fmt0.format(drFpMax) + " kW.");
+  }
+  lines.push("- Fator de Carga Atual: " + pct(fcAtual) + " (Projetado: " + pct(fcProjetado) + ").");
   lines.push("");
 
-  lines.push("2. DIAGNÓSTICO DE DEMANDA, ULTRAPASSAGEM E QUALIDADE DA ENERGIA (SEÇÕES 6, 7 E 8):");
-  if (mesesUltrapass > 0) {
-    lines.push("- Ocorrência de Ultrapassagem: A planta sofreu ultrapassagem de demanda em " + mesesUltrapass + " dos " + totalMeses + " meses analisados.");
-    lines.push("- Custo Anual com Penalidades de Ultrapassagem: " + brl(custoUltrapassAno) + " /ano.");
+  lines.push("2. PENALIDADES, QUALIDADE E TÉRMICO (DADOS REAIS DO SIMULADOR):");
+  if (ultrapassAno > 0) {
+    lines.push("- Penalidade de Ultrapassagem de Demanda: " + brl(ultrapassMes) + " /mês (" + brl(ultrapassAno) + " /ano).");
   } else {
-    lines.push("- Ocorrência de Ultrapassagem: Nenhuma ultrapassagem crítica de demanda registrada no histórico analisado.");
+    lines.push("- Penalidade de Ultrapassagem: R$ 0,00 (Demanda dentro da tolerância regulatória).");
   }
-  if (ecoDemandaAno > 0 && demandaRec !== demandaAtual) {
-    lines.push("- Ganho Anual com Adequação da Demanda Ótima (RN 1.000/2021): " + brl(ecoDemandaAno) + " /ano (ao ajustar a demanda para " + fmt0.format(demandaRec) + " kW).");
-  }
+
   if (multaReativoAno > 0) {
-    lines.push("- Multa Anual por Excedente Reativo (Fator de Potência < 0,92): " + brl(multaReativoAno) + " /ano.");
+    lines.push("- Multa por Excedente Reativo (FP < 0,92): " + brl(multaReativoMes) + " /mês (" + brl(multaReativoAno) + " /ano).");
   } else {
-    lines.push("- Excedente Reativo: Fator de potência adequado sem incidência de multas relevantes.");
+    lines.push("- Multa por Excedente Reativo: R$ 0,00 (Fator de potência em conformidade com o PRODIST).");
   }
+
+  if (ecoDemandaAno > 0) {
+    lines.push("- Otimização de Demanda Ótima: Ganho de " + brl(ecoDemandaAno) + " /ano (adequando para Ponta=" + fmt0.format(demandaRecP) + " kW e FP=" + fmt0.format(demandaRecFp) + " kW).");
+  }
+
   if (ganhoQeeThdAno > 0) {
-    lines.push("- Qualidade de Energia (QEE - THD) e Eficiência: Otimização de distorções harmônicas e perdas com ganho de " + brl(ganhoQeeThdAno) + "/ano.");
+    lines.push("- Eficiência em Qualidade de Energia (QEE/THD): Ganho de " + brl(ganhoQeeThdAno) + " /ano.");
+  }
+
+  if (custoTermicoAno > 0) {
+    lines.push("- Custo Térmico Atual: " + brl(custoTermicoAno) + " /ano (Potencial de redução/substituição: " + brl(ganhoTermicoAno) + " /ano).");
   }
   lines.push("");
 
-  lines.push("3. CENÁRIO PROPOSTO E MATRIZ DE GERAÇÃO ON-SITE (SEÇÕES 5, 9 E 10):");
-  const solucoes = [];
-  if (capexFV > 0) solucoes.push("Usina Solar FV (" + brl(capexFV) + ")");
-  if (capexBESS > 0) solucoes.push("Sistema BESS Baterias (" + brl(capexBESS) + ")");
-  if (capexEolica > 0) solucoes.push("Geração Eólica On-Site (" + brl(capexEolica) + ")");
-  if (ganhoTermicoAno > 0) solucoes.push("Eficiência Térmica (" + brl(ganhoTermicoAno) + "/ano)");
-  lines.push("- Portfólio de Soluções Ativas: " + (solucoes.length > 0 ? solucoes.join(" + ") : "Eficiência Energética e Otimização Integrada da Planta") + ".");
-  lines.push("");
-
-  lines.push("4. ENGENHARIA FINANCEIRA, GANHOS E VIABILIDADE (PERSPECTIVA DE CFO) (SEÇÕES 11 E 12):");
-  lines.push("- Nova Fatura Mensal Projetada: " + brl(faturaCenMensal) + " /mês (economia de " + brl(ecoFaturaMensal) + "/mês).");
-  lines.push("- Economia Anual na Fatura de Energia: " + brl(ecoFaturaAnual) + " /ano.");
-  lines.push("- Total de Ganhos Anuais Integrados: " + brl(totalGanhosAno) + " /ano.");
-  lines.push("- Investimento Total Necessário (CAPEX): " + brl(capexTotal) + ".");
-  lines.push("- Custo de Operação e Manutenção (OPEX): " + brl(opexAnual) + " /ano.");
-  lines.push("- VPL (Valor Presente Líquido a 20 anos, WACC 12%): " + brl(vpl20Anos) + ".");
-  lines.push("- TIR (Taxa Interna de Retorno): " + pct(tirAnual) + " a.a.");
-  lines.push("- Payback Estimado: " + num(paybackAnos, 1) + " anos (" + Math.round(paybackAnos * 12) + " meses).");
+  lines.push("3. CENÁRIO PROPOSTO, ECONOMIA E VIABILIDADE (QUADRO CENÁRIO × GANHO DO SIMULADOR):");
+  lines.push("- Nova Fatura Mensal Projetada (Cenário): " + brl(faturaCenMensal) + " /mês.");
+  lines.push("- Economia Mensal na Conta: " + brl(ecoFaturaMensal) + " /mês (" + brl(ecoFaturaAnual) + " /ano).");
+  lines.push("- Total de Economia Integrada: " + brl(totalGanhosAno) + " /ano.");
+  lines.push("- Investimento Total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Zero CAPEX)"));
+  lines.push("- Custo de Operação e Manutenção (OPEX): " + (opexAnual > 0 ? brl(opexAnual) + " /ano" : "R$ 0,00"));
+  lines.push("- VPL (20 Anos, WACC 12%): " + (vpl20Anos > 0 ? brl(vpl20Anos) : "R$ 0,00"));
+  lines.push("- TIR (Taxa Interna de Retorno): " + (tirAnual > 0 ? pct(tirAnual) + " a.a." : "N/A"));
+  lines.push("- Payback: " + (paybackAnos > 0 ? num(paybackAnos, 1) + " anos (" + Math.round(paybackAnos * 12) + " meses)" : "Imediato / Operacional"));
   if (co2Evitado > 0) {
-    lines.push("- Descarbonização (Sustentabilidade ESG): " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
+    lines.push("- Descarbonização / Sustentabilidade: " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
   }
   lines.push("");
 
-  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A ELABORAÇÃO DO RELATÓRIO PELA IA:");
-  lines.push("1. Escreva com tom de Consultor Sênior e Especialista em Finanças de Energia com visão de CFO / Diretoria.");
-  lines.push("2. Respeite com fidelidade absoluta os números fornecidos acima. NÃO invente valores de multas ou dados que não constam neste diagnóstico.");
-  lines.push("3. Estruture o parecer EXATAMENTE nas 5 seções Markdown:");
-  lines.push("   '### 1. Resumo executivo, perfil de carga e curva sazonal'");
-  lines.push("   '### 2. Diagnóstico de demanda, ultrapassagens e qualidade da energia (QEE)'");
-  lines.push("   '### 3. Decomposição detalhada dos 6 vetores de economia e matriz de soluções'");
-  lines.push("   '### 4. Análise econômico-financeira executiva (CAPEX, VPL, TIR e Payback - Visão CFO)'");
-  lines.push("   '### 5. Governança, digitalização com Energy Link e plano de ação priorizado'");
-  lines.push("4. Utilize português do Brasil (PT-BR) perfeitamente acentuado e formatação 'R$ X.XXX,XX'.");
+  lines.push("## DIRETRIZES RIGOROSAS PARA O PARECER DA IA:");
+  lines.push("1. Mantenha fidelidade matemática absoluta aos dados listados acima.");
+  lines.push("2. Se ultrapassagem ou reativo forem R$ 0,00, NÃO afirme que a empresa sofre com multas.");
+  lines.push("3. Recomendações Prioritárias devem ser 100% coerentes com os gargalos reais identificados.");
+  lines.push("4. Estruture nas 5 seções Markdown oficiais sem alterar títulos.");
 
   return lines.join("\n");
 }
@@ -380,7 +380,6 @@ async function buildReportPdf(args: {
   const inp = (s.rawInput || d.payload_json?.input || d.input || {}) as Record<string, any>;
   const demRes = (s.demRes || res.demRes || {}) as Record<string, any>;
   const thdRes = (s.thdRes || res.thdRes || {}) as Record<string, any>;
-  const eqComp = (s.equipComparativo || res.EquipComparativo || {}) as Record<string, any>;
 
   // Formatadores
   const fmt2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -395,31 +394,38 @@ async function buildReportPdf(args: {
   const num = (v: any, dec = 2) => Number(v || 0).toFixed(dec).replace(".", ",");
   const pct = (v: any) => (Number(v || 0) <= 1 && Number(v || 0) > 0 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
 
-  // Dados Reais da Simulação
+  // Extração Fiel dos Dados do Simulador
   const cliNome = String(s.companyName || inp.razao || d.razao || d.title || "Empresa Cliente").toUpperCase();
-  const demandaAtual = Number(s.demandKw || inp.dc || 0);
-  const consumoMensalKwh = Number(s.monthlyConsumptionKwh || (res.E_mes ? Number(res.E_mes) * 1000 : 0));
-  const consumoAnualKwh = Number(res.E_ano || (consumoMensalKwh * 12));
+  const demandaAtual = Number(s.demandKw || 0);
+  const drPMax = Number(s.drPMax || 0);
+  const drFpMax = Number(s.drFpMax || 0);
+
+  const consumoMensalKwh = Number(s.monthlyConsumptionKwh || 0);
+  const consumoAnualKwh = Number(s.annualConsumptionKwh || (consumoMensalKwh * 12));
   
-  const faturaBaseMensal = Number(s.fBaseMensal || res.F_base || 0);
-  const faturaCenMensal = Number(s.fCenMensal || res.F_cen || 0);
+  const faturaBaseMensal = Number(s.fBaseMensal || 0);
+  const faturaCenMensal = Number(s.fCenMensal || 0);
   const ecoFaturaMensal = Number(s.ecoFaturaMensal || (faturaBaseMensal > faturaCenMensal ? faturaBaseMensal - faturaCenMensal : 0));
-  const ecoFaturaAno = Number(s.ecoFaturaAnual || res.eco_anual || (ecoFaturaMensal * 12));
+  const ecoFaturaAno = Number(s.ecoFaturaAnual || (ecoFaturaMensal * 12));
 
-  const ecoDemandaAno = Number(s.demandOptimizationAnnual || demRes.ganho_anual_estimado || demRes.ganho_anual || 0);
-  const ecoUltrapassAno = Number(s.ultrapassagemAnual || res.ultrapass_ano || demRes.custo_ultrapassagem_ano || 0);
-  const ecoReativoAno = Number(s.multaReativoAnual || res.multaReativo_ano || 0);
-  const ecoQeeThdAno = Number(s.powerQualityAnnual || thdRes.total_RS_ano || 0);
-  const ecoTermicaAno = Number(s.thermalReductionAnnual || eqComp.gain_total || res.therm_custo_anual || 0);
+  const multaReativoMes = Number(s.multaReativoMes || 0);
+  const multaReativoAno = Number(s.multaReativoAnual || 0);
+  const ultrapassMes = Number(s.ultrapassMes || 0);
+  const ultrapassAno = Number(s.ultrapassagemAnual || 0);
 
-  const totalGanhosAno = Number(s.potentialGainAnnual || (ecoFaturaAno + ecoDemandaAno + ecoUltrapassAno + ecoReativoAno + ecoQeeThdAno + ecoTermicaAno));
+  const ecoDemandaAno = Number(s.demandOptimizationAnnual || 0);
+  const ecoQeeThdAno = Number(s.powerQualityAnnual || 0);
+  const custoTermicoAno = Number(s.thermalCostAnnual || 0);
+  const ecoTermicaAno = Number(s.thermalReductionAnnual || 0);
+
+  const totalGanhosAno = Number(s.potentialGainAnnual || (ecoFaturaAno + ecoDemandaAno + ultrapassAno + multaReativoAno + ecoQeeThdAno + ecoTermicaAno));
   const totalGanhosMes = totalGanhosAno / 12;
 
-  const capexTotal = Number(s.capexTotal || res.CAPEX || 0);
-  const opexAnual = Number(s.opexAnual || res.OPEX_a || 0);
-  const vpl20Anos = Number(s.vpl20Anos || res.VPL || 0);
-  const tirAnual = Number(s.tirAnual || res.TIR || 0);
-  const paybackAnos = Number(s.paybackAnos || res.payback || 0);
+  const capexTotal = Number(s.capexTotal || 0);
+  const opexAnual = Number(s.opexAnual || 0);
+  const vpl20Anos = Number(s.vpl20Anos || 0);
+  const tirAnual = Number(s.tirAnual || 0);
+  const paybackAnos = Number(s.paybackAnos || 0);
   const paybackMeses = Number(s.paybackMonths || (paybackAnos > 0 ? Math.round(paybackAnos * 12) : 0));
 
   // Fator de Carga e Sazonalidade
@@ -427,8 +433,8 @@ async function buildReportPdf(args: {
   const fcProjetado = Number(s.fcProjetado || 0.943);
   const ganhoFc = (fcProjetado - fcAtual) * 100;
 
-  // Custos e Reduções
-  const custoTotalAtualAno = faturaBaseMensal * 12 + (ecoTermicaAno > 0 ? ecoTermicaAno * 1.6 : 0);
+  // Custos e Reduções Globais
+  const custoTotalAtualAno = (faturaBaseMensal * 12) + custoTermicoAno;
   const custoTotalProjetadoAno = Math.max(0, custoTotalAtualAno - totalGanhosAno);
   const pctReducaoGlobal = custoTotalAtualAno > 0 ? (totalGanhosAno / custoTotalAtualAno) * 100 : (faturaBaseMensal > 0 ? (ecoFaturaMensal / faturaBaseMensal) * 100 : 0);
   const pctReducaoFatura = faturaBaseMensal > 0 ? (ecoFaturaMensal / faturaBaseMensal) * 100 : 0;
@@ -529,10 +535,10 @@ async function buildReportPdf(args: {
   const tirFmt = tirAnual > 0 ? pct(tirAnual) : "0,0%";
 
   const topCards = [
-    { label: "PAYBACK", val: paybackMeses > 0 ? String(paybackMeses) : "-", unit: paybackMeses > 0 ? "meses" : "", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "Sem investimento", color: C_TEXT_MAIN },
+    { label: "PAYBACK", val: paybackMeses > 0 ? String(paybackMeses) : "-", unit: paybackMeses > 0 ? "meses" : "", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "Zero CAPEX", color: C_TEXT_MAIN },
     { label: "TIR REAL", val: tirFmt, unit: tirAnual > 0 ? "a.a." : "", sub: tirAnual > 0 ? "+22,8% acima CDI" : "N/A", color: C_EMERALD },
     { label: "VPL 20 ANOS", val: vplFmt, unit: vpl20Anos >= 1_000_000 ? "mi" : "", sub: "WACC 12% a.a.", color: C_TEXT_MAIN },
-    { label: "CAPEX TOTAL", val: capexFmt, unit: capexTotal >= 1_000_000 ? "mi" : "", sub: capexTotal > 0 ? "Payback atrativo" : "Otimização Zero CAPEX", color: C_TEXT_MAIN },
+    { label: "CAPEX TOTAL", val: capexFmt, unit: capexTotal >= 1_000_000 ? "mi" : "", sub: capexTotal > 0 ? "Payback atrativo" : "Sem Investimento", color: C_TEXT_MAIN },
   ];
 
   topCards.forEach((tc, idx) => {
@@ -568,7 +574,7 @@ async function buildReportPdf(args: {
   const col3W = (innerW - 12) / 3;
   const colH = 348;
 
-  // COLUNA 1
+  // COLUNA 1: DADOS OPERACIONAIS DO CLIENTE
   const col1X = margin;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col1X, curY, col3W, colH, 6, 6, "F");
@@ -584,9 +590,9 @@ async function buildReportPdf(args: {
   const miniW = (col3W - 22) / 2;
   const miniKpis = [
     { label: "DEMANDA CONTRATADA", val: fmt0.format(demandaAtual) + " kW", sub: demandaAtual >= 500 ? "Grande porte" : "Médio porte" },
-    { label: "CONSUMO MÉDIO MÊS",   val: fmt0.format(consumoMensalKwh) + " kWh", sub: "Alto volume" },
+    { label: "CONSUMO MÉDIO MÊS",   val: fmt0.format(consumoMensalKwh) + " kWh", sub: "Volume mensal" },
     { label: "CONSUMO ANUAL EST.",  val: fmt0.format(consumoAnualKwh) + " kWh", sub: num(consumoAnualKwh / 1000, 1) + " MWh/ano" },
-    { label: "PERÍODO DE RETORNO",  val: paybackMeses > 0 ? paybackMeses + " meses" : "-", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "N/A" },
+    { label: "PERÍODO DE RETORNO",  val: paybackMeses > 0 ? paybackMeses + " meses" : "Imediato", sub: paybackAnos > 0 ? num(paybackAnos, 1) + " anos amort." : "Otimiz. Operacional" },
   ];
 
   miniKpis.forEach((mk, i) => {
@@ -614,7 +620,7 @@ async function buildReportPdf(args: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
-  doc.text("PERFIL DE CARGA (DO SIMULADOR)", col1X + 10, curY + 110);
+  doc.text("CURVA SAZONAL & FATOR DE CARGA", col1X + 10, curY + 110);
 
   const chartX = col1X + 8;
   const chartY = curY + 118;
@@ -630,12 +636,16 @@ async function buildReportPdf(args: {
   doc.line(chartX + 22, chartY + 42, chartX + chartW - 6, chartY + 42);
   doc.line(chartX + 22, chartY + 66, chartX + chartW - 6, chartY + 66);
 
+  const maxConsK = Math.max(Math.round(consumoMensalKwh * 1.25 / 1000), 100);
+  const midConsK = Math.round(maxConsK * 0.75);
+  const minConsK = Math.round(maxConsK * 0.50);
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(5);
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
-  doc.text("400k", chartX + 4, chartY + 20);
-  doc.text("350k", chartX + 4, chartY + 44);
-  doc.text("300k", chartX + 4, chartY + 68);
+  doc.text(maxConsK + "k", chartX + 4, chartY + 20);
+  doc.text(midConsK + "k", chartX + 4, chartY + 44);
+  doc.text(minConsK + "k", chartX + 4, chartY + 68);
 
   doc.setDrawColor(C_CYAN[0], C_CYAN[1], C_CYAN[2]);
   doc.setLineWidth(0.8);
@@ -667,9 +677,9 @@ async function buildReportPdf(args: {
 
   let pY = curY + 225;
   const pRows = [
-    { label: "Média alvo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Linha de base de comparação" },
-    { label: "Pico sazonal: ", val: fmt0.format(consumoMensalKwh * 1.12) + " kWh em Out", sub: "Mês com maior carga do sistema" },
-    { label: "Vale sazonal: ", val: fmt0.format(consumoMensalKwh * 0.91) + " kWh em Mai", sub: "Períodos de vale candidatos a BESS" },
+    { label: "Média consumo: ", val: fmt0.format(consumoMensalKwh) + " kWh/mês", sub: "Linha base do simulador" },
+    { label: "Pico sazonal: ", val: fmt0.format(consumoMensalKwh * 1.12) + " kWh em Out", sub: "Mês de maior demanda" },
+    { label: "Vale sazonal: ", val: fmt0.format(consumoMensalKwh * 0.91) + " kWh em Mai", sub: "Oportunidade para suavização/BESS" },
     { label: "Fator de carga: ", val: pct(fcAtual) + " → " + pct(fcProjetado), sub: "Ganho projetado de +" + num(ganhoFc, 1) + " pp" },
   ];
 
@@ -688,7 +698,7 @@ async function buildReportPdf(args: {
     pY += 21;
   });
 
-  // COLUNA 2
+  // COLUNA 2: POTENCIAL FINANCEIRO & GANHOS (6 VETORES)
   const col2X = margin + col3W + 6;
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col2X, curY, col3W, colH, 6, 6, "F");
@@ -703,8 +713,8 @@ async function buildReportPdf(args: {
 
   const pEcoFat = totalGanhosAno > 0 ? (ecoFaturaAno / totalGanhosAno) : 0;
   const pEcoTer = totalGanhosAno > 0 ? (ecoTermicaAno / totalGanhosAno) : 0;
-  const pEcoRea = totalGanhosAno > 0 ? (ecoReativoAno / totalGanhosAno) : 0;
-  const pEcoUlt = totalGanhosAno > 0 ? (ecoUltrapassAno / totalGanhosAno) : 0;
+  const pEcoRea = totalGanhosAno > 0 ? (multaReativoAno / totalGanhosAno) : 0;
+  const pEcoUlt = totalGanhosAno > 0 ? (ultrapassAno / totalGanhosAno) : 0;
   const pEcoDem = totalGanhosAno > 0 ? (ecoDemandaAno / totalGanhosAno) : 0;
   const pEcoQee = totalGanhosAno > 0 ? (ecoQeeThdAno / totalGanhosAno) : 0;
 
@@ -757,8 +767,8 @@ async function buildReportPdf(args: {
   const vetores = [
     { dot: C_EMERALD, title: "1. Fatura Elétrica (Geração):", val: brlK(ecoFaturaAno), pct: pct(pEcoFat) },
     { dot: C_CYAN,    title: "2. Termossubstituição Ativos:", val: brlK(ecoTermicaAno), pct: pct(pEcoTer) },
-    { dot: C_AMBER,   title: "3. Excedente Reativo:", val: brlK(ecoReativoAno), pct: pct(pEcoRea) },
-    { dot: C_ROSE,    title: "4. Multas Ultrapassagem:", val: brlK(ecoUltrapassAno), pct: pct(pEcoUlt) },
+    { dot: C_AMBER,   title: "3. Excedente Reativo:", val: brlK(multaReativoAno), pct: pct(pEcoRea) },
+    { dot: C_ROSE,    title: "4. Multas Ultrapassagem:", val: brlK(ultrapassAno), pct: pct(pEcoUlt) },
     { dot: C_BLUE,    title: "5. Otimização Demanda:", val: brlK(ecoDemandaAno), pct: pct(pEcoDem) },
     { dot: C_PURPLE,  title: "6. Eficiência QEE e THD:", val: brlK(ecoQeeThdAno), pct: pct(pEcoQee) },
   ];
@@ -789,7 +799,7 @@ async function buildReportPdf(args: {
   const costBoxes = [
     { title: "CUSTO TOTAL", val: brlK(custoTotalAtualAno), sub: "Auditado/ano" },
     { title: "CUSTO ELÉTRICO", val: brlK(faturaBaseMensal * 12), sub: "Baseline ano" },
-    { title: "CUSTO TÉRMICO", val: brlK(ecoTermicaAno > 0 ? ecoTermicaAno * 1.6 : 0), sub: "Térmico ano" },
+    { title: "CUSTO TÉRMICO", val: brlK(custoTermicoAno), sub: "Térmico ano" },
   ];
 
   costBoxes.forEach((cb, idx) => {
@@ -827,7 +837,7 @@ async function buildReportPdf(args: {
   doc.setFontSize(5.5);
   doc.text("Redução de " + num(pctReducaoGlobal, 1) + "% no Custo Global", col2X + col3W / 2, vY + 66, { align: "center" });
 
-  // COLUNA 3
+  // COLUNA 3: INTERPRETAÇÃO TÉCNICA IA & RECOMENDAÇÕES
   const col3X = margin + 2 * (col3W + 6);
   doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
   doc.roundedRect(col3X, curY, col3W, colH, 6, 6, "F");
@@ -848,9 +858,9 @@ async function buildReportPdf(args: {
         "• Fatura Mensal Atual: " + brl(faturaBaseMensal) + "/mês",
         "• Consumo Médio: " + fmt0.format(consumoMensalKwh) + " kWh/mês",
         "• Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW",
-        demRes.max_demanda_fp ? "• Demanda Máx.: " + fmt0.format(demRes.max_demanda_fp) + " kW (FP) / " + fmt0.format(demRes.max_demanda_p || 0) + " kW (P)" : "• Demanda Medida Máx.: " + fmt0.format(demandaAtual * 1.1) + " kW",
-        ecoUltrapassAno > 0 ? "• Custo Anual Ultrapassagens: " + brl(ecoUltrapassAno) : "• Ultrapassagens: Regular / Sem penalidades",
-        ecoReativoAno > 0 ? "• Multa Excedente Reativo: " + brl(ecoReativoAno) + "/ano" : "• Excedente Reativo: FP regular",
+        (drPMax > 0 || drFpMax > 0) ? "• Demanda Máx.: " + fmt0.format(drFpMax) + " kW (FP) / " + fmt0.format(drPMax) + " kW (P)" : "• Demanda Máx. Registrada: " + fmt0.format(demandaAtual) + " kW",
+        ultrapassAno > 0 ? "• Custo Anual Ultrapassagens: " + brl(ultrapassAno) : "• Ultrapassagens: Regular / Sem penalidades",
+        multaReativoAno > 0 ? "• Multa Excedente Reativo: " + brl(multaReativoAno) + "/ano" : "• Excedente Reativo: FP regular / Sem multa",
         ecoDemandaAno > 0 ? "• Ganho Otimização Demanda: " + brl(ecoDemandaAno) + "/ano" : "• Demanda: Contrato otimizado",
         ecoQeeThdAno > 0 ? "• Ganho Mitigação QEE/THD: " + brl(ecoQeeThdAno) + "/ano" : "• Qualidade da Energia: Em conformidade",
       ]
@@ -858,19 +868,19 @@ async function buildReportPdf(args: {
     {
       title: "POTENCIAL DE ECONOMIA E PAYBACK (CFO)",
       items: [
-        "• Nova fatura mensal: " + brl(faturaCenMensal),
+        "• Nova fatura mensal: " + brl(faturaCenMensal) + "/mês",
         "• Economia anual conta: " + brl(ecoFaturaAno),
-        "• Investimento total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Sem CAPEX)"),
-        paybackAnos > 0 ? "• Payback estimado: " + num(paybackAnos, 1) + " anos (" + paybackMeses + " meses)" : "• Payback: Imediato / Otimização Operacional",
+        "• Investimento total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Zero CAPEX)"),
+        paybackAnos > 0 ? "• Payback estimado: " + num(paybackAnos, 1) + " anos (" + paybackMeses + " meses)" : "• Payback: Imediato / Operacional",
         vpl20Anos > 0 ? "• VPL: " + brl(vpl20Anos) + "  |  TIR: " + pct(tirAnual) + " a.a." : "• VPL / TIR: Ganhos operacionais diretos",
       ]
     },
     {
       title: "RECOMENDAÇÕES PRIORITÁRIAS",
       items: [
-        demRes.dc_rec && demRes.dc_rec !== demandaAtual ? "1. Ajuste Demanda: enquadrar em " + demRes.dc_rec + " kW" : "1. Eficiência Energética: monitoramento contínuo",
-        ecoReativoAno > 0 ? "2. Correção Reativo: banco de capacitores automático" : "2. Governança: telemetria setorizada de carga",
-        capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária e mercado livre",
+        ecoDemandaAno > 0 ? "1. Ajuste Demanda: adequar para " + (demRes.dc_rec_p || demandaAtual) + " kW" : "1. Eficiência Energética: gestão de ponta a ponta",
+        multaReativoAno > 0 ? "2. Correção Reativo: banco de capacitores automático" : "2. Governança: telemetria setorizada e automação",
+        capexTotal > 0 ? "3. Implantação de Soluções On-site: geração e storage" : "3. Contratos: gestão tarifária contínua",
       ]
     }
   ];
@@ -1132,117 +1142,138 @@ function normalizeRecord(item: ApiDiagnosticRecord): DiagnosticApiRecord {
     item.title ||
     'Empresa sem nome';
 
-  // Demanda e Consumo
+  // 1. Demanda Contratada e Medições Máximas Reais do Simulador
   const demandKw = safeNumber(
     input.dc ?? input.dcP ?? input.demanda_contratada ??
-    demRes.dc_atual_p ?? demRes.dc_atual ?? demRes.demanda_atual ??
+    demRes.dc_atual_p ?? demRes.dc_atual ??
     result.demanda_contratada ?? 0
   );
+  const drPMax = safeNumber(demRes.dr_p_max ?? demRes.max_demanda_p ?? 0);
+  const drFpMax = safeNumber(demRes.dr_fp_max ?? demRes.max_demanda_fp ?? 0);
+  const demandaRecP = safeNumber(demRes.dc_rec_p ?? demRes.dc_rec ?? demandKw);
+  const demandaRecFp = safeNumber(demRes.dc_rec_fp ?? demRes.dc_rec_fp ?? demandKw);
 
+  // 2. Consumo
   const monthlyConsumptionKwh = safeNumber(
     result.E_mes != null ? safeNumber(result.E_mes) * (safeNumber(result.E_mes) < 10000 ? 1000 : 1) :
     result.consumo_mensal_kwh ?? result.consumo_medio_kwh ??
-    input.consumo_kwh ?? input.consumo_mensal ??
-    0
+    input.consumo_kwh ?? input.consumo_mensal ?? 0
   );
+  const annualConsumptionKwh = safeNumber(result.E_ano ?? (monthlyConsumptionKwh * 12));
 
-  // Faturas e Economias
+  // 3. Faturas Mensais (Baseline x Cenário) e Economia
   const fBaseMensal = safeNumber(result.F_base ?? result.F_base_liq ?? input.fatura_base ?? input.fatura_atual ?? 0);
   const fCenMensal  = safeNumber(result.F_cen ?? result.F_cen_liq ?? result.nova_fatura ?? 0);
-  const ecoFaturaMensal = safeNumber(result.eco_mensal ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 0));
+  const ecoFaturaMensal = safeNumber(result.eco_m ?? (fBaseMensal > fCenMensal ? (fBaseMensal - fCenMensal) : 0));
   const ecoFaturaAnual  = safeNumber(result.eco_anual ?? (ecoFaturaMensal * 12));
 
-  // Demanda, Ultrapassagem, Reativo e THD
+  // 4. Multas e Penalidades Reais do Simulador
+  const multaReativoMes = safeNumber(result.multaReativo_mes ?? 0);
+  const multaReativoAnual = safeNumber(result.multaReativo_ano ?? (multaReativoMes * 12));
+  
+  const ultrapassMes = safeNumber((result.ultrapassP_mes ?? 0) + (result.ultrapassFP_mes ?? 0));
+  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? (ultrapassMes * 12));
+
   const demandOptimizationAnnual = safeNumber(
     result.demandOptimizationAnnual ??
-      result.demanda_otima_anual ??
-      result.ganho_demanda_anual ??
-      demRes.ganho_anual_estimado ??
-      demRes.ganho_anual ??
-      0
-  );
-  const ultrapassagemAnual = safeNumber(result.ultrapass_ano ?? result.custo_ultrapassagem_ano ?? demRes.custo_ultrapassagem_ano ?? demRes.ultrapass_ano ?? 0);
-  const multaReativoAnual  = safeNumber(result.multaReativo_ano ?? result.custo_reativo_ano ?? result.reativo_ano ?? 0);
-  const powerQualityAnnual = safeNumber(
-    result.powerQualityAnnual ??
-      thdRes.total_RS_ano ??
-      thdRes.ganho_anual_estimado ??
-      0
+    demRes.ganho_anual_estimado ??
+    result.demanda_otima_anual ?? 0
   );
 
-  // Térmico
+  const powerQualityAnnual = safeNumber(
+    result.powerQualityAnnual ??
+    thdRes.total_RS_ano ?? 0
+  );
+
+  // 5. Custo Térmico e Economia Térmica do Simulador
   const thermalReductionFromItems = equipItems.reduce((sum, row) => {
     const current = asObject(row);
     return sum + safeNumber(current.economia_anual_num || current.economia_anual);
   }, 0);
+  const thermalCostAnnual = safeNumber(result.therm_custo_anual ?? 0);
+  const thermalCostMonthly = safeNumber(result.therm_custo_mes ?? (thermalCostAnnual / 12));
   const thermalReductionAnnual = safeNumber(
     result.thermalReductionAnnual ??
-      equipComparativo.gain_total ??
-      result.therm_custo_anual ??
-      thermalReductionFromItems ??
-      0
+    equipComparativo.gain_total ??
+    thermalReductionFromItems ?? 0
   );
 
+  // 6. Total de Ganhos Integrados
   const totalGanhosAnual = safeNumber(
     result.eco_anual_bruto ??
     result.totalGanhosAno ??
     (ecoFaturaAnual + demandOptimizationAnnual + ultrapassagemAnual + multaReativoAnual + powerQualityAnnual + thermalReductionAnnual)
   );
 
-  // Investimento e Viabilidade
-  const capexTotal   = safeNumber(result.CAPEX ?? result.capex_total ?? result.investimento_total ?? 0);
-  const capexFV      = safeNumber(result.CAPEXfv ?? result.capex_fv ?? 0);
-  const capexBESS    = safeNumber(result.CAPEXbess ?? result.capex_bess ?? 0);
-  const capexEolica  = safeNumber(result.CAPEXeol ?? result.capex_eol ?? 0);
-  const opexAnual    = safeNumber(result.OPEX_a ?? result.opex_anual ?? 0);
-  const vpl20Anos    = safeNumber(result.VPL ?? result.vpl_20anos ?? result.vpl ?? 0);
-  const tirAnual     = safeNumber(result.TIR ?? result.tir_anual ?? result.tir ?? 0);
-  const paybackAnos  = safeNumber(result.payback ?? result.payback_anos ?? 0);
-  const paybackMonths = paybackAnos > 0 ? Math.round(paybackAnos * 12) : 0;
+  // 7. Financeiro (CAPEX, OPEX, VPL, TIR, Payback)
+  const capexTotal   = safeNumber(result.CAPEX ?? result.capex_total ?? 0);
+  const capexFV      = safeNumber(result.CAPEXfv ?? 0);
+  const capexBESS    = safeNumber(result.CAPEXbess ?? 0);
+  const capexMotor   = safeNumber(result.CAPEXmotor ?? 0);
+  const capexMicro   = safeNumber(result.CAPEXmicro ?? 0);
+  const capexEolica  = safeNumber(result.CAPEXeol ?? 0);
+  const opexAnual    = safeNumber(result.OPEX_a ?? 0);
+  const vpl20Anos    = safeNumber(result.VPL ?? 0);
+  const tirAnual     = safeNumber(result.TIR ?? 0);
+  const paybackAnos  = safeNumber(result.payback ?? 0);
+  const paybackMonths = (isFinite(paybackAnos) && paybackAnos > 0) ? Math.round(paybackAnos * 12) : 0;
 
-  // Fator de Carga
-  const fcAtual = safeNumber(result.FC_atual ?? result.fc_atual ?? result.FC ?? demRes.fc_atual ?? 0.899);
-  const fcProjetado = safeNumber(result.FC_cen ?? result.fc_cen ?? result.fc_projetado ?? demRes.fc_cen ?? 0.943);
+  // 8. Sustentabilidade & Fator de Carga
+  const co2Evitado = safeNumber(result.CO_avoid ?? 0);
+  const isSazonal = result.sazonal === true || input.sazonal === 'sim';
+  const indiceSazonal = safeNumber(result.indicesazonal ?? 1.0);
+
+  // Fator de Carga calculado estritamente
+  const horasMes = safeNumber(input.hd || 16) * safeNumber(input.dm || 25);
+  const potPico = Math.max(demandKw, drPMax, drFpMax, 1);
+  const fcCalc = horasMes > 0 && potPico > 0 ? (monthlyConsumptionKwh / (potPico * horasMes)) : 0.899;
+  const fcAtual = Math.min(Math.max(fcCalc, 0.5), 0.98);
+  const fcProjetado = Math.min(fcAtual * 1.05, 0.99);
 
   const estimatedSavingsValue   = ecoFaturaMensal;
-  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : (totalGanhosAnual > 0 && fBaseMensal * 12 > 0 ? (totalGanhosAnual / (fBaseMensal * 12)) * 100 : 0);
-
-  const loadProfileGainText = String(
-    meta.loadLineMetrics ??
-      meta.recGain ??
-      result.loadLineMetrics ??
-      result.recGain ??
-      ''
-  );
+  const estimatedSavingsPercent = fBaseMensal > 0 ? (ecoFaturaMensal / fBaseMensal) * 100 : 0;
 
   const summary = {
     companyName,
     demandKw,
+    drPMax,
+    drFpMax,
+    demandaRecP,
+    demandaRecFp,
     monthlyConsumptionKwh,
+    annualConsumptionKwh,
     fBaseMensal,
     fCenMensal,
     ecoFaturaMensal,
     ecoFaturaAnual,
-    estimatedSavingsValue,
-    estimatedSavingsPercent,
-    paybackMonths,
-    paybackAnos,
+    multaReativoMes,
+    multaReativoAnual,
+    ultrapassMes,
+    ultrapassagemAnual,
+    demandOptimizationAnnual,
+    powerQualityAnnual,
+    thermalCostAnnual,
+    thermalCostMonthly,
+    thermalReductionAnnual,
+    potentialGainAnnual: totalGanhosAnual,
     capexTotal,
     capexFV,
     capexBESS,
+    capexMotor,
+    capexMicro,
     capexEolica,
     opexAnual,
     vpl20Anos,
     tirAnual,
-    ultrapassagemAnual,
-    multaReativoAnual,
-    demandOptimizationAnnual,
-    powerQualityAnnual,
-    thermalReductionAnnual,
-    potentialGainAnnual: totalGanhosAnual,
+    paybackAnos,
+    paybackMonths,
+    co2Evitado,
+    isSazonal,
+    indiceSazonal,
     fcAtual,
     fcProjetado,
-    loadProfileGainText,
+    estimatedSavingsValue,
+    estimatedSavingsPercent,
     rawResult: result,
     rawInput: input,
     rawPayload: payload,
