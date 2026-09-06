@@ -239,7 +239,7 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   const pct  = (v: any) => (Number(v || 0) <= 1 && Number(v || 0) > 0 ? Number(v || 0) * 100 : Number(v || 0)).toFixed(1).replace(".", ",") + "%";
 
   const empresaNome       = s.companyName || inp.razao || "Empresa Cliente";
-  const demandaAtual      = Number(s.demandKw || 0);
+  const demandaAtual      = Number(s.demandKw || inp.dc || 0);
   const drPMax            = Number(s.drPMax || 0);
   const drFpMax           = Number(s.drFpMax || 0);
   const demandaRecP       = Number(s.demandaRecP || demandaAtual);
@@ -274,68 +274,67 @@ function buildAnalyticalPrompt(summaryRecord: any, recordAny: any): string {
   const fcProjetado  = Number(s.fcProjetado || 0.943);
 
   const lines: string[] = [];
-  lines.push("# RELATÓRIO EXECUTIVO E ESTRATÉGICO DE ENGENHARIA E EFICIÊNCIA ENERGÉTICA");
+  lines.push("# PARECER TÉCNICO-EXECUTIVO E ESTRATÉGICO DE ENGENHARIA");
   lines.push("EMPRESA CLIENTE: " + empresaNome);
   lines.push("");
 
-  lines.push("## AUDITORIA DE DADOS E RESULTADOS REAIS DO SIMULADOR (ENERGIAPRO)");
-  lines.push("");
-  lines.push("1. FATURA E CONSUMO BASELINE (QUADRO BASELINE DO SIMULADOR):");
-  lines.push("- Fatura MENSAL Atual da Concessionária (Baseline): " + brl(faturaBaseMensal) + " /mês.");
-  lines.push("- Consumo Médio Mensal: " + fmt0.format(consumoMensalKwh) + " kWh/mês.");
-  lines.push("- Consumo Anual Estimado: " + fmt0.format(consumoAnualKwh) + " kWh/ano.");
-  lines.push("- Demanda Contratada Atual: " + fmt0.format(demandaAtual) + " kW.");
+  lines.push("## DADOS OFICIAIS APURADOS NO SIMULADOR (ENERGIAPRO):");
+  lines.push("1. PERFIL OPERACIONAL & BASELINE:");
+  lines.push("- Fatura Mensal Atual (Baseline): " + brl(faturaBaseMensal) + "/mês (" + brl(faturaBaseMensal * 12) + "/ano).");
+  lines.push("- Consumo Elétrico: " + fmt0.format(consumoMensalKwh) + " kWh/mês (" + fmt0.format(consumoAnualKwh) + " kWh/ano).");
+  lines.push("- Custo Térmico Atual: " + brl(custoTermicoAno) + "/ano (Potencial de redução/eficiência: " + brl(ganhoTermicoAno) + "/ano).");
+  lines.push("- Demanda Contratada: " + fmt0.format(demandaAtual) + " kW.");
   if (drPMax > 0 || drFpMax > 0) {
-    lines.push("- Demanda Máxima Registrada (Histórico): Ponta = " + fmt0.format(drPMax) + " kW | Fora Ponta = " + fmt0.format(drFpMax) + " kW.");
+    lines.push("- Demanda Máxima Registrada: Ponta = " + fmt0.format(drPMax) + " kW | Fora Ponta = " + fmt0.format(drFpMax) + " kW.");
   }
-  lines.push("- Fator de Carga Atual: " + pct(fcAtual) + " (Projetado: " + pct(fcProjetado) + ").");
+  lines.push("- Fator de Carga Atual: " + pct(fcAtual) + " com projeção otimizada para " + pct(fcProjetado) + ".");
   lines.push("");
 
-  lines.push("2. PENALIDADES, QUALIDADE E TÉRMICO (DADOS REAIS DO SIMULADOR):");
+  lines.push("2. DIAGNÓSTICO DE PENALIDADES, QUALIDADE E RISCOS:");
   if (ultrapassAno > 0) {
-    lines.push("- Penalidade de Ultrapassagem de Demanda: " + brl(ultrapassMes) + " /mês (" + brl(ultrapassAno) + " /ano).");
+    lines.push("- Penalidade de Ultrapassagem de Demanda: " + brl(ultrapassMes) + "/mês (" + brl(ultrapassAno) + "/ano).");
   } else {
-    lines.push("- Penalidade de Ultrapassagem: R$ 0,00 (Demanda dentro da tolerância regulatória).");
+    lines.push("- Penalidade de Ultrapassagem: R$ 0,00 (Demanda sem ultrapassagens registradas).");
   }
-
   if (multaReativoAno > 0) {
-    lines.push("- Multa por Excedente Reativo (FP < 0,92): " + brl(multaReativoMes) + " /mês (" + brl(multaReativoAno) + " /ano).");
+    lines.push("- Multa por Excedente Reativo (FP < 0,92): " + brl(multaReativoMes) + "/mês (" + brl(multaReativoAno) + "/ano).");
   } else {
-    lines.push("- Multa por Excedente Reativo: R$ 0,00 (Fator de potência em conformidade com o PRODIST).");
+    lines.push("- Multa por Excedente Reativo: R$ 0,00 (Fator de potência adequado).");
   }
-
   if (ecoDemandaAno > 0) {
-    lines.push("- Otimização de Demanda Ótima: Ganho de " + brl(ecoDemandaAno) + " /ano (adequando para Ponta=" + fmt0.format(demandaRecP) + " kW e FP=" + fmt0.format(demandaRecFp) + " kW).");
+    lines.push("- Otimização de Demanda (RN 1.000): Ganho de " + brl(ecoDemandaAno) + "/ano ajustando contrato.");
   }
-
   if (ganhoQeeThdAno > 0) {
-    lines.push("- Eficiência em Qualidade de Energia (QEE/THD): Ganho de " + brl(ganhoQeeThdAno) + " /ano.");
-  }
-
-  if (custoTermicoAno > 0) {
-    lines.push("- Custo Térmico Atual: " + brl(custoTermicoAno) + " /ano (Potencial de redução/substituição: " + brl(ganhoTermicoAno) + " /ano).");
+    lines.push("- Eficiência em Qualidade de Energia (QEE): Ganho de " + brl(ganhoQeeThdAno) + "/ano.");
   }
   lines.push("");
 
-  lines.push("3. CENÁRIO PROPOSTO, ECONOMIA E VIABILIDADE (QUADRO CENÁRIO × GANHO DO SIMULADOR):");
-  lines.push("- Nova Fatura Mensal Projetada (Cenário): " + brl(faturaCenMensal) + " /mês.");
-  lines.push("- Economia Mensal na Conta: " + brl(ecoFaturaMensal) + " /mês (" + brl(ecoFaturaAnual) + " /ano).");
-  lines.push("- Total de Economia Integrada: " + brl(totalGanhosAno) + " /ano.");
+  lines.push("3. CENÁRIO PROPOSTO, ECONOMIA E RETORNO:");
+  lines.push("- Nova Fatura Mensal Projetada (Cenário): " + brl(faturaCenMensal) + "/mês.");
+  lines.push("- Economia Mensal na Conta de Energia: " + brl(ecoFaturaMensal) + "/mês (" + brl(ecoFaturaAnual) + "/ano).");
+  lines.push("- Economia Anual Integrada Total: " + brl(totalGanhosAno) + "/ano.");
   lines.push("- Investimento Total (CAPEX): " + (capexTotal > 0 ? brl(capexTotal) : "R$ 0,00 (Zero CAPEX)"));
-  lines.push("- Custo de Operação e Manutenção (OPEX): " + (opexAnual > 0 ? brl(opexAnual) + " /ano" : "R$ 0,00"));
-  lines.push("- VPL (20 Anos, WACC 12%): " + (vpl20Anos > 0 ? brl(vpl20Anos) : "R$ 0,00"));
+  lines.push("- OPEX Anual: " + (opexAnual > 0 ? brl(opexAnual) + "/ano" : "R$ 0,00"));
+  lines.push("- VPL (20 anos, WACC 12%): " + (vpl20Anos > 0 ? brl(vpl20Anos) : "R$ 0,00"));
   lines.push("- TIR (Taxa Interna de Retorno): " + (tirAnual > 0 ? pct(tirAnual) + " a.a." : "N/A"));
-  lines.push("- Payback: " + (paybackAnos > 0 ? num(paybackAnos, 1) + " anos (" + Math.round(paybackAnos * 12) + " meses)" : "Imediato / Operacional"));
+  lines.push("- Payback Estimado: " + (paybackAnos > 0 ? num(paybackAnos, 1) + " anos (" + Math.round(paybackAnos * 12) + " meses)" : "Imediato / Ganho Operacional"));
   if (co2Evitado > 0) {
-    lines.push("- Descarbonização / Sustentabilidade: " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
+    lines.push("- Sustentabilidade e Descarbonização ESG: " + num(co2Evitado, 1) + " tCO2/ano evitadas.");
   }
   lines.push("");
 
-  lines.push("## DIRETRIZES RIGOROSAS PARA O PARECER DA IA:");
-  lines.push("1. Mantenha fidelidade matemática absoluta aos dados listados acima.");
-  lines.push("2. Se ultrapassagem ou reativo forem R$ 0,00, NÃO afirme que a empresa sofre com multas.");
-  lines.push("3. Recomendações Prioritárias devem ser 100% coerentes com os gargalos reais identificados.");
-  lines.push("4. Estruture nas 5 seções Markdown oficiais sem alterar títulos.");
+  lines.push("## DIRETRIZES OBRIGATÓRIAS PARA A REDAÇÃO EXECUTIVA DA IA:");
+  lines.push("1. Escreva com parágrafos fluídos e técnicos, sem usar tópicos soltos sem contexto.");
+  lines.push("2. Em cada uma das 5 seções, contextualize e justifique os números reais da empresa " + empresaNome + ".");
+  lines.push("3. Destaque o compromisso ESG com a descarbonização (" + num(co2Evitado, 1) + " tCO2/ano) e transição para matriz limpa.");
+  lines.push("4. Enfatize que a Expert Energy Performance oferece suporte integral de engenharia de aplicação, implantação, telemetria contínua e assessoria regulatória especializada.");
+  lines.push("5. NÃO utilize asteriscos duplos (**) para negrito no texto.");
+  lines.push("6. Estruture rigorosamente nas 5 seções Markdown com exatamente estes títulos:");
+  lines.push("   ### 1. Perfil Operacional e Diagnóstico Energético Atual (Baseline)");
+  lines.push("   ### 2. Engenharia de Soluções e Comparativo: Baseline vs. Cenário Proposto");
+  lines.push("   ### 3. Viabilidade Econômico-Financeira e Sensibilidade de Retorno");
+  lines.push("   ### 4. Ganhos Operacionais, Digitalização e Governança da Planta");
+  lines.push("   ### 5. Matriz de Riscos, Limites de Coerência e Plano de Ação Priorizado");
 
   return lines.join("\n");
 }
@@ -460,7 +459,9 @@ async function buildReportPdf(args: {
   const C_TEXT_MUTED= [148, 163, 184] as [number, number, number];
   const C_BORDER    = [30, 41, 59]    as [number, number, number];
 
+  // ==========================================
   // PÁGINA 1: DASHBOARD EXECUTIVO PRINCIPAL
+  // ==========================================
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
 
@@ -665,8 +666,6 @@ async function buildReportPdf(args: {
   doc.setLineWidth(0.8);
   doc.line(chartX + 24, chartY + 44, chartX + chartW - 6, chartY + 44);
 
-  // Mapeamento das posições Y dos 12 meses
-  // 1.0 = 44, 1.2 = 20 (-24pt), 0.85 = 62 (+18pt)
   const stepX = (chartW - 34) / 11;
   const yPoints = sazoFactors.map(f => chartY + 44 - (f - 1.0) * 120);
 
@@ -1031,7 +1030,9 @@ async function buildReportPdf(args: {
   doc.setTextColor(255, 255, 255);
   doc.text("Consultoria e Soluções em Energia", b3X + b3W / 2, curY + 76, { align: "center" });
 
-  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO (COM PICTOGRAMAS FIGURATIVOS E SEM **)
+  // ==========================================
+  // PÁGINA 2: PARECER TÉCNICO-EXECUTIVO (TIPOGRAFIA LIMPA E DISCRETA)
+  // ==========================================
   doc.addPage();
   doc.setFillColor(C_DARK_BG[0], C_DARK_BG[1], C_DARK_BG[2]);
   doc.rect(0, 0, pageW, pageH, "F");
@@ -1057,11 +1058,12 @@ async function buildReportPdf(args: {
   doc.setTextColor(C_TEXT_MUTED[0], C_TEXT_MUTED[1], C_TEXT_MUTED[2]);
   doc.text("PÁGINA 2 DE 2", pageW - margin - 12, margin + 22, { align: "right" });
 
-  // Limpeza de asteriscos (**) e substituição por pictogramas/bullets executivos limpos
+  // Limpeza de caracteres especiais não suportados no WinAnsi do jsPDF
   let cleanedReport = (args.report || "")
-    .replace(/\*\*(.*?)\*\*/g, "$1") // remove markdown bold **texto** -> texto
-    .replace(/^\s*[-*]\s+/gm, "▪ ")     // substitui listas por pictograma quadrado executivo
-    .replace(/^\s*(\d+)\.\s+/gm, "▸ $1. "); // substitui numeracao por pictograma seta executiva
+    .replace(/\*\*(.*?)\*\*/g, "$1") // remove negrito markdown
+    .replace(/\*/g, "")                // remove asteriscos soltos
+    .replace(/▪|▸|▹|⬡|§|•/g, "-")        // normaliza para hífen seguro compatível com ASCII/WinAnsi
+    .replace(/^\s*[-–—]\s+/gm, "- "); // padroniza marcadores
 
   const secoesIa = parseIaReport(cleanedReport);
   let p2Y = margin + 46;
@@ -1075,39 +1077,55 @@ async function buildReportPdf(args: {
     doc.setTextColor(C_TEXT_MAIN[0], C_TEXT_MAIN[1], C_TEXT_MAIN[2]);
     doc.text(lines, margin + 10, p2Y + 16);
   } else {
-    secoesIa.forEach((sec, idx) => {
-      const boxH = 136;
-      if (p2Y + boxH > pageH - margin) return;
+    // 5 Seções com altura proporcional calculada
+    const totalBoxesH = pageH - margin - p2Y;
+    const boxH = Math.floor((totalBoxesH - 24) / 5);
 
+    secoesIa.forEach((sec, idx) => {
       doc.setFillColor(C_PANEL_BG[0], C_PANEL_BG[1], C_PANEL_BG[2]);
       doc.roundedRect(margin, p2Y, innerW, boxH, 5, 5, "F");
       doc.setDrawColor(C_BORDER[0], C_BORDER[1], C_BORDER[2]);
       doc.setLineWidth(0.6);
       doc.roundedRect(margin, p2Y, innerW, boxH, 5, 5, "S");
 
+      // Barra de Título da Seção
       doc.setFillColor(C_CARD_BG[0], C_CARD_BG[1], C_CARD_BG[2]);
       doc.roundedRect(margin, p2Y, innerW, 18, 5, 5, "F");
 
-      // Pictograma figurativo monocromático para o cabeçalho da seção
-      const secIcon = ["§ 1.0", "§ 2.0", "§ 3.0", "§ 4.0", "§ 5.0"][idx] || ("§ " + (idx + 1));
+      // Marcador numérico limpo e discreto
+      const secNum = "[" + (idx + 1) + ".0]  ";
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
-      doc.text(secIcon + "  " + (sec.titulo || ("Seção " + (idx + 1))), margin + 10, p2Y + 12);
+      doc.text(secNum + (sec.titulo || ("Seção " + (idx + 1))), margin + 10, p2Y + 12);
 
+      // Corpo de texto em parágrafos justificados com espaçamento normal
       let cY = p2Y + 28;
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.8);
+      doc.setFontSize(6.5);
       doc.setTextColor(C_TEXT_MAIN[0], C_TEXT_MAIN[1], C_TEXT_MAIN[2]);
 
       for (let l of sec.corpo) {
         if (cY > p2Y + boxH - 8) break;
-        const wrapped = doc.splitTextToSize(l, innerW - 20);
+        // Desenha indicador de item caso seja lista
+        let lineText = l.trim();
+        let isBullet = lineText.startsWith("- ");
+        if (isBullet) {
+          lineText = lineText.slice(2).trim();
+          doc.setFillColor(C_EMERALD[0], C_EMERALD[1], C_EMERALD[2]);
+          doc.circle(margin + 12, cY - 2.5, 1.2, "F"); // Mini bullet desenhado em vetor (zero erro de fonte)
+        }
+
+        const textIndent = isBullet ? 18 : 10;
+        const maxTextW = innerW - textIndent - 10;
+        const wrapped = doc.splitTextToSize(lineText, maxTextW);
+
         for (let wl of wrapped) {
           if (cY > p2Y + boxH - 8) break;
-          doc.text(wl, margin + 10, cY);
-          cY += 9.5;
+          doc.text(wl, margin + textIndent, cY);
+          cY += 8.5; // Espaçamento entre linhas ajustado para não transbordar o quadro
         }
+        cY += 2; // Espaço sutil entre tópicos
       }
 
       p2Y += boxH + 6;
