@@ -1391,24 +1391,37 @@ export default function DiagnosticoDetalhePage() {
       setReportError("");
       setLastReport(null);
 
-      // 1. Extrair os dados mais recentes diretamente do simulador / iframe ao vivo
+      // 1. Forçar recálculo e extração dos dados reais ao vivo do simulador no iframe
       let activeRecord = record;
       let activeSummary = summary;
       try {
-        if (iframeRef.current) {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+          const win = iframeRef.current.contentWindow as any;
+          // Se a função calc() existir no window do iframe, executar para obter o objeto de cálculo mais recente
+          let liveCalcResult = null;
+          if (typeof win.calc === 'function') {
+            try { liveCalcResult = win.calc(); } catch (e) { console.warn('[diag] win.calc erro:', e); }
+          }
+          
           const rawPayload = await requestEnergiaExport(iframeRef.current);
-          if (rawPayload && (rawPayload.result || rawPayload.input)) {
+          const rawPayloadObject = asObject(rawPayload);
+          const finalResult = liveCalcResult || rawPayloadObject.result || (record as any)?.result_json;
+
+          if (rawPayloadObject && (finalResult || rawPayloadObject.input)) {
             const tempApiRecord = {
               ...(record || {}),
-              payload_json: rawPayload,
-              result_json: rawPayload.result || (record as any)?.result_json,
+              payload_json: {
+                ...rawPayloadObject,
+                result: finalResult,
+              },
+              result_json: finalResult,
             } as any;
             activeRecord = normalizeRecord(tempApiRecord);
             activeSummary = activeRecord.summary as any;
           }
         }
       } catch (e) {
-        console.warn("[diag] aviso ao extrair estado do simulador:", e);
+        console.warn("[diag] aviso ao extrair estado ao vivo do simulador:", e);
       }
 
       if (!activeSummary) {
@@ -1443,7 +1456,7 @@ export default function DiagnosticoDetalhePage() {
       const generatedAt = String((json && json.generatedAt) || new Date().toISOString());
       if (!report) throw new Error("Resposta da IA vazia.");
 
-      const pdfResult = await buildReportPdf({ report, summary, generatedAt, diagnostic: record });
+      const pdfResult = await buildReportPdf({ report, summary: activeSummary, generatedAt, diagnostic: activeRecord });
       if (!pdfResult) throw new Error("Biblioteca jsPDF nao esta disponivel. Rode: npm install jspdf.");
       setLastReport({ fileName: pdfResult.fileName });
     } catch (err: any) {
@@ -1453,8 +1466,6 @@ export default function DiagnosticoDetalhePage() {
       window.setTimeout(() => setGeneratingReport(false), 250);
     }
   }
-  // === fim DIAG-BLOCO-B-STATE-HANDLER v1 ===
-
 
   const [message, setMessage] = useState('Carregando diagnóstico...');
   const [loading, setLoading] = useState(true);
