@@ -1291,7 +1291,7 @@
     <div class="table-action" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="addPricingRowBtn">Adicionar linha</button>
       <button type="button" id="openAddKitBtn" onclick="openAddKitModalDirect()" style="background:#1b5e7b; color:#ffffff; border:1px solid #144960; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
-      <button type="button" id="openCreateKitBtn" onclick="openCreateKitModalDirect()" style="display:none; background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
+      <button type="button" id="openCreateKitBtn" onclick="openCreateKitModalDirect()" style="display:none; background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; margin-left:8px;">⚙️ Gerenciar Kits (Admin)</button>
     </div>
 
         <div class="totals">
@@ -4204,6 +4204,9 @@
     }
 
     async function initialize(){
+      setupKitsModule();
+      setTimeout(setupKitsModule, 300);
+      setTimeout(setupKitsModule, 1000);
       renderServiceCards();
       renderServiceBlocks();
       attachServiceEvents();
