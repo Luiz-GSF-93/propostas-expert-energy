@@ -3715,77 +3715,50 @@
       }catch(e){}
     }
 
-    async function fetchKitsRegistry(){
+    async function fetchKitsRegistry(forceFresh = false){
       const token = getSupabaseAccessToken();
-      let remoteKits = [];
       try{
-        const response = await fetch("/api/kits?status=active", {
+        const cacheBuster = "_t=" + Date.now();
+        const response = await fetch(`/api/kits?status=active&${cacheBuster}`, {
+          cache: "no-store",
           headers: {
             "Accept": "application/json",
+            "Cache-Control": "no-cache",
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
           }
         });
         if(response.ok){
           const result = await response.json();
-          remoteKits = (Array.isArray(result) ? result : (result?.data || result?.items || [])).map(k => ({
+          const remoteKits = (Array.isArray(result) ? result : (result?.data || result?.items || [])).map(k => ({
             ...k,
             items: normalizeKitItems(k.items)
           }));
+
+          if(remoteKits.length > 0){
+            cachedKitsList = remoteKits;
+            try { localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList)); } catch(e){}
+            populateKitsSelect();
+            renderAdminKitsTable();
+            return cachedKitsList;
+          }
         }
       }catch(err){
-        console.warn("[Kits] Consultando cache local:", err);
+        console.warn("[Kits] Falha na rede /api/kits:", err);
       }
 
+      // Se a requisição falhar por falta de internet, usa o que foi salvo no storage
       let localKits = [];
-      const local = localStorage.getItem("cached_commercial_kits");
-      if(local){
-        try { localKits = JSON.parse(local); } catch(e){ localKits = []; }
+      try{
+        const local = localStorage.getItem("cached_commercial_kits");
+        if(local) localKits = JSON.parse(local);
+      }catch(e){ localKits = []; }
+
+      if(localKits.length > 0){
+        cachedKitsList = localKits.map(k => ({ ...k, items: normalizeKitItems(k.items) }));
       }
-
-      const kitMap = new Map();
-      (Array.isArray(localKits) ? localKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-      (Array.isArray(remoteKits) ? remoteKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-
-      if(kitMap.size > 0){
-        cachedKitsList = Array.from(kitMap.values());
-      } else {
-        cachedKitsList = [
-          {
-            id: "kit-startup-gateway",
-            name: "Kit 1: Startup Assistido + Gateway de Telemetria",
-            description: "Instalação, parametrização de gateway e testes operacionais",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/gateway-telemetria-4g.pdf",
-            pdf_attachment_name: "Datasheet-Gateway-Telemetria-ExpertEnergy.pdf",
-            items: [
-              { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
-              { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
-              { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
-            ]
-          },
-          {
-            id: "kit-medicao-setorial",
-            name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
-            description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/smart-meter-multimedidor.pdf",
-            pdf_attachment_name: "Memorial-Tecnico-SmartMeter.pdf",
-            items: [
-              { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
-              { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
-              { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
-            ]
-          }
-        ];
-      }
-
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
       populateKitsSelect();
       renderAdminKitsTable();
+      return cachedKitsList;
     }
 
     function populateKitsSelect(){
@@ -3801,31 +3774,34 @@
     }
 
     function renderAdminKitsTable(){
-      syncCachedKitsFromStorage();
       const tbody = document.getElementById("adminKitsTableBody");
       const badge = document.getElementById("countKitsBadge");
       if(badge) badge.textContent = String(cachedKitsList.length);
       if(!tbody) return;
 
       if(!cachedKitsList.length){
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#55656f;">Nenhum kit cadastrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#55656f;">Nenhum kit cadastrado no banco de dados.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = cachedKitsList.map(k => `
-        <tr style="border-bottom:1px solid #eef2f4;">
-          <td style="padding:8px; font-weight:bold; color:#123d56;">${escapeHtml(k.name)}</td>
-          <td style="padding:8px; color:#55656f;">${escapeHtml(k.description || "—")}</td>
-          <td style="padding:8px; text-align:center; font-weight:bold; color:#1b5e7b;">${(k.items || []).length}</td>
-          <td style="padding:8px; text-align:center;">
-            ${k.pdf_attachment_url ? `<a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" style="color:#1b5e7b; font-size:11px; font-weight:bold; text-decoration:underline;">Ver PDF</a>` : '<span style="color:#94a3b8; font-size:11px;">Sem anexo</span>'}
-          </td>
-          <td style="padding:8px; text-align:center;">
-            <button type="button" class="btn-edit-kit" onclick="window.editKitById('${escapeHtml(k.id || k.name)}')" style="background:#1b5e7b; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold; margin-right:4px;">✏️ Editar</button>
-            <button type="button" class="btn-delete-kit" onclick="window.deleteKitById('${escapeHtml(k.id || k.name)}')" style="background:#8b3030; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold;">🗑️ Excluir</button>
-          </td>
-        </tr>
-      `).join("");
+      tbody.innerHTML = cachedKitsList.map(k => {
+        const items = normalizeKitItems(k.items);
+        const hasPdf = Boolean(k.pdf_attachment_url && String(k.pdf_attachment_url).trim().length > 10);
+        return `
+          <tr style="border-bottom:1px solid #eef2f4;">
+            <td style="padding:10px 8px; font-weight:bold; color:#123d56;">${escapeHtml(k.name || "Sem nome")}</td>
+            <td style="padding:10px 8px; color:#55656f; font-size:12px;">${escapeHtml(k.description || "—")}</td>
+            <td style="padding:10px 8px; text-align:center; font-weight:bold; color:#1b5e7b; font-size:13px;">${items.length}</td>
+            <td style="padding:10px 8px; text-align:center;">
+              ${hasPdf ? `<a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" style="color:#1b5e7b; font-size:11px; font-weight:bold; text-decoration:underline;">Ver PDF</a>` : '<span style="color:#94a3b8; font-size:11px;">Sem anexo</span>'}
+            </td>
+            <td style="padding:10px 8px; text-align:center;">
+              <button type="button" class="btn-edit-kit" onclick="window.editKitById('${escapeHtml(k.id || k.name)}')" style="background:#1b5e7b; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold; margin-right:4px;">✏️ Editar</button>
+              <button type="button" class="btn-delete-kit" onclick="window.deleteKitById('${escapeHtml(k.id || k.name)}')" style="background:#8b3030; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold;">🗑️ Excluir</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
     }
 
     function addKitModalRow(data = {}){
