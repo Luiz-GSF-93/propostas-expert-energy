@@ -3727,7 +3727,10 @@
         });
         if(response.ok){
           const result = await response.json();
-          remoteKits = Array.isArray(result) ? result : (result?.data || result?.items || []);
+          remoteKits = (Array.isArray(result) ? result : (result?.data || result?.items || [])).map(k => ({
+            ...k,
+            items: normalizeKitItems(k.items)
+          }));
         }
       }catch(err){
         console.warn("[Kits] Consultando cache local:", err);
@@ -4069,6 +4072,27 @@
       window.closeCreateKitModalDirect();
     };
 
+    function normalizeKitItems(rawItems){
+      if(Array.isArray(rawItems)) return rawItems;
+      if(typeof rawItems === "string"){
+        try {
+          const parsed = JSON.parse(rawItems);
+          if(Array.isArray(parsed)) return parsed;
+        } catch(e){}
+      }
+      return [];
+    }
+
+    function findKitInCache(val){
+      if(!val) return null;
+      const cleanVal = String(val).trim().toLowerCase();
+      return cachedKitsList.find(k => {
+        const kId = String(k.id || "").trim().toLowerCase();
+        const kName = String(k.name || "").trim().toLowerCase();
+        return kId === cleanVal || kName === cleanVal || cleanVal.includes(kName) || kName.includes(cleanVal);
+      }) || null;
+    }
+
     window.handleSelectKitChange = function(){
       const selectKit = document.getElementById("selectKitId");
       const previewCont = document.getElementById("kitPreviewContainer");
@@ -4082,19 +4106,23 @@
         return;
       }
 
-      const kit = cachedKitsList.find(k => String(k.id || "").trim() === val || String(k.name || "").trim() === val);
-      if(kit && Array.isArray(kit.items) && kit.items.length > 0){
-        previewList.innerHTML = kit.items.map(it => `
-          <li style="margin-bottom:4px;">
-            <strong>[${escapeHtml(it.category || "Item")}]</strong> ${escapeHtml(it.description || "")} 
-            <span style="color:#55656f;">(${it.qty || "1,00"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</span>
-          </li>
-        `).join("");
-        previewCont.style.display = "block";
-      } else {
-        previewList.innerHTML = '<li style="color:#8b3030;">Nenhum item configurado neste kit.</li>';
-        previewCont.style.display = "block";
+      const kit = findKitInCache(val);
+      if(kit){
+        const items = normalizeKitItems(kit.items);
+        if(items.length > 0){
+          previewList.innerHTML = items.map(it => `
+            <li style="margin-bottom:5px; line-height:1.4;">
+              <span style="font-weight:bold; color:#123d56;">[${escapeHtml(it.category || "Item")}]</span> ${escapeHtml(it.description || "")} 
+              <span style="color:#55656f; font-size:11px;">(${it.qty || "1,00"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</span>
+            </li>
+          `).join("");
+          previewCont.style.display = "block";
+          return;
+        }
       }
+
+      previewList.innerHTML = '<li style="color:#8b3030;">Nenhum item configurado neste kit.</li>';
+      previewCont.style.display = "block";
     };
 
     window.confirmAddKitDirect = function(){
@@ -4105,13 +4133,14 @@
         return;
       }
 
-      const kit = cachedKitsList.find(k => String(k.id || "").trim() === val || String(k.name || "").trim() === val);
+      const kit = findKitInCache(val);
       if(!kit){
-        alert("Kit selecionado não encontrado.");
+        alert("Kit selecionado não encontrado na lista atual.");
         return;
       }
 
-      if(Array.isArray(kit.items) && kit.items.length > 0){
+      const items = normalizeKitItems(kit.items);
+      if(items.length > 0){
         const tbody = document.getElementById("pricingBody");
         const currentRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
         const hasCustomItems = currentRows.some(tr => {
@@ -4123,7 +4152,7 @@
           tbody.innerHTML = "";
         }
 
-        kit.items.forEach(it => {
+        items.forEach(it => {
           addPricingRow({
             category: it.category || "Serviço",
             description: it.description || "",
@@ -4142,9 +4171,9 @@
           proposalSelectedKits.push(kit);
         }
         updateAttachedKitsUI();
-        showToast(`Kit "${kit.name}" com ${kit.items.length} itens inserido com sucesso na proposta!`, "success");
+        showToast(`Kit "${kit.name}" com ${items.length} itens inserido com sucesso na proposta!`, "success");
       } else {
-        alert("Este kit não possui itens cadastrados.");
+        alert("Este kit não possui itens válidos cadastrados.");
       }
       closeAddKitModalDirect();
     };
