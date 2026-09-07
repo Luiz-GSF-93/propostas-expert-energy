@@ -12,12 +12,12 @@ function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
       persistSession: false,
-      autoRefreshToken: false
-    }
+      autoRefreshToken: false,
+    },
   });
 }
 
-// GET /api/kits - Lista todos os kits comerciais cadastrados no Supabase
+// GET /api/kits - Lista todos os kits ativos
 export async function GET(req: NextRequest) {
   try {
     const supabase = getSupabase();
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/kits - Cadastra novo kit com todos os seus itens (sem limite)
+// POST /api/kits - Cria novo kit com itens ilimitados
 export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabase();
@@ -57,22 +57,21 @@ export async function POST(req: NextRequest) {
     }
 
     const items = Array.isArray(body.items) ? body.items : [];
-    const description = String(body.description || "").trim();
-    const pdf_attachment_url = String(body.pdf_attachment_url || "").trim();
-    const pdf_attachment_name = String(body.pdf_attachment_name || "").trim();
+    const description = body.description ? String(body.description).trim() : null;
+    const pdf_attachment_url = body.pdf_attachment_url ? String(body.pdf_attachment_url).trim() : null;
+    const pdf_attachment_name = body.pdf_attachment_name ? String(body.pdf_attachment_name).trim() : null;
 
     const insertData: any = {
       name,
       description,
       items,
+      status: "active",
       pdf_attachment_url,
       pdf_attachment_name,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
     };
 
-    // Se o cliente enviou um ID customizado que não seja temporário
-    if (body.id && typeof body.id === "string" && !body.id.startsWith("kit-") && body.id.includes("-")) {
+    if (body.id && typeof body.id === "string" && !body.id.startsWith("kit-")) {
       insertData.id = body.id;
     }
 

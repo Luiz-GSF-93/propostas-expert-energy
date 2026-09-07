@@ -17,7 +17,7 @@ function getSupabase() {
   });
 }
 
-// PUT /api/kits/[id] - Atualiza kit e TODOS os seus itens (suporte a qualquer quantidade)
+// PUT /api/kits/[id] - Atualiza kit e TODOS os seus itens (suporta texto/uuid e busca por nome como fallback)
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -29,16 +29,15 @@ export async function PUT(
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    };
+    const updateData: any = {};
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.description !== undefined) updateData.description = String(body.description).trim();
     if (body.items !== undefined) updateData.items = Array.isArray(body.items) ? body.items : [];
     if (body.pdf_attachment_url !== undefined) updateData.pdf_attachment_url = String(body.pdf_attachment_url).trim();
     if (body.pdf_attachment_name !== undefined) updateData.pdf_attachment_name = String(body.pdf_attachment_name).trim();
+    updateData.status = "active";
 
-    // 1. Tenta atualizar pelo ID
+    // 1. Tenta atualizar diretamente pelo ID
     let { data, error } = await supabase
       .from("commercial_kits")
       .update(updateData)
@@ -46,7 +45,7 @@ export async function PUT(
       .select()
       .maybeSingle();
 
-    // 2. Se não encontrou por ID (ex: id local 'kit-123'), tenta atualizar ou inserir por nome
+    // 2. Se não encontrou por ID (ex: id local antigo 'kit-123'), tenta atualizar ou criar por nome
     if (!data && body.name) {
       const { data: byName } = await supabase
         .from("commercial_kits")
@@ -64,17 +63,17 @@ export async function PUT(
         data = res.data;
         error = res.error;
       } else {
-        // Se ainda não existe, cria
+        // Se ainda não existir no banco, insere o registro com todos os itens
         const res = await supabase
           .from("commercial_kits")
           .insert({
             name: updateData.name || body.name,
-            description: updateData.description || "",
+            description: updateData.description || null,
             items: updateData.items || [],
-            pdf_attachment_url: updateData.pdf_attachment_url || "",
-            pdf_attachment_name: updateData.pdf_attachment_name || "",
+            status: "active",
+            pdf_attachment_url: updateData.pdf_attachment_url || null,
+            pdf_attachment_name: updateData.pdf_attachment_name || null,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           })
           .select()
           .single();
@@ -101,13 +100,13 @@ export async function DELETE(
 
     const { id } = await context.params;
     
-    // Tenta deletar por ID
-    let { error } = await supabase
+    const { error } = await supabase
       .from("commercial_kits")
       .delete()
       .eq("id", id);
 
-    return NextResponse.json({ ok: true, message: "Kit excluído" }, { status: 200 });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, message: "Kit excluído com sucesso" }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
