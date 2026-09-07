@@ -1531,11 +1531,11 @@
         <!-- 3. RODAPÉ FIXO (STICKY FOOTER) - BOTÃO SALVAR NUNCA SOME -->
         <div style="padding:14px 24px; border-top:1px solid #c7d3da; background:#fbfdfe; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; box-shadow:0 -4px 12px rgba(0,0,0,0.04);">
           <div>
-            <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; display:none;">+ Novo Kit em Branco</button>
+            <button type="button" id="btnNewKitReset" style="background:#eef2f4; color:#123d56; border:1px solid #c7d3da; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; display:none;" onclick="resetKitFormDirect()">+ Novo Kit em Branco</button>
           </div>
           <div style="display:flex; gap:12px; align-items:center;">
-            <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Fechar</button>
-            <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 26px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 14px rgba(47,111,68,0.35); display:inline-flex; align-items:center; gap:6px;">
+            <button type="button" id="cancelCreateKitBtn" style="background:#eef2f4; color:#55656f; border:1px solid #c7d3da; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;" onclick="closeCreateKitModalDirect()">Fechar</button>
+            <button type="button" id="saveNewKitBtn" style="background:#2f6f44; color:#ffffff; border:none; padding:11px 26px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 4px 14px rgba(47,111,68,0.35); display:inline-flex; align-items:center; gap:6px;" onclick="saveNewKitDirect()">
               💾 Salvar Kit Comercial
             </button>
           </div>
@@ -3869,11 +3869,11 @@
 
 
     /* =========================================================
-     * MÓDULO DE KITS COMERCIAIS (ADICIONAR KIT & CRIAR KIT ADMIN)
+     * MÓDULO DE KITS COMERCIAIS UNIFICADO (ADMIN & COMERCIAL)
      * ========================================================= */
     if(typeof cachedKitsList === "undefined") { var cachedKitsList = []; }
 
-            function decodeJwtPayload(token){
+    function decodeJwtPayload(token){
       if(!token || typeof token !== "string") return null;
       try{
         const parts = token.split(".");
@@ -3896,24 +3896,19 @@
     }
 
     function isUserAdmin(){
-      // 1. Emails administradores mestres conhecidos (acesso garantido)
       const masterAdmins = ["luizdigi@gmail.com", "admin@expertenergy.com.br", "contato@expertenergy.com.br"];
-
-      // 2. Checar chaves diretas no localStorage e sessionStorage
       const directRoleKeys = ["user_role", "sb_user_role", "expert_energy_user_role", "role", "perfil"];
       for(const k of directRoleKeys){
         const val = localStorage.getItem(k) || sessionStorage.getItem(k);
         if(checkIsAdminRole(val)) return true;
       }
 
-      // 3. Checar emails diretos no storage
       const emailKeys = ["user_email", "email", "expert_energy_user_email", "sb_user_email"];
       for(const k of emailKeys){
         const em = (localStorage.getItem(k) || sessionStorage.getItem(k) || "").toLowerCase().trim();
         if(em && masterAdmins.includes(em)) return true;
       }
 
-      // 4. Varrer todos os objetos de autenticação do Supabase no localStorage e sessionStorage
       const storages = [localStorage, sessionStorage];
       for(const store of storages){
         for(let i = 0; i < store.length; i++){
@@ -3921,34 +3916,23 @@
           if(!key) continue;
           const raw = store.getItem(key);
           if(!raw || typeof raw !== "string") continue;
-
-          // Se tiver email master no JSON raw
           for(const admEmail of masterAdmins){
             if(raw.toLowerCase().includes(admEmail)) return true;
           }
-
-          // Se tiver palavra "admin" associada a role no raw
           if(raw.toLowerCase().includes('"role":"admin"') || 
              raw.toLowerCase().includes('"role":"administrador"') ||
              raw.toLowerCase().includes('"user_role":"admin"')) {
             return true;
           }
-
           try{
             const parsed = JSON.parse(raw);
             const user = parsed?.user || parsed?.currentUser || parsed?.session?.user || parsed;
-            
-            // Checar email do usuário
             const userEmail = (user?.email || parsed?.email || "").toLowerCase().trim();
             if(userEmail && masterAdmins.includes(userEmail)) return true;
-
-            // Checar metadados do Supabase
             const role1 = user?.user_metadata?.role || user?.user_metadata?.perfil;
             const role2 = user?.app_metadata?.role || user?.app_metadata?.perfil;
             const role3 = user?.role || parsed?.role;
             if(checkIsAdminRole(role1) || checkIsAdminRole(role2) || checkIsAdminRole(role3)) return true;
-
-            // Checar se o access_token contém claims de admin
             const token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
             if(token){
               const jwt = decodeJwtPayload(token);
@@ -3963,14 +3947,24 @@
         }
       }
 
-      // 5. Checar window global se injetado pelo parent / Next.js
       if(window.currentUserRole && checkIsAdminRole(window.currentUserRole)) return true;
       if(window.currentUserEmail && masterAdmins.includes(String(window.currentUserEmail).toLowerCase().trim())) return true;
-
       return false;
     }
 
-        async function fetchKitsRegistry(){
+    function syncCachedKitsFromStorage(){
+      try{
+        const raw = localStorage.getItem("cached_commercial_kits") || sessionStorage.getItem("cached_commercial_kits");
+        if(raw){
+          const parsed = JSON.parse(raw);
+          if(Array.isArray(parsed) && parsed.length > 0){
+            cachedKitsList = parsed;
+          }
+        }
+      }catch(e){}
+    }
+
+    async function fetchKitsRegistry(){
       const token = getSupabaseAccessToken();
       let remoteKits = [];
       try{
@@ -3985,17 +3979,15 @@
           remoteKits = Array.isArray(result) ? result : (result?.data || result?.items || []);
         }
       }catch(err){
-        console.warn("[Kits] Falha ao consultar backend /api/kits, usando cache local:", err);
+        console.warn("[Kits] Usando cache local:", err);
       }
 
-      // Recuperar kits locais do cache
       let localKits = [];
       const local = localStorage.getItem("cached_commercial_kits");
       if(local){
         try { localKits = JSON.parse(local); } catch(e){ localKits = []; }
       }
 
-      // Mesclagem inteligente (Kits remotos + Kits locais criados pelo usuário)
       const kitMap = new Map();
       (Array.isArray(localKits) ? localKits : []).forEach(k => {
         const key = String(k.id || k.name || "").trim();
@@ -4054,6 +4046,34 @@
       });
     }
 
+    function renderAdminKitsTable(){
+      syncCachedKitsFromStorage();
+      const tbody = document.getElementById("adminKitsTableBody");
+      const badge = document.getElementById("countKitsBadge");
+      if(badge) badge.textContent = String(cachedKitsList.length);
+      if(!tbody) return;
+
+      if(!cachedKitsList.length){
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#55656f;">Nenhum kit cadastrado.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = cachedKitsList.map(k => `
+        <tr style="border-bottom:1px solid #eef2f4;">
+          <td style="padding:8px; font-weight:bold; color:#123d56;">${escapeHtml(k.name)}</td>
+          <td style="padding:8px; color:#55656f;">${escapeHtml(k.description || "—")}</td>
+          <td style="padding:8px; text-align:center; font-weight:bold; color:#1b5e7b;">${(k.items || []).length}</td>
+          <td style="padding:8px; text-align:center;">
+            ${k.pdf_attachment_url ? `<a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" style="color:#1b5e7b; font-size:11px; font-weight:bold; text-decoration:underline;">Ver PDF</a>` : '<span style="color:#94a3b8; font-size:11px;">Sem anexo</span>'}
+          </td>
+          <td style="padding:8px; text-align:center;">
+            <button type="button" class="btn-edit-kit" onclick="window.editKitById('${escapeHtml(k.id || k.name)}')" style="background:#1b5e7b; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold; margin-right:4px;">✏️ Editar</button>
+            <button type="button" class="btn-delete-kit" onclick="window.deleteKitById('${escapeHtml(k.id || k.name)}')" style="background:#8b3030; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold;">🗑️ Excluir</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
     function addKitModalRow(data = {}){
       const tbody = document.getElementById("kitModalRowsBody");
       if(!tbody) return;
@@ -4065,49 +4085,269 @@
         <td style="padding:6px;"><input type="text" class="km-qty" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="1,00" value="${escapeHtml(data.qty || "1,00")}"></td>
         <td style="padding:6px;"><input type="text" class="km-unit" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="un" value="${escapeHtml(data.unit || "un")}"></td>
         <td style="padding:6px;"><input type="text" class="km-val" style="width:100%; padding:6px; font-size:12px; border:1px solid #c7d3da; border-radius:4px; box-sizing:border-box;" placeholder="0,00" value="${escapeHtml(data.unitValue || "")}"></td>
-        <td style="padding:6px; text-align:center;"><button type="button" class="remove-km-row" style="background:#8b3030; color:#ffffff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:bold;">X</button></td>
+        <td style="padding:6px; text-align:center;"><button type="button" onclick="this.closest('tr').remove()" style="background:#8b3030; color:#ffffff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:bold;" title="Remover item">✕</button></td>
       `;
       tbody.appendChild(tr);
     }
 
-    
-    /* Funções globais de abertura direta dos modais de kit */
     window.openAddKitModalDirect = function(){
       fetchKitsRegistry();
       const modal = document.getElementById("modalAddKit");
       if(modal) modal.style.display = "flex";
     };
 
+    window.closeAddKitModalDirect = function(){
+      const modal = document.getElementById("modalAddKit");
+      if(modal) modal.style.display = "none";
+    };
+
     window.openCreateKitModalDirect = function(){
       if(!isUserAdmin()){
-        alert("Acesso Restrito: Apenas usuários com perfil de Administrador têm permissão para cadastrar ou gerenciar Kits Comerciais.");
+        alert("Acesso Restrito: Apenas administradores podem gerenciar kits comerciais.");
         return;
       }
       const modal = document.getElementById("modalCreateKit");
-      const btnReset = document.getElementById("btnNewKitReset");
-      const nameInput = document.getElementById("newKitName");
-      const descInput = document.getElementById("newKitDescription");
-      const kitRowsBody = document.getElementById("kitModalRowsBody");
+      resetKitFormDirect();
+      switchAdminKitTab("form");
+      if(modal) modal.style.display = "flex";
+    };
 
-      document.getElementById("editingKitId").value = "";
-      document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
-      if(nameInput) nameInput.value = "";
-      if(descInput) descInput.value = "";
-      if(btnReset) btnReset.style.display = "none";
-      if(kitRowsBody) kitRowsBody.innerHTML = "";
-      addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
-      addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
+    window.closeCreateKitModalDirect = function(){
+      const modal = document.getElementById("modalCreateKit");
+      if(modal) modal.style.display = "none";
+    };
 
+    window.switchAdminKitTab = function(tab){
       const secForm = document.getElementById("sectionFormKit");
       const secList = document.getElementById("sectionListKits");
       const tabForm = document.getElementById("tabFormKitBtn");
       const tabList = document.getElementById("tabListKitsBtn");
-      if(secForm) secForm.style.display = "block";
-      if(secList) secList.style.display = "none";
-      if(tabForm){ tabForm.style.background = "#1b5e7b"; tabForm.style.color = "#fff"; }
-      if(tabList){ tabList.style.background = "#eef2f4"; tabList.style.color = "#123d56"; }
+      if(tab === "form"){
+        if(secForm) secForm.style.display = "block";
+        if(secList) secList.style.display = "none";
+        if(tabForm){ tabForm.style.background = "#1b5e7b"; tabForm.style.color = "#fff"; }
+        if(tabList){ tabList.style.background = "#eef2f4"; tabList.style.color = "#123d56"; }
+      } else {
+        if(secForm) secForm.style.display = "none";
+        if(secList) secList.style.display = "block";
+        if(tabList){ tabList.style.background = "#1b5e7b"; tabList.style.color = "#fff"; }
+        if(tabForm){ tabForm.style.background = "#eef2f4"; tabForm.style.color = "#123d56"; }
+        renderAdminKitsTable();
+      }
+    };
 
-      if(modal) modal.style.display = "flex";
+    window.resetKitFormDirect = function(){
+      document.getElementById("editingKitId").value = "";
+      document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
+      document.getElementById("newKitName").value = "";
+      document.getElementById("newKitDescription").value = "";
+      document.getElementById("newKitPdfFile").value = "";
+      document.getElementById("currentKitPdfInfo").style.display = "none";
+      document.getElementById("btnNewKitReset").style.display = "none";
+      const kitRowsBody = document.getElementById("kitModalRowsBody");
+      if(kitRowsBody) kitRowsBody.innerHTML = "";
+      addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
+      addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
+    };
+
+    window.editKitById = function(kitId){
+      syncCachedKitsFromStorage();
+      const kit = cachedKitsList.find(k => String(k.id || k.name).trim() === String(kitId).trim());
+      if(!kit) return;
+      document.getElementById("editingKitId").value = kit.id || kit.name;
+      document.getElementById("adminKitModalTitle").textContent = "Editar Kit Comercial: " + kit.name;
+      document.getElementById("newKitName").value = kit.name || "";
+      document.getElementById("newKitDescription").value = kit.description || "";
+      
+      const pdfInfo = document.getElementById("currentKitPdfInfo");
+      const pdfLink = document.getElementById("currentKitPdfLink");
+      if(kit.pdf_attachment_url){
+        pdfInfo.style.display = "block";
+        pdfLink.href = kit.pdf_attachment_url;
+        pdfLink.textContent = kit.pdf_attachment_name || "Visualizar PDF Anexo Atual";
+      } else {
+        pdfInfo.style.display = "none";
+      }
+
+      const kitRowsBody = document.getElementById("kitModalRowsBody");
+      if(kitRowsBody) kitRowsBody.innerHTML = "";
+      if(Array.isArray(kit.items) && kit.items.length > 0){
+        kit.items.forEach(it => addKitModalRow(it));
+      } else {
+        addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
+      }
+
+      const btnReset = document.getElementById("btnNewKitReset");
+      if(btnReset) btnReset.style.display = "inline-block";
+      switchAdminKitTab("form");
+    };
+
+    window.deleteKitById = async function(kitId){
+      if(!confirm("Tem certeza que deseja excluir permanentemente este kit comercial?")) return;
+      
+      const token = getSupabaseAccessToken();
+      try{
+        await fetch(buildApiUrl(`/api/kits/${encodeURIComponent(kitId)}`), {
+          method: "DELETE",
+          headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+        });
+      }catch(e){}
+
+      cachedKitsList = cachedKitsList.filter(k => String(k.id || k.name).trim() !== String(kitId).trim());
+      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
+      populateKitsSelect();
+      renderAdminKitsTable();
+      showToast("Kit excluído com sucesso!", "success");
+    };
+
+    window.saveNewKitDirect = async function(){
+      const editingId = document.getElementById("editingKitId")?.value?.trim();
+      const name = document.getElementById("newKitName")?.value?.trim();
+      const description = document.getElementById("newKitDescription")?.value?.trim();
+      if(!name){
+        alert("Por favor, informe o nome do Kit.");
+        return;
+      }
+
+      const items = [];
+      document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
+        const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
+        const desc = tr.querySelector(".km-desc")?.value?.trim();
+        const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
+        const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
+        const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
+        if(desc){
+          items.push({ category, description: desc, qty, unit, unitValue: val });
+        }
+      });
+
+      if(items.length === 0){
+        alert("Adicione ao menos um item comercial com descrição preenchida no kit.");
+        return;
+      }
+
+      const existingKit = editingId ? cachedKitsList.find(k => String(k.id || k.name).trim() === editingId) : null;
+      let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
+      let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
+
+      const pdfFileInput = document.getElementById("newKitPdfFile");
+      if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
+        const file = pdfFileInput.files[0];
+        pdfAttachmentName = file.name;
+        const statusDiv = document.getElementById("pdfUploadStatus");
+        if(statusDiv) statusDiv.innerHTML = "⏳ Processando anexo PDF...";
+
+        try {
+          pdfAttachmentUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
+            reader.readAsDataURL(file);
+          });
+        } catch(err) {
+          console.warn("Erro ao converter PDF:", err);
+        }
+      }
+
+      const kitObj = {
+        id: editingId || ("kit-" + Date.now()),
+        name,
+        description,
+        pdf_attachment_url: pdfAttachmentUrl,
+        pdf_attachment_name: pdfAttachmentName,
+        items,
+        updated_at: new Date().toISOString()
+      };
+
+      const token = getSupabaseAccessToken();
+      try{
+        await fetch(buildApiUrl(editingId ? `/api/kits/${encodeURIComponent(editingId)}` : "/api/kits"), {
+          method: editingId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(kitObj)
+        });
+      }catch(e){}
+
+      // Atualiza lista local
+      const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
+      const targetName = String(kitObj.name).trim().toLowerCase();
+      
+      const idx = cachedKitsList.findIndex(k => {
+        const kId = String(k.id || "").trim().toLowerCase();
+        const kName = String(k.name || "").trim().toLowerCase();
+        return (editingId && (kId === targetId || kName === targetId)) || (kName === targetName);
+      });
+
+      if(idx !== -1){
+        cachedKitsList[idx] = kitObj;
+      } else {
+        cachedKitsList.push(kitObj);
+      }
+
+      if(typeof proposalSelectedKits !== "undefined" && Array.isArray(proposalSelectedKits)){
+        const propIdx = proposalSelectedKits.findIndex(k => {
+          const kId = String(k.id || "").trim().toLowerCase();
+          const kName = String(k.name || "").trim().toLowerCase();
+          return kId === targetId || kName === targetName;
+        });
+        if(propIdx !== -1){
+          proposalSelectedKits[propIdx] = kitObj;
+          if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
+        }
+      }
+
+      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
+      populateKitsSelect();
+      renderAdminKitsTable();
+
+      alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
+      closeCreateKitModalDirect();
+    };
+
+    window.confirmAddKitDirect = function(){
+      const selectKit = document.getElementById("selectKitId");
+      const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
+      if(!kit){
+        alert("Por favor, selecione um kit da lista.");
+        return;
+      }
+      if(Array.isArray(kit.items) && kit.items.length > 0){
+        const tbody = document.getElementById("pricingBody");
+        const currentRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+        const hasCustomItems = currentRows.some(tr => {
+          const desc = tr.querySelector(".price-description")?.value?.trim();
+          return Boolean(desc);
+        });
+
+        if(!hasCustomItems && tbody){
+          tbody.innerHTML = "";
+        }
+
+        kit.items.forEach(it => {
+          addPricingRow({
+            category: it.category || "Serviço",
+            description: it.description || "",
+            qty: it.qty || "1,00",
+            unit: it.unit || "un",
+            unitValue: it.unitValue || "0,00"
+          });
+        });
+
+        calculatePricing();
+
+        const existingIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === (kit.id || kit.name));
+        if(existingIdx !== -1){
+          proposalSelectedKits[existingIdx] = kit;
+        } else {
+          proposalSelectedKits.push(kit);
+        }
+        updateAttachedKitsUI();
+        showToast("Kit e itens comerciais inseridos com sucesso na proposta!", "success");
+      }
+      closeAddKitModalDirect();
     };
 
     function setupKitsModule(){
@@ -4120,22 +4360,9 @@
         }
       }
 
-      const modalAdd = document.getElementById("modalAddKit");
-      const btnOpenAdd = document.getElementById("openAddKitBtn");
-      const btnCancelAdd = document.getElementById("cancelAddKitBtn");
-      const btnConfirmAdd = document.getElementById("confirmAddKitBtn");
       const selectKit = document.getElementById("selectKitId");
       const previewCont = document.getElementById("kitPreviewContainer");
       const previewList = document.getElementById("kitPreviewList");
-
-      btnOpenAdd?.addEventListener("click", () => {
-        fetchKitsRegistry();
-        if(modalAdd) modalAdd.style.display = "flex";
-      });
-
-      btnCancelAdd?.addEventListener("click", () => {
-        if(modalAdd) modalAdd.style.display = "none";
-      });
 
       selectKit?.addEventListener("change", () => {
         const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
@@ -4146,278 +4373,9 @@
           previewCont.style.display = "none";
         }
       });
-
-
-
-      // MODAL DE GESTÃO DO ADMIN (CADASTRO, EDIÇÃO E EXCLUSÃO)
-      const modalCreate = document.getElementById("modalCreateKit");
-      const btnOpenCreate = document.getElementById("openCreateKitBtn");
-      const btnCancelCreate = document.getElementById("cancelCreateKitBtn");
-      const btnSaveNewKit = document.getElementById("saveNewKitBtn");
-      const btnAddRowInModal = document.getElementById("kitModalAddRowBtn");
-      const kitRowsBody = document.getElementById("kitModalRowsBody");
-
-      const tabForm = document.getElementById("tabFormKitBtn");
-      const tabList = document.getElementById("tabListKitsBtn");
-      const secForm = document.getElementById("sectionFormKit");
-      const secList = document.getElementById("sectionListKits");
-      const btnReset = document.getElementById("btnNewKitReset");
-
-      function renderAdminKitsTable(){
-        syncCachedKitsFromStorage();
-        const tbody = document.getElementById("adminKitsTableBody");
-        const badge = document.getElementById("countKitsBadge");
-        if(badge) badge.textContent = String(cachedKitsList.length);
-        if(!tbody) return;
-
-        if(!cachedKitsList.length){
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#55656f;">Nenhum kit cadastrado.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = cachedKitsList.map(k => `
-          <tr style="border-bottom:1px solid #eef2f4;">
-            <td style="padding:8px; font-weight:bold; color:#123d56;">${escapeHtml(k.name)}</td>
-            <td style="padding:8px; color:#55656f;">${escapeHtml(k.description || "—")}</td>
-            <td style="padding:8px; text-align:center;">${(k.items || []).length}</td>
-            <td style="padding:8px; text-align:center;">
-              ${k.pdf_attachment_url ? `<a href="${escapeHtml(k.pdf_attachment_url)}" target="_blank" style="color:#1b5e7b; font-size:11px; font-weight:bold; text-decoration:underline;">Ver PDF</a>` : '<span style="color:#94a3b8; font-size:11px;">Sem anexo</span>'}
-            </td>
-            <td style="padding:8px; text-align:center;">
-              <button type="button" class="btn-edit-kit" onclick="window.editKitById('${escapeHtml(k.id || k.name)}')" style="background:#1b5e7b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; margin-right:4px;">✏️ Editar</button>
-              <button type="button" class="btn-delete-kit" onclick="window.deleteKitById('${escapeHtml(k.id || k.name)}')" style="background:#8b3030; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">🗑️ Excluir</button>
-            </td>
-          </tr>
-        `).join("");
-      }
-
-      window.editKitById = function(kitId){
-        const kit = cachedKitsList.find(k => (k.id || k.name) === kitId);
-        if(!kit) return;
-        document.getElementById("editingKitId").value = kit.id || kit.name;
-        document.getElementById("adminKitModalTitle").textContent = "Editar Kit Comercial: " + kit.name;
-        document.getElementById("newKitName").value = kit.name || "";
-        document.getElementById("newKitDescription").value = kit.description || "";
-        
-        const kitRowsBody = document.getElementById("kitModalRowsBody");
-        if(kitRowsBody) kitRowsBody.innerHTML = "";
-        (kit.items || []).forEach(it => addKitModalRow(it));
-        if(!kit.items || kit.items.length === 0){
-          addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
-        }
-
-        const btnReset = document.getElementById("btnNewKitReset");
-        if(btnReset) btnReset.style.display = "inline-block";
-
-        window.switchAdminKitTab("form");
-      };
-
-      window.deleteKitById = function(kitId){
-        if(!confirm("Tem certeza que deseja excluir este kit comercial?")) return;
-        cachedKitsList = cachedKitsList.filter(k => (k.id || k.name) !== kitId);
-        safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-        populateKitsSelect();
-        renderAdminKitsTable();
-      };
-
-      function switchToTab(tab){
-        if(tab === "form"){
-          secForm.style.display = "block";
-          secList.style.display = "none";
-          tabForm.style.background = "#1b5e7b";
-          tabForm.style.color = "#fff";
-          tabList.style.background = "#eef2f4";
-          tabList.style.color = "#123d56";
-        } else {
-          secForm.style.display = "none";
-          secList.style.display = "block";
-          tabList.style.background = "#1b5e7b";
-          tabList.style.color = "#fff";
-          tabForm.style.background = "#eef2f4";
-          tabForm.style.color = "#123d56";
-          renderAdminKitsTable();
-        }
-      }
-
-      tabForm?.addEventListener("click", () => switchToTab("form"));
-      tabList?.addEventListener("click", () => switchToTab("list"));
-
-      function resetKitForm(){
-        document.getElementById("editingKitId").value = "";
-        document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
-        document.getElementById("newKitName").value = "";
-        document.getElementById("newKitDescription").value = "";
-        document.getElementById("newKitPdfFile").value = "";
-        document.getElementById("currentKitPdfInfo").style.display = "none";
-        document.getElementById("btnNewKitReset").style.display = "none";
-        if(kitRowsBody) kitRowsBody.innerHTML = "";
-        addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
-        addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
-      }
-
-      btnReset?.addEventListener("click", resetKitForm);
-
-      btnOpenCreate?.addEventListener("click", () => {
-        resetKitForm();
-        switchToTab("form");
-        if(modalCreate) modalCreate.style.display = "flex";
-      });
-
-      btnCancelCreate?.addEventListener("click", () => {
-        if(modalCreate) modalCreate.style.display = "none";
-      });
-
-      btnAddRowInModal?.addEventListener("click", () => addKitModalRow());
-
-      // EDIÇÃO DE KIT EXISTENTE (ADMIN)
-      document.addEventListener("click", (e) => {
-        const editBtn = e.target.closest(".btn-edit-kit");
-        if(editBtn){
-          const kitId = editBtn.getAttribute("data-kit-id");
-          const kit = cachedKitsList.find(k => (k.id || k.name) === kitId);
-          if(!kit) return;
-
-          document.getElementById("editingKitId").value = kit.id || kit.name;
-          document.getElementById("adminKitModalTitle").textContent = "Editar Kit: " + kit.name;
-          document.getElementById("newKitName").value = kit.name || "";
-          document.getElementById("newKitDescription").value = kit.description || "";
-          document.getElementById("btnNewKitReset").style.display = "inline-block";
-
-          const pdfInfo = document.getElementById("currentKitPdfInfo");
-          const pdfLink = document.getElementById("currentKitPdfLink");
-          if(kit.pdf_attachment_url){
-            pdfInfo.style.display = "block";
-            pdfLink.href = kit.pdf_attachment_url;
-            pdfLink.textContent = kit.pdf_attachment_name || "Visualizar PDF Anexo Atual";
-          } else {
-            pdfInfo.style.display = "none";
-          }
-
-          if(kitRowsBody) kitRowsBody.innerHTML = "";
-          if(Array.isArray(kit.items) && kit.items.length){
-            kit.items.forEach(it => addKitModalRow(it));
-          } else {
-            addKitModalRow();
-          }
-
-          switchToTab("form");
-        }
-
-        // EXCLUSÃO DE KIT (ADMIN)
-        const delBtn = e.target.closest(".btn-delete-kit");
-        if(delBtn){
-          const kitId = delBtn.getAttribute("data-kit-id");
-          const kit = cachedKitsList.find(k => (k.id || k.name) === kitId);
-          if(!kit) return;
-
-          if(!window.confirm(`Tem certeza que deseja excluir permanentemente o kit "${kit.name}"?`)){
-            return;
-          }
-
-          const token = getSupabaseAccessToken();
-          fetch(buildApiUrl(`/api/kits/${kit.id || kit.name}`), {
-            method: "DELETE",
-            headers: {
-              ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            }
-          }).catch(err => console.warn("Erro ao deletar kit:", err));
-
-          cachedKitsList = cachedKitsList.filter(k => (k.id || k.name) !== kitId);
-          safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-          populateKitsSelect();
-          renderAdminKitsTable();
-          showToast("Kit excluído com sucesso!", "success");
-        }
-      });
-
-      // SALVAR NOVO OU ATUALIZAR KIT EXISTENTE
-      btnSaveNewKit?.addEventListener("click", async () => {
-        const editingId = document.getElementById("editingKitId")?.value?.trim();
-        const name = document.getElementById("newKitName")?.value?.trim();
-        const description = document.getElementById("newKitDescription")?.value?.trim();
-        if(!name){
-          alert("Informe o nome do Kit.");
-          return;
-        }
-
-        const items = [];
-        document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
-          const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
-          const desc = tr.querySelector(".km-desc")?.value?.trim();
-          const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
-          const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
-          const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
-          if(desc){
-            items.push({ category, description: desc, qty, unit, unitValue: val });
-          }
-        });
-
-        if(items.length === 0){
-          alert("Adicione ao menos um item comercial válido com descrição.");
-          return;
-        }
-
-        const existingKit = editingId ? cachedKitsList.find(k => (k.id || k.name) === editingId) : null;
-        let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
-        let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
-
-        const pdfFileInput = document.getElementById("newKitPdfFile");
-        if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
-          const file = pdfFileInput.files[0];
-          pdfAttachmentName = file.name;
-          const statusDiv = document.getElementById("pdfUploadStatus");
-          if(statusDiv) statusDiv.innerHTML = "⏳ Processando e vinculando anexo PDF...";
-
-          try {
-            pdfAttachmentUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
-              reader.readAsDataURL(file);
-            });
-          } catch(err) {
-            console.warn("Erro ao converter PDF:", err);
-          }
-        }
-
-        const kitObj = {
-          id: editingId || ("kit-" + Date.now()),
-          name,
-          description,
-          pdf_attachment_url: pdfAttachmentUrl,
-          pdf_attachment_name: pdfAttachmentName,
-          items,
-          updated_at: new Date().toISOString()
-        };
-
-        const token = getSupabaseAccessToken();
-        try{
-          await fetch(buildApiUrl(editingId ? `/api/kits/${editingId}` : "/api/kits"), {
-            method: editingId ? "PUT" : "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify(kitObj)
-          });
-        }catch(e){}
-
-        if(editingId){
-          const idx = cachedKitsList.findIndex(k => (k.id || k.name) === editingId);
-          if(idx !== -1) cachedKitsList[idx] = kitObj;
-          else cachedKitsList.push(kitObj);
-        } else {
-          cachedKitsList.push(kitObj);
-        }
-
-        safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-        populateKitsSelect();
-
-        alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
-        if(modalCreate) modalCreate.style.display = "none";
-      });
     }
-async function initialize(){
+
+    async function initialize(){
       renderServiceCards();
       renderServiceBlocks();
       attachServiceEvents();
