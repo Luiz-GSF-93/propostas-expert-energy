@@ -1409,7 +1409,7 @@
         
         <div style="margin-bottom:16px;">
           <label for="selectKitId" style="display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#1f2b33;">Selecione o Kit</label>
-          <select id="selectKitId" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#ffffff; box-sizing:border-box;">
+          <select id="selectKitId" onchange="handleSelectKitChange()" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #c7d3da; font-size:14px; background:#ffffff; box-sizing:border-box;">
             <option value="">Carregando kits...</option>
           </select>
         </div>
@@ -3843,6 +3843,11 @@
 
     window.openAddKitModalDirect = function(){
       fetchKitsRegistry();
+      const select = document.getElementById("selectKitId");
+      if(select) select.value = "";
+      const preview = document.getElementById("kitPreviewContainer");
+      if(preview) preview.style.display = "none";
+      fetchKitsRegistry();
       const modal = document.getElementById("modalAddKit");
       if(modal) modal.style.display = "flex";
     };
@@ -4064,13 +4069,48 @@
       window.closeCreateKitModalDirect();
     };
 
+    window.handleSelectKitChange = function(){
+      const selectKit = document.getElementById("selectKitId");
+      const previewCont = document.getElementById("kitPreviewContainer");
+      const previewList = document.getElementById("kitPreviewList");
+      if(!selectKit || !previewCont || !previewList) return;
+
+      const val = String(selectKit.value || "").trim();
+      if(!val){
+        previewCont.style.display = "none";
+        previewList.innerHTML = "";
+        return;
+      }
+
+      const kit = cachedKitsList.find(k => String(k.id || "").trim() === val || String(k.name || "").trim() === val);
+      if(kit && Array.isArray(kit.items) && kit.items.length > 0){
+        previewList.innerHTML = kit.items.map(it => `
+          <li style="margin-bottom:4px;">
+            <strong>[${escapeHtml(it.category || "Item")}]</strong> ${escapeHtml(it.description || "")} 
+            <span style="color:#55656f;">(${it.qty || "1,00"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</span>
+          </li>
+        `).join("");
+        previewCont.style.display = "block";
+      } else {
+        previewList.innerHTML = '<li style="color:#8b3030;">Nenhum item configurado neste kit.</li>';
+        previewCont.style.display = "block";
+      }
+    };
+
     window.confirmAddKitDirect = function(){
       const selectKit = document.getElementById("selectKitId");
-      const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
-      if(!kit){
+      const val = String(selectKit?.value || "").trim();
+      if(!val){
         alert("Por favor, selecione um kit da lista.");
         return;
       }
+
+      const kit = cachedKitsList.find(k => String(k.id || "").trim() === val || String(k.name || "").trim() === val);
+      if(!kit){
+        alert("Kit selecionado não encontrado.");
+        return;
+      }
+
       if(Array.isArray(kit.items) && kit.items.length > 0){
         const tbody = document.getElementById("pricingBody");
         const currentRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
@@ -4095,16 +4135,18 @@
 
         calculatePricing();
 
-        const existingIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === (kit.id || kit.name));
+        const existingIdx = proposalSelectedKits.findIndex(k => String(k.id || k.name).trim() === String(kit.id || kit.name).trim());
         if(existingIdx !== -1){
           proposalSelectedKits[existingIdx] = kit;
         } else {
           proposalSelectedKits.push(kit);
         }
         updateAttachedKitsUI();
-        showToast("Kit e itens comerciais inseridos com sucesso na proposta!", "success");
+        showToast(`Kit "${kit.name}" com ${kit.items.length} itens inserido com sucesso na proposta!`, "success");
+      } else {
+        alert("Este kit não possui itens cadastrados.");
       }
-      window.closeAddKitModalDirect();
+      closeAddKitModalDirect();
     };
 
     function setupKitsModule(){
