@@ -1291,7 +1291,7 @@
     <div class="table-action" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
       <button type="button" id="addPricingRowBtn">Adicionar linha</button>
       <button type="button" id="openAddKitBtn" onclick="openAddKitModalDirect()" style="background:#1b5e7b; color:#ffffff; border:1px solid #144960; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Adicionar kit</button>
-      <button type="button" id="openCreateKitBtn" onclick="openCreateKitModalDirect()" style="background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
+      <button type="button" id="openCreateKitBtn" onclick="openCreateKitModalDirect()" style="display:none; background:#123d56; color:#ffffff; border:1px solid #0b2838; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Criar kit (Admin)</button>
     </div>
 
         <div class="totals">
@@ -3847,22 +3847,35 @@
      * ========================================================= */
     let cachedKitsList = [];
 
-    function isUserAdmin(){
-      const role = (localStorage.getItem("user_role") || 
-                    localStorage.getItem("sb_user_role") || 
-                    localStorage.getItem("role") || "").toLowerCase();
-      if(role === "admin" || role === "administrador") return true;
+        function isUserAdmin(){
+      // 1. Checar variáveis de sessão e localStorage explícitas
+      const directRole = (localStorage.getItem("user_role") || 
+                          localStorage.getItem("sb_user_role") || 
+                          localStorage.getItem("expert_energy_user_role") ||
+                          localStorage.getItem("role") || "").toLowerCase().trim();
+      if(directRole === "admin" || directRole === "administrator" || directRole === "administrador") return true;
 
+      // 2. Varrer tokens de autenticação do Supabase / Auth no localStorage
       for(const key of Object.keys(localStorage)){
+        if(!key.includes("auth") && !key.includes("supabase") && !key.includes("token") && !key.includes("user")) continue;
         const raw = localStorage.getItem(key);
         if(!raw) continue;
         try{
           const parsed = JSON.parse(raw);
-          const r = (parsed?.user?.role || parsed?.user?.app_metadata?.role || parsed?.user?.user_metadata?.role || parsed?.role || "").toLowerCase();
-          if(r === "admin" || r === "administrador") return true;
+          const userObj = parsed?.user || parsed;
+          const r = (userObj?.user_metadata?.role || 
+                     userObj?.app_metadata?.role || 
+                     userObj?.role || 
+                     parsed?.role || "").toLowerCase().trim();
+          if(r === "admin" || r === "administrator" || r === "administrador") return true;
         }catch(e){}
       }
-      return true; // Habilita o botão por padrão para permitir o cadastro imediato
+      
+      // 3. Checar window global se injetado pelo parent / iframe
+      if(window.currentUserRole === "admin" || window.currentUserRole === "administrador") return true;
+
+      // Se não for admin confirmado, retorna FALSE estrito (não exibe o botão)
+      return false;
     }
 
     async function fetchKitsRegistry(){
@@ -3955,6 +3968,10 @@
     };
 
     window.openCreateKitModalDirect = function(){
+      if(!isUserAdmin()){
+        alert("Acesso Restrito: Apenas usuários com perfil de Administrador têm permissão para cadastrar ou gerenciar Kits Comerciais.");
+        return;
+      }
       const modal = document.getElementById("modalCreateKit");
       const btnReset = document.getElementById("btnNewKitReset");
       const nameInput = document.getElementById("newKitName");
@@ -3984,8 +4001,12 @@
 
     function setupKitsModule(){
       const btnCreate = document.getElementById("openCreateKitBtn");
-      if(btnCreate && isUserAdmin()){
-        btnCreate.style.display = "inline-block";
+      if(btnCreate){
+        if(isUserAdmin()){
+          btnCreate.style.display = "inline-block";
+        } else {
+          btnCreate.style.display = "none";
+        }
       }
 
       const modalAdd = document.getElementById("modalAddKit");
@@ -4291,5 +4312,6 @@ async function initialize(){
 
 
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
