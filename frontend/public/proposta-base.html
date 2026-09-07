@@ -3579,10 +3579,9 @@
     
     
     /* Gerencia lista de kits ativos na proposta atual */
+    /* Gerencia lista de kits ativos na proposta atual */
     let proposalSelectedKits = [];
 
-    
-    /* Remove um kit/anexo da proposta atual */
     window.removeKitAttachmentFromProposal = function(kitId){
       proposalSelectedKits = proposalSelectedKits.filter(k => (k.id || k.name) !== kitId);
       updateAttachedKitsUI();
@@ -3623,255 +3622,7 @@
       `).join("");
     }
 
-
-    
-    /* Funções globais diretas para os modais */
-    window.closeAddKitModalDirect = function(){
-      const modal = document.getElementById("modalAddKit");
-      if(modal) modal.style.display = "none";
-    };
-
-    window.closeCreateKitModalDirect = function(){
-      const modal = document.getElementById("modalCreateKit");
-      if(modal) modal.style.display = "none";
-    };
-
-    window.confirmAddKitDirect = function(){
-      const selectKit = document.getElementById("selectKitId");
-      const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
-      if(!kit){
-        alert("Por favor, selecione um kit da lista.");
-        return;
-      }
-      if(Array.isArray(kit.items) && kit.items.length > 0){
-        const tbody = document.getElementById("pricingBody");
-        
-        // 1. Identifica se a tabela só contém linhas vazias (sem descrição)
-        const currentRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-        const hasCustomItems = currentRows.some(tr => {
-          const desc = tr.querySelector(".price-description")?.value?.trim();
-          return Boolean(desc);
-        });
-
-        // Se a tabela só tiver linhas vazias/padrão, limpa tudo para inserir o kit perfeitamente
-        if(!hasCustomItems && tbody){
-          tbody.innerHTML = "";
-        }
-
-        // 2. Insere os itens do kit garantindo que não haja duplicação
-        const existingDescriptions = Array.from(tbody ? tbody.querySelectorAll(".price-description") : [])
-          .map(el => el.value.trim().toLowerCase())
-          .filter(Boolean);
-
-        kit.items.forEach(it => {
-          addPricingRow({
-            category: it.category || "Serviço",
-            description: it.description || "",
-            qty: it.qty || "1,00",
-            unit: it.unit || "un",
-            unitValue: it.unitValue || "0,00"
-          });
-        });
-
-        calculatePricing();
-
-        // 3. Atualiza os anexos PDF do Kit na Seção 10
-        const existingIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === (kit.id || kit.name));
-        if(existingIdx !== -1){
-          proposalSelectedKits[existingIdx] = kit;
-        } else {
-          proposalSelectedKits.push(kit);
-        }
-        updateAttachedKitsUI();
-
-        showToast("Kit e Anexo Técnico PDF inseridos com sucesso na proposta!", "success");
-      }
-      window.closeAddKitModalDirect();
-    };
-
-    function syncCachedKitsFromStorage(){
-      try{
-        const raw = localStorage.getItem("cached_commercial_kits") || sessionStorage.getItem("cached_commercial_kits");
-        if(raw){
-          const parsed = JSON.parse(raw);
-          if(Array.isArray(parsed) && parsed.length > 0){
-            cachedKitsList = parsed;
-          }
-        }
-      }catch(e){}
-    }
-
-    window.switchAdminKitTab = function(tab){
-      const secForm = document.getElementById("sectionFormKit");
-      const secList = document.getElementById("sectionListKits");
-      const tabForm = document.getElementById("tabFormKitBtn");
-      const tabList = document.getElementById("tabListKitsBtn");
-      if(tab === "form"){
-        if(secForm) secForm.style.display = "block";
-        if(secList) secList.style.display = "none";
-        if(tabForm){ tabForm.style.background = "#1b5e7b"; tabForm.style.color = "#fff"; }
-        if(tabList){ tabList.style.background = "#eef2f4"; tabList.style.color = "#123d56"; }
-      } else {
-        if(secForm) secForm.style.display = "none";
-        if(secList) secList.style.display = "block";
-        if(tabList){ tabList.style.background = "#1b5e7b"; tabList.style.color = "#fff"; }
-        if(tabForm){ tabForm.style.background = "#eef2f4"; tabForm.style.color = "#123d56"; }
-        syncCachedKitsFromStorage();
-        renderAdminKitsTable();
-      }
-    };
-
-    window.resetKitFormDirect = function(){
-      document.getElementById("editingKitId").value = "";
-      document.getElementById("adminKitModalTitle").textContent = "Cadastrar Novo Kit Comercial (Admin)";
-      document.getElementById("newKitName").value = "";
-      document.getElementById("newKitDescription").value = "";
-      document.getElementById("newKitPdfFile").value = "";
-      document.getElementById("currentKitPdfInfo").style.display = "none";
-      document.getElementById("btnNewKitReset").style.display = "none";
-      const kitRowsBody = document.getElementById("kitModalRowsBody");
-      if(kitRowsBody) kitRowsBody.innerHTML = "";
-      addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
-      addKitModalRow({ category: "Equipamento", description: "", qty: "1,00", unit: "un", unitValue: "" });
-    };
-
-    window.saveNewKitDirect = async function(){
-      const editingId = document.getElementById("editingKitId")?.value?.trim();
-      const name = document.getElementById("newKitName")?.value?.trim();
-      const description = document.getElementById("newKitDescription")?.value?.trim();
-      if(!name){
-        alert("Informe o nome do Kit.");
-        return;
-      }
-
-      const items = [];
-      document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
-        const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
-        const desc = tr.querySelector(".km-desc")?.value?.trim();
-        const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
-        const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
-        const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
-        if(desc){
-          items.push({ category, description: desc, qty, unit, unitValue: val });
-        }
-      });
-
-      if(items.length === 0){
-        alert("Adicione ao menos um item comercial válido com descrição.");
-        return;
-      }
-
-      const existingKit = editingId ? cachedKitsList.find(k => (k.id || k.name) === editingId) : null;
-      let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
-      let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
-
-      const pdfFileInput = document.getElementById("newKitPdfFile");
-      if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
-        const file = pdfFileInput.files[0];
-        pdfAttachmentName = file.name;
-        const statusDiv = document.getElementById("pdfUploadStatus");
-        if(statusDiv) statusDiv.innerHTML = "⏳ Processando e vinculando anexo PDF...";
-
-        try {
-          // Converte o arquivo PDF diretamente para Base64 Data URL (Garante abertura 100% offline e sem erro 404)
-          pdfAttachmentUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
-            reader.readAsDataURL(file);
-          });
-
-          // Tenta também upload para a API de storage caso o backend esteja ativo
-          const cleanFileName = "kit_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const token = getSupabaseAccessToken();
-          const uploadFormData = new FormData();
-          uploadFormData.append("file", file);
-          uploadFormData.append("bucket", "kit-documents");
-          uploadFormData.append("filename", cleanFileName);
-
-          fetch(buildApiUrl("/api/storage/upload"), {
-            method: "POST",
-            headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
-            body: uploadFormData
-          }).then(res => res.ok ? res.json() : null).then(data => {
-            if(data && (data.url || data.publicUrl)){
-              // Se o backend retornou URL pública do Supabase, pode usar
-              console.log("PDF hospedado no Supabase:", data.url || data.publicUrl);
-            }
-          }).catch(() => {});
-
-        } catch(err) {
-          console.warn("Erro ao converter PDF:", err);
-        }
-      }
-
-      const kitObj = {
-        id: editingId || ("kit-" + Date.now()),
-        name,
-        description,
-        pdf_attachment_url: pdfAttachmentUrl,
-        pdf_attachment_name: pdfAttachmentName,
-        items,
-        updated_at: new Date().toISOString()
-      };
-
-      const token = getSupabaseAccessToken();
-      try{
-        await fetch(buildApiUrl(editingId ? `/api/kits/${editingId}` : "/api/kits"), {
-          method: editingId ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(kitObj)
-        });
-      }catch(e){}
-
-      // 1. Atualizar ou Inserir no array local pelo ID ou Nome
-      const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
-      const targetName = String(kitObj.name).trim().toLowerCase();
-      
-      const idx = cachedKitsList.findIndex(k => {
-        const kId = String(k.id || "").trim().toLowerCase();
-        const kName = String(k.name || "").trim().toLowerCase();
-        return (editingId && (kId === targetId || kName === targetId)) || (kName === targetName);
-      });
-
-      if(idx !== -1){
-        cachedKitsList[idx] = kitObj;
-      } else {
-        cachedKitsList.push(kitObj);
-      }
-
-      // Se o kit editado estiver na proposta aberta, atualiza na Seção 10
-      if(typeof proposalSelectedKits !== "undefined" && Array.isArray(proposalSelectedKits)){
-        const propIdx = proposalSelectedKits.findIndex(k => {
-          const kId = String(k.id || "").trim().toLowerCase();
-          const kName = String(k.name || "").trim().toLowerCase();
-          return kId === targetId || kName === targetName;
-        });
-        if(propIdx !== -1){
-          proposalSelectedKits[propIdx] = kitObj;
-          if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
-        }
-      }
-
-      // 2. Persistir localmente no storage de forma imediata
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-      
-      // 3. Atualizar todos os seletores e tabelas da tela
-      populateKitsSelect();
-      renderAdminKitsTable();
-
-      alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
-      window.closeCreateKitModalDirect();
-    };
-
-
-    /* =========================================================
-     * MÓDULO DE KITS COMERCIAIS UNIFICADO (ADMIN & COMERCIAL)
-     * ========================================================= */
-    if(typeof cachedKitsList === "undefined") { var cachedKitsList = []; }
+    var cachedKitsList = [];
 
     function decodeJwtPayload(token){
       if(!token || typeof token !== "string") return null;
@@ -3968,7 +3719,7 @@
       const token = getSupabaseAccessToken();
       let remoteKits = [];
       try{
-        const response = await fetch(buildApiUrl("/api/kits?status=active"), {
+        const response = await fetch("/api/kits?status=active", {
           headers: {
             "Accept": "application/json",
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
@@ -3979,7 +3730,7 @@
           remoteKits = Array.isArray(result) ? result : (result?.data || result?.items || []);
         }
       }catch(err){
-        console.warn("[Kits] Usando cache local:", err);
+        console.warn("[Kits] Consultando cache local:", err);
       }
 
       let localKits = [];
@@ -4107,8 +3858,8 @@
         return;
       }
       const modal = document.getElementById("modalCreateKit");
-      resetKitFormDirect();
-      switchAdminKitTab("form");
+      window.resetKitFormDirect();
+      window.switchAdminKitTab("form");
       if(modal) modal.style.display = "flex";
     };
 
@@ -4179,7 +3930,7 @@
 
       const btnReset = document.getElementById("btnNewKitReset");
       if(btnReset) btnReset.style.display = "inline-block";
-      switchAdminKitTab("form");
+      window.switchAdminKitTab("form");
     };
 
     window.deleteKitById = async function(kitId){
@@ -4187,7 +3938,7 @@
       
       const token = getSupabaseAccessToken();
       try{
-        await fetch(buildApiUrl(`/api/kits/${encodeURIComponent(kitId)}`), {
+        await fetch(`/api/kits/${encodeURIComponent(kitId)}`, {
           method: "DELETE",
           headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
         });
@@ -4261,7 +4012,7 @@
 
       const token = getSupabaseAccessToken();
       try{
-        await fetch(buildApiUrl(editingId ? `/api/kits/${encodeURIComponent(editingId)}` : "/api/kits"), {
+        const res = await fetch(editingId ? `/api/kits/${encodeURIComponent(editingId)}` : "/api/kits", {
           method: editingId ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
@@ -4269,7 +4020,13 @@
           },
           body: JSON.stringify(kitObj)
         });
-      }catch(e){}
+        if(res.ok){
+          const resData = await res.json();
+          if(resData?.data?.id) kitObj.id = resData.data.id;
+        }
+      }catch(e){
+        console.warn("[Kits] Erro ao salvar kit no backend:", e);
+      }
 
       // Atualiza lista local
       const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
@@ -4304,7 +4061,7 @@
       renderAdminKitsTable();
 
       alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
-      closeCreateKitModalDirect();
+      window.closeCreateKitModalDirect();
     };
 
     window.confirmAddKitDirect = function(){
@@ -4347,7 +4104,7 @@
         updateAttachedKitsUI();
         showToast("Kit e itens comerciais inseridos com sucesso na proposta!", "success");
       }
-      closeAddKitModalDirect();
+      window.closeAddKitModalDirect();
     };
 
     function setupKitsModule(){
@@ -4411,6 +4168,7 @@
 
 
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
