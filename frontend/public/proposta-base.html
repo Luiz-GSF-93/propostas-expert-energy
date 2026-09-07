@@ -2400,10 +2400,6 @@
 
     function buildApiUrl(path = ""){
       const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
-      // Rotas internas do Next.js / Vercel (como /api/kits ou /api/storage) chamam a própria origem
-      if(normalizedPath.startsWith("/api/kits") || normalizedPath.startsWith("/api/storage")){
-        return normalizedPath;
-      }
       return `${API_BASE_URL}${normalizedPath}`;
     }
 
@@ -3668,18 +3664,13 @@
           .filter(Boolean);
 
         kit.items.forEach(it => {
-          const itemDescLower = (it.description || "").trim().toLowerCase();
-          // Se o item ainda não estiver na planilha, adiciona
-          if(!existingDescriptions.includes(itemDescLower)){
-            addPricingRow({
-              category: it.category || "Serviço",
-              description: it.description || "",
-              qty: it.qty || "1,00",
-              unit: it.unit || "un",
-              unitValue: it.unitValue || "0,00"
-            });
-            existingDescriptions.push(itemDescLower);
-          }
+          addPricingRow({
+            category: it.category || "Serviço",
+            description: it.description || "",
+            qty: it.qty || "1,00",
+            unit: it.unit || "un",
+            unitValue: it.unitValue || "0,00"
+          });
         });
 
         calculatePricing();
@@ -3836,22 +3827,39 @@
         });
       }catch(e){}
 
-      if(editingId){
-        const idx = cachedKitsList.findIndex(k => (k.id || k.name) === editingId);
-        if(idx !== -1) cachedKitsList[idx] = kitObj;
-        else cachedKitsList.push(kitObj);
+      // 1. Atualizar ou Inserir no array local pelo ID ou Nome
+      const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
+      const targetName = String(kitObj.name).trim().toLowerCase();
+      
+      const idx = cachedKitsList.findIndex(k => {
+        const kId = String(k.id || "").trim().toLowerCase();
+        const kName = String(k.name || "").trim().toLowerCase();
+        return (editingId && (kId === targetId || kName === targetId)) || (kName === targetName);
+      });
 
-        // Se o kit editado estiver atualmente na proposta aberta, atualiza o anexo na Seção 10 imediatamente
-        const propIdx = proposalSelectedKits.findIndex(k => (k.id || k.name) === editingId);
-        if(propIdx !== -1){
-          proposalSelectedKits[propIdx] = kitObj;
-          updateAttachedKitsUI();
-        }
+      if(idx !== -1){
+        cachedKitsList[idx] = kitObj;
       } else {
         cachedKitsList.push(kitObj);
       }
 
+      // Se o kit editado estiver na proposta aberta, atualiza na Seção 10
+      if(typeof proposalSelectedKits !== "undefined" && Array.isArray(proposalSelectedKits)){
+        const propIdx = proposalSelectedKits.findIndex(k => {
+          const kId = String(k.id || "").trim().toLowerCase();
+          const kName = String(k.name || "").trim().toLowerCase();
+          return kId === targetId || kName === targetName;
+        });
+        if(propIdx !== -1){
+          proposalSelectedKits[propIdx] = kitObj;
+          if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
+        }
+      }
+
+      // 2. Persistir localmente no storage de forma imediata
       safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
+      
+      // 3. Atualizar todos os seletores e tabelas da tela
       populateKitsSelect();
       renderAdminKitsTable();
 

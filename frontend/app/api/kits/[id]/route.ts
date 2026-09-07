@@ -12,7 +12,7 @@ function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 }
 
-// PUT /api/kits/[id] - Compatível com Next.js 15/16 (params é Promise)
+// PUT /api/kits/[id] - Compatível universalmente com Next.js 15/16 (Turbopack)
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -47,7 +47,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/kits/[id] - Compatível com Next.js 15/16 (params é Promise)
+// DELETE /api/kits/[id] - Compatível universalmente com Next.js 15/16 (Turbopack)
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
