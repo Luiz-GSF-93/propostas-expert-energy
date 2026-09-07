@@ -1002,6 +1002,7 @@
     .contact-registry-status[data-status="error"]{color:var(--erro)}
     .contact-registry-status[data-status="warning"]{color:#8a5a00}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="action-bar editor-only">
@@ -3288,6 +3289,7 @@
     .top{box-shadow:none;}
   }
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="wrap">
@@ -3539,6 +3541,7 @@
 
     <div class="footer-note">Estimativas de ganhos, eficiência, economia, redução de penalidades ou mitigação de riscos apresentadas nesta versão cliente possuem caráter referencial e dependem de diagnóstico, baseline, condições de mercado, perfil tarifário, disponibilidade de dados, regime operacional e efetiva implementação das medidas propostas.</div>
   </div>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>`;
     }
@@ -4172,6 +4175,53 @@
       });
     }
 
+    /* =========================================================================
+     * SUPABASE REALTIME (WEBSOCKETS) - SINCRONIZAÇÃO INSTANTÂNEA MULTIUSUÁRIO
+     * ========================================================================= */
+    let realtimeKitsChannel = null;
+
+    function initSupabaseRealtimeKits(){
+      try{
+        if(typeof window.supabase === "undefined" && typeof createClient === "undefined" && typeof supabase === "undefined"){
+          return;
+        }
+
+        const sbUrl = "https://wzcqmrcjuhqsfspcfdhd.supabase.co" || window.__SUPABASE_URL__;
+        const sbKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." || window.__SUPABASE_ANON_KEY__;
+
+        // Se o cliente global supabase já existir ou for inicializado pelo SDK
+        const client = window.supabaseClient || (typeof createClient === "function" ? createClient(sbUrl, sbKey) : (typeof supabase !== "undefined" && supabase.channel ? supabase : null));
+
+        if(client && typeof client.channel === "function"){
+          if(realtimeKitsChannel){
+            client.removeChannel(realtimeKitsChannel);
+          }
+
+          realtimeKitsChannel = client
+            .channel("realtime-commercial-kits-channel")
+            .on("postgres_changes", { event: "*", schema: "public", table: "commercial_kits" }, (payload) => {
+              console.log("⚡ [Supabase Realtime] Alteração detectada em commercial_kits:", payload.eventType, payload.new?.name || payload.old?.id);
+              
+              // Recarrega imediatamente a lista do Supabase
+              fetchKitsRegistry(true).then(() => {
+                // Se o modal estiver aberto, atualiza o preview do kit selecionado
+                const selectKit = document.getElementById("selectKitId");
+                if(selectKit && selectKit.value){
+                  if(typeof window.handleSelectKitChange === "function") window.handleSelectKitChange();
+                }
+              });
+            })
+            .subscribe((status) => {
+              if(status === "SUBSCRIBED"){
+                console.log("🟢 [Supabase Realtime] Canal WebSocket conectado com sucesso à tabela commercial_kits!");
+              }
+            });
+        }
+      }catch(err){
+        console.warn("[Supabase Realtime] Inicialização:", err);
+      }
+    }
+
     async function initialize(){
       renderServiceCards();
       renderServiceBlocks();
@@ -4199,6 +4249,7 @@
       }
 
       await restoreInitialProposalState();
+      initSupabaseRealtimeKits();
       await initializeContactRegistry();
     }
 
@@ -4208,7 +4259,6 @@
 
 
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
