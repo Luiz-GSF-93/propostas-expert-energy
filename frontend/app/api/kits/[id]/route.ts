@@ -12,13 +12,16 @@ function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 }
 
-// PUT /api/kits/[id] - Atualiza um kit existente
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+// PUT /api/kits/[id] - Compatível com Next.js 15/16 (params é Promise)
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ ok: false, error: "Supabase ausente" }, { status: 500 });
 
-    const id = params?.id;
+    const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
     const updateData: any = {
@@ -44,13 +47,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-// DELETE /api/kits/[id] - Exclui um kit
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+// DELETE /api/kits/[id] - Compatível com Next.js 15/16 (params é Promise)
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ ok: false, error: "Supabase ausente" }, { status: 500 });
 
-    const id = params?.id;
+    const { id } = await context.params;
     const { error } = await supabase
       .from("commercial_kits")
       .delete()
