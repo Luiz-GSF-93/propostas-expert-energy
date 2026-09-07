@@ -2400,6 +2400,10 @@
 
     function buildApiUrl(path = ""){
       const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
+      // Rotas internas do Next.js / Vercel (como /api/kits ou /api/storage) chamam a própria origem
+      if(normalizedPath.startsWith("/api/kits") || normalizedPath.startsWith("/api/storage")){
+        return normalizedPath;
+      }
       return `${API_BASE_URL}${normalizedPath}`;
     }
 
