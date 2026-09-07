@@ -17,98 +17,78 @@ function getSupabase() {
   });
 }
 
-// PUT /api/kits/[id] - Atualiza kit e TODOS os seus itens (suporte a qualquer quantidade)
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+// GET /api/kits - Lista todos os kits comerciais
+export async function GET(req: NextRequest) {
   try {
     const supabase = getSupabase();
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase ausente" }, { status: 500 });
-
-    const { id } = await context.params;
-    const body = await req.json().catch(() => ({}));
-
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    };
-    if (body.name !== undefined) updateData.name = String(body.name).trim();
-    if (body.description !== undefined) updateData.description = String(body.description).trim();
-    if (body.items !== undefined) updateData.items = Array.isArray(body.items) ? body.items : [];
-    if (body.pdf_attachment_url !== undefined) updateData.pdf_attachment_url = String(body.pdf_attachment_url).trim();
-    if (body.pdf_attachment_name !== undefined) updateData.pdf_attachment_name = String(body.pdf_attachment_name).trim();
-
-    // 1. Tenta atualizar pelo ID
-    let { data, error } = await supabase
-      .from("commercial_kits")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .maybeSingle();
-
-    // 2. Se não encontrou por ID (ex: id local 'kit-123'), tenta atualizar ou inserir por nome
-    if (!data && body.name) {
-      const { data: byName } = await supabase
-        .from("commercial_kits")
-        .select("id")
-        .eq("name", String(body.name).trim())
-        .maybeSingle();
-
-      if (byName?.id) {
-        const res = await supabase
-          .from("commercial_kits")
-          .update(updateData)
-          .eq("id", byName.id)
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      } else {
-        // Se ainda não existe, cria
-        const res = await supabase
-          .from("commercial_kits")
-          .insert({
-            name: updateData.name || body.name,
-            description: updateData.description || "",
-            items: updateData.items || [],
-            pdf_attachment_url: updateData.pdf_attachment_url || "",
-            pdf_attachment_name: updateData.pdf_attachment_name || "",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      }
+    if (!supabase) {
+      return NextResponse.json({ ok: false, error: "Configuração do Supabase ausente" }, { status: 500 });
     }
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, data }, { status: 200 });
+    const { data, error } = await supabase
+      .from("commercial_kits")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.warn("[GET /api/kits] Erro no Supabase:", error.message);
+      return NextResponse.json({ ok: false, error: error.message, data: [] }, { status: 200 });
+    }
+
+    return NextResponse.json(data || [], { status: 200 });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    console.error("[GET /api/kits] Erro fatal:", err);
+    return NextResponse.json({ ok: false, error: err.message, data: [] }, { status: 500 });
   }
 }
 
-// DELETE /api/kits/[id]
-export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+// POST /api/kits - Cria novo kit com itens ilimitados
+export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabase();
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase ausente" }, { status: 500 });
+    if (!supabase) {
+      return NextResponse.json({ ok: false, error: "Configuração do Supabase ausente" }, { status: 500 });
+    }
 
-    const { id } = await context.params;
-    
-    // Tenta deletar por ID
-    let { error } = await supabase
+    const body = await req.json().catch(() => ({}));
+    const name = String(body.name || "").trim();
+    if (!name) {
+      return NextResponse.json({ ok: false, error: "Nome do kit é obrigatório" }, { status: 400 });
+    }
+
+    const items = Array.isArray(body.items) ? body.items : [];
+    const description = body.description ? String(body.description).trim() : null;
+    const pdf_attachment_url = body.pdf_attachment_url ? String(body.pdf_attachment_url).trim() : null;
+    const pdf_attachment_name = body.pdf_attachment_name ? String(body.pdf_attachment_name).trim() : null;
+
+    const insertData: any = {
+      name,
+      description,
+      items,
+      status: "active",
+      pdf_attachment_url,
+      pdf_attachment_name,
+      created_at: new Date().toISOString(),
+    };
+
+    if (body.id && typeof body.id === "string" && !body.id.startsWith("kit-")) {
+      insertData.id = body.id;
+    }
+
+    const { data, error } = await supabase
       .from("commercial_kits")
-      .delete()
-      .eq("id", id);
+      .insert(insertData)
+      .select()
+      .single();
 
-    return NextResponse.json({ ok: true, message: "Kit excluído" }, { status: 200 });
+    if (error) {
+      console.error("[POST /api/kits] Erro Supabase:", error);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (err: any) {
+    console.error("[POST /api/kits] Erro fatal:", err);
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
