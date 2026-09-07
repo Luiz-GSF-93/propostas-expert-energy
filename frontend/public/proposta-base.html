@@ -3847,34 +3847,100 @@
      * ========================================================= */
     let cachedKitsList = [];
 
-        function isUserAdmin(){
-      // 1. Checar variáveis de sessão e localStorage explícitas
-      const directRole = (localStorage.getItem("user_role") || 
-                          localStorage.getItem("sb_user_role") || 
-                          localStorage.getItem("expert_energy_user_role") ||
-                          localStorage.getItem("role") || "").toLowerCase().trim();
-      if(directRole === "admin" || directRole === "administrator" || directRole === "administrador") return true;
-
-      // 2. Varrer tokens de autenticação do Supabase / Auth no localStorage
-      for(const key of Object.keys(localStorage)){
-        if(!key.includes("auth") && !key.includes("supabase") && !key.includes("token") && !key.includes("user")) continue;
-        const raw = localStorage.getItem(key);
-        if(!raw) continue;
-        try{
-          const parsed = JSON.parse(raw);
-          const userObj = parsed?.user || parsed;
-          const r = (userObj?.user_metadata?.role || 
-                     userObj?.app_metadata?.role || 
-                     userObj?.role || 
-                     parsed?.role || "").toLowerCase().trim();
-          if(r === "admin" || r === "administrator" || r === "administrador") return true;
-        }catch(e){}
+            function decodeJwtPayload(token){
+      if(!token || typeof token !== "string") return null;
+      try{
+        const parts = token.split(".");
+        if(parts.length < 2) return null;
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(atob(base64).split("").map(function(c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(""));
+        return JSON.parse(jsonPayload);
+      }catch(e){
+        return null;
       }
-      
-      // 3. Checar window global se injetado pelo parent / iframe
-      if(window.currentUserRole === "admin" || window.currentUserRole === "administrador") return true;
+    }
 
-      // Se não for admin confirmado, retorna FALSE estrito (não exibe o botão)
+    function checkIsAdminRole(val){
+      if(!val) return false;
+      const s = String(val).toLowerCase().trim();
+      return (s === "admin" || s === "administrator" || s === "administrador" || s === "superadmin");
+    }
+
+    function isUserAdmin(){
+      // 1. Emails administradores mestres conhecidos (acesso garantido)
+      const masterAdmins = ["luizdigi@gmail.com", "admin@expertenergy.com.br", "contato@expertenergy.com.br"];
+
+      // 2. Checar chaves diretas no localStorage e sessionStorage
+      const directRoleKeys = ["user_role", "sb_user_role", "expert_energy_user_role", "role", "perfil"];
+      for(const k of directRoleKeys){
+        const val = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if(checkIsAdminRole(val)) return true;
+      }
+
+      // 3. Checar emails diretos no storage
+      const emailKeys = ["user_email", "email", "expert_energy_user_email", "sb_user_email"];
+      for(const k of emailKeys){
+        const em = (localStorage.getItem(k) || sessionStorage.getItem(k) || "").toLowerCase().trim();
+        if(em && masterAdmins.includes(em)) return true;
+      }
+
+      // 4. Varrer todos os objetos de autenticação do Supabase no localStorage e sessionStorage
+      const storages = [localStorage, sessionStorage];
+      for(const store of storages){
+        for(let i = 0; i < store.length; i++){
+          const key = store.key(i);
+          if(!key) continue;
+          const raw = store.getItem(key);
+          if(!raw || typeof raw !== "string") continue;
+
+          // Se tiver email master no JSON raw
+          for(const admEmail of masterAdmins){
+            if(raw.toLowerCase().includes(admEmail)) return true;
+          }
+
+          // Se tiver palavra "admin" associada a role no raw
+          if(raw.toLowerCase().includes('"role":"admin"') || 
+             raw.toLowerCase().includes('"role":"administrador"') ||
+             raw.toLowerCase().includes('"user_role":"admin"')) {
+            return true;
+          }
+
+          try{
+            const parsed = JSON.parse(raw);
+            const user = parsed?.user || parsed?.currentUser || parsed?.session?.user || parsed;
+            
+            // Checar email do usuário
+            const userEmail = (user?.email || parsed?.email || "").toLowerCase().trim();
+            if(userEmail && masterAdmins.includes(userEmail)) return true;
+
+            // Checar metadados do Supabase
+            const role1 = user?.user_metadata?.role || user?.user_metadata?.perfil;
+            const role2 = user?.app_metadata?.role || user?.app_metadata?.perfil;
+            const role3 = user?.role || parsed?.role;
+            if(checkIsAdminRole(role1) || checkIsAdminRole(role2) || checkIsAdminRole(role3)) return true;
+
+            // Checar se o access_token contém claims de admin
+            const token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
+            if(token){
+              const jwt = decodeJwtPayload(token);
+              if(jwt){
+                const jwtEmail = (jwt?.email || "").toLowerCase().trim();
+                if(jwtEmail && masterAdmins.includes(jwtEmail)) return true;
+                const jwtRole = jwt?.user_metadata?.role || jwt?.app_metadata?.role || jwt?.role;
+                if(checkIsAdminRole(jwtRole)) return true;
+              }
+            }
+          }catch(e){}
+        }
+      }
+
+      // 5. Checar window global se injetado pelo parent / Next.js
+      if(window.currentUserRole && checkIsAdminRole(window.currentUserRole)) return true;
+      if(window.currentUserEmail && masterAdmins.includes(String(window.currentUserEmail).toLowerCase().trim())) return true;
+
       return false;
     }
 
