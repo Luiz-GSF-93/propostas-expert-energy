@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       clienteId = clientData.id;
     }
     if (!clienteId) return NextResponse.json({ ok: false, error: "Cliente obrigatorio" }, { status: 400 });
+
     const { data: contractData, error: contractErr } = await supabase
       .from("contracts")
       .insert({
@@ -75,15 +76,19 @@ export async function POST(req: NextRequest) {
       })
       .select().single();
     if (contractErr) return NextResponse.json({ ok: false, error: contractErr.message }, { status: 500 });
+
     if (body.licenca_energy_link) {
-      const tipo = body.licenca_energy_link.tipo || "starter";
-      let limite = tipo === "professional" ? 30 : tipo === "enterprise" ? Number(body.licenca_energy_link.limite || 100) : 10;
+      const l = body.licenca_energy_link;
+      const tipo = l.tipo_licenca || l.tipo || "starter";
+      const pontosList = l.pontos_medicao || l.pontos || [];
+      const limite = Number(l.limite_medicoes || l.limite || (tipo === "professional" ? 30 : tipo === "enterprise" ? 100 : 10));
+
       await supabase.from("contract_licenses").insert({
         contrato_id: contractData.id,
         tipo_licenca: tipo,
         limite_medicoes: limite,
-        usuarios_permitidos: Number(body.licenca_energy_link.usuarios || 5),
-        pontos_medicao: body.licenca_energy_link.pontos || [],
+        usuarios_permitidos: Number(l.usuarios_permitidos || l.usuarios || 5),
+        pontos_medicao: pontosList,
         ativo: true,
       });
     }

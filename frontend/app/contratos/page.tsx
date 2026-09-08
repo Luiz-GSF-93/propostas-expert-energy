@@ -135,6 +135,17 @@ export default function ContratosPage() {
     let obsObj: any = {};
     try { obsObj = JSON.parse(c.observacoes || "{}"); } catch {}
 
+    let pontosCarregados: PontoMedicao[] = [];
+    if (lic && Array.isArray(lic.pontos_medicao) && lic.pontos_medicao.length > 0) {
+      pontosCarregados = lic.pontos_medicao;
+    } else if (obsObj.pontos_medicao && Array.isArray(obsObj.pontos_medicao) && obsObj.pontos_medicao.length > 0) {
+      pontosCarregados = obsObj.pontos_medicao;
+    } else {
+      pontosCarregados = [
+        { id: "1", nome_ponto: "Entrada Principal (Trafo 01)", setor_unidade: "Subestação Geral", ativo: true }
+      ];
+    }
+
     setFormData({
       razao_social: c.clients?.razao_social || "",
       cnpj: c.clients?.cnpj || "",
@@ -152,9 +163,7 @@ export default function ContratosPage() {
       indice_reajuste: c.indice_reajuste || "IPCA",
       taxa_reajuste_projetada: obsObj.taxa_reajuste_projetada || 4.5,
       usuarios_permitidos: lic?.usuarios_permitidos || 5,
-      pontos_medicao: lic?.pontos_medicao && lic.pontos_medicao.length > 0
-        ? lic.pontos_medicao
-        : [{ id: "1", nome_ponto: "Entrada Principal (Trafo 01)", setor_unidade: "Subestação Geral", ativo: true }],
+      pontos_medicao: pontosCarregados,
       observacoes: obsObj.obs_texto || c.observacoes || ""
     });
     setModalOpen(true);
@@ -197,6 +206,7 @@ export default function ContratosPage() {
         tipo_cobranca: formData.tipo_cobranca,
         percentual_variavel_economia: Number(formData.percentual_variavel_economia),
         taxa_reajuste_projetada: Number(formData.taxa_reajuste_projetada),
+        pontos_medicao: formData.pontos_medicao,
         obs_texto: formData.observacoes
       });
 
@@ -236,7 +246,7 @@ export default function ContratosPage() {
       });
 
       if (res.ok) {
-        alert(editingContractId ? "Contrato atualizado com sucesso!" : "Contrato cadastrado com sucesso!");
+        alert(editingContractId ? `Contrato atualizado com sucesso (${formData.pontos_medicao.length} pontos salvos)!` : `Contrato cadastrado com sucesso (${formData.pontos_medicao.length} pontos salvos)!`);
         setModalOpen(false);
         fetchDados();
       } else {
@@ -347,9 +357,9 @@ export default function ContratosPage() {
               <tbody className="divide-y divide-slate-800/60 text-sm">
                 {filtered.map((c) => {
                   const lic = c.contract_licenses?.[0];
-                  const pts = (lic?.pontos_medicao || []).length;
                   let obs: any = {};
                   try { obs = JSON.parse(c.observacoes || "{}"); } catch {}
+                  const ptsQtd = (lic?.pontos_medicao || obs.pontos_medicao || []).length;
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-800/40 transition">
@@ -360,7 +370,7 @@ export default function ContratosPage() {
                       </td>
                       <td className="py-4 px-4 text-xs">
                         <span className="font-semibold text-slate-200 block">{getNomePlano(c)}</span>
-                        <span className="text-[11px] text-cyan-400">{pts} ponto(s) cadastrado(s)</span>
+                        <span className="text-[11px] text-cyan-400 font-bold">{ptsQtd} ponto(s) de medição</span>
                       </td>
                       <td className="py-4 px-4 text-xs text-slate-300">
                         <div>{new Date(c.data_inicio).toLocaleDateString("pt-BR")} a {new Date(c.data_fim).toLocaleDateString("pt-BR")}</div>
