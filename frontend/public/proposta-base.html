@@ -4056,58 +4056,102 @@
         closeCreateKitModalDirect();
       };
 
+    
+    function findKitInCache(val){
+      if(!val) return null;
+      const list = Array.isArray(window.cachedKitsList) ? window.cachedKitsList : (Array.isArray(cachedKitsList) ? cachedKitsList : []);
+      const target = String(val).trim().toLowerCase();
+      return list.find(k => 
+        String(k.id || "").trim().toLowerCase() === target || 
+        String(k.name || "").trim().toLowerCase() === target
+      ) || null;
+    }
+
+    function formatNumberBR(val){
+      if(val === undefined || val === null || val === "") return "0,00";
+      if(typeof val === "number") return val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      let str = String(val).trim();
+      if(str.includes(",")) return str;
+      const num = parseFloat(str);
+      return isNaN(num) ? "0,00" : num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     window.confirmAddKitDirect = function(){
-      const selectKit = document.getElementById("selectKitId");
-      const val = String(selectKit?.value || "").trim();
-      if(!val){
-        alert("Por favor, selecione um kit da lista.");
-        return;
-      }
-
-      const kit = findKitInCache(val);
-      if(!kit){
-        alert("Kit selecionado não encontrado na lista atual.");
-        return;
-      }
-
-      const items = normalizeKitItems(kit.items);
-      if(items.length > 0){
-        const tbody = document.getElementById("pricingBody");
-        const currentRows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-        const hasCustomItems = currentRows.some(tr => {
-          const desc = tr.querySelector(".price-description")?.value?.trim();
-          return Boolean(desc);
-        });
-
-        if(!hasCustomItems && tbody){
-          tbody.innerHTML = "";
+      try {
+        const selectKit = document.getElementById("selectKitId");
+        const val = String(selectKit?.value || "").trim();
+        if(!val){
+          alert("Por favor, selecione um kit da lista.");
+          return;
         }
 
-        items.forEach(it => {
-          addPricingRow({
-            category: it.category || "Serviço",
-            description: it.description || "",
-            qty: it.qty || "1,00",
-            unit: it.unit || "un",
-            unitValue: it.unitValue || "0,00"
-          });
-        });
+        const kit = findKitInCache(val);
+        if(!kit){
+          alert("Kit selecionado não encontrado na lista atual.");
+          return;
+        }
 
-        calculatePricing();
+        const items = normalizeKitItems(kit.items);
+        if(items && items.length > 0){
+          const tbody = document.getElementById("pricingBody");
+          if(tbody){
+            // Verifica se a planilha comercial tem apenas linhas vazias iniciais
+            const currentRows = Array.from(tbody.querySelectorAll("tr"));
+            const hasCustomItems = currentRows.some(tr => {
+              const desc = tr.querySelector(".price-description")?.value?.trim();
+              const val = tr.querySelector(".price-unitvalue")?.value?.trim();
+              return Boolean(desc || (val && val !== "0,00" && val !== "0"));
+            });
 
-        const existingIdx = proposalSelectedKits.findIndex(k => String(k.id || k.name).trim() === String(kit.id || kit.name).trim());
-        if(existingIdx !== -1){
-          proposalSelectedKits[existingIdx] = kit;
+            if(!hasCustomItems){
+              tbody.innerHTML = "";
+            }
+
+            items.forEach(it => {
+              const cat = it.category || it.categoria || "Serviço";
+              const desc = it.description || it.descricao || it.name || "";
+              const q = formatNumberBR(it.qty || it.quantity || it.quantidade || "1,00");
+              const u = it.unit || it.unidade || "un";
+              const v = formatNumberBR(it.unitValue || it.unit_value || it.valor_unitario || it.valor || "0,00");
+
+              addPricingRow({
+                category: cat,
+                description: desc,
+                qty: q,
+                unit: u,
+                unitValue: v
+              });
+            });
+
+            if(typeof calculatePricing === "function") calculatePricing();
+            if(typeof renumberPricingRows === "function") renumberPricingRows();
+          }
+
+          if(Array.isArray(proposalSelectedKits)){
+            const existingIdx = proposalSelectedKits.findIndex(k => String(k.id || k.name).trim() === String(kit.id || kit.name).trim());
+            if(existingIdx !== -1){
+              proposalSelectedKits[existingIdx] = kit;
+            } else {
+              proposalSelectedKits.push(kit);
+            }
+            if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
+          }
+
+          if(typeof showToast === "function"){
+            showToast(`Kit "${kit.name}" com ${items.length} itens inserido com sucesso na proposta!`, "success");
+          } else {
+            alert(`Kit "${kit.name}" com ${items.length} itens inserido com sucesso na planilha comercial!`);
+          }
         } else {
-          proposalSelectedKits.push(kit);
+          alert("Este kit não possui itens válidos cadastrados.");
         }
-        updateAttachedKitsUI();
-        showToast(`Kit "${kit.name}" com ${items.length} itens inserido com sucesso na proposta!`, "success");
-      } else {
-        alert("Este kit não possui itens válidos cadastrados.");
+        closeAddKitModalDirect();
+      } catch(err) {
+        console.error("Erro ao inserir kit na proposta:", err);
+        alert("Ocorreu um erro ao inserir os itens do kit: " + err.message);
       }
-      closeAddKitModalDirect();
     };
+
 
     function setupKitsModule(){
       const btnCreate = document.getElementById("openCreateKitBtn");
@@ -4124,10 +4168,24 @@
       const previewList = document.getElementById("kitPreviewList");
 
       selectKit?.addEventListener("change", () => {
-        const kit = cachedKitsList.find(k => (k.id || k.name) === selectKit.value);
-        if(kit && Array.isArray(kit.items) && kit.items.length > 0){
-          previewList.innerHTML = kit.items.map(it => `<li><strong>[${escapeHtml(it.category || "Item")}]</strong> ${escapeHtml(it.description)} (${it.qty || "1"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</li>`).join("");
-          previewCont.style.display = "block";
+        const val = selectKit.value;
+        const kit = findKitInCache(val);
+        if(kit){
+          const items = normalizeKitItems(kit.items);
+          if(items.length > 0){
+            previewList.innerHTML = items.map(it => {
+              const cat = it.category || it.categoria || "Item";
+              const desc = it.description || it.descricao || "";
+              const q = formatNumberBR(it.qty || it.quantity || it.quantidade || 1);
+              const u = it.unit || it.unidade || "un";
+              const v = formatNumberBR(it.unitValue || it.unit_value || it.valor_unitario || 0);
+              return `<li><strong>[${escapeHtml(cat)}]</strong> ${escapeHtml(desc)} (${escapeHtml(q)} ${escapeHtml(u)} x R$ ${escapeHtml(v)})</li>`;
+            }).join("");
+            previewCont.style.display = "block";
+          } else {
+            previewList.innerHTML = "<li>Este kit não possui itens cadastrados.</li>";
+            previewCont.style.display = "block";
+          }
         } else {
           previewCont.style.display = "none";
         }
