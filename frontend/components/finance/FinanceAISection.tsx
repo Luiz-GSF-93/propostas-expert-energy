@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -14,6 +15,7 @@ const moduloLabel: Record<string, string> = {
   fluxo_caixa:  "Fluxo de Caixa",
   dre:          "DRE (Receitas × Despesas)",
   custos:       "Custos",
+  contratos:    "Gestão de Contratos (MRR)",
   planejamento: "Planejamento / Orçamento",
   emprestimos:  "Empréstimos / Financiamentos"
 };
@@ -22,6 +24,7 @@ const moduloIcon: Record<string, string> = {
   fluxo_caixa:  "💵",
   dre:          "📊",
   custos:       "🧾",
+  contratos:    "📑",
   planejamento: "🎯",
   emprestimos:  "🏦"
 };
@@ -43,13 +46,6 @@ async function postJson(path: string, payload: Record<string, unknown>) {
 function fmtBRL(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
-}
-
-function escapeHtml(s: string) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 export default function FinanceAISection() {
@@ -130,7 +126,6 @@ export default function FinanceAISection() {
     finally { setLoadingChat(false); }
   }
 
-  // Carregar dados automaticamente ao liberar acesso
   useEffect(() => {
     if (allowed === true) {
       callOverview();
@@ -147,14 +142,13 @@ export default function FinanceAISection() {
 
   if (allowed !== true) return null;
 
-  // --- organizar insights por módulo ---
   const insightsPorModulo: Record<string, Insight[]> = {};
   (data?.insights as Insight[] | undefined)?.forEach((i) => {
     if (!insightsPorModulo[i.modulo]) insightsPorModulo[i.modulo] = [];
     insightsPorModulo[i.modulo].push(i);
   });
 
-  const modulosOrdem = ["fluxo_caixa", "dre", "custos", "planejamento", "emprestimos"];
+  const modulosOrdem = ["fluxo_caixa", "dre", "custos", "contratos", "planejamento", "emprestimos"];
 
   return (
     <section
@@ -164,9 +158,9 @@ export default function FinanceAISection() {
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>⚡</span> Inteligência Financeira Executiva (IA)
+            <span>⚡</span> Inteligência Financeira Executiva & Estratégica (IA)
           </h2>
-          <p className="text-xs text-slate-400">Visão consolidada multi-módulo com auditoria de coerência e cruzamento de dados</p>
+          <p className="text-xs text-slate-400">Visão consolidada multi-módulo (Caixa, DRE, Custos, Contratos Recorrentes MRR e Orçamento)</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-300 font-medium">Competência:</label>
@@ -192,7 +186,6 @@ export default function FinanceAISection() {
         </div>
       )}
 
-      {/* PARECER GERAL DO CFO */}
       {data?.parecer_geral && (
         <div className="mb-6 rounded-2xl border border-cyan-500/30 bg-slate-900/80 p-4 shadow-inner">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
@@ -204,8 +197,7 @@ export default function FinanceAISection() {
         </div>
       )}
 
-      {/* CARDS DOS 5 MÓDULOS */}
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {modulosOrdem.map((mk) => {
           const m = data?.modulos?.[mk];
           const bruto = data?.bruto;
@@ -214,43 +206,34 @@ export default function FinanceAISection() {
               const val = m?.totais?.saldo ?? bruto?.cashflow?.saldo ?? (Number(bruto?.cashflow?.receita || 0) - Number(bruto?.cashflow?.despesa || 0));
               const rec = m?.totais?.receita ?? bruto?.cashflow?.receita ?? 0;
               const desp = m?.totais?.despesa ?? bruto?.cashflow?.despesa ?? 0;
-              return { 
-                valor: fmtBRL(val), 
-                label: `Rec: ${fmtBRL(rec)} | Desp: ${fmtBRL(desp)}` 
-              };
+              return { valor: fmtBRL(val), label: `Rec: ${fmtBRL(rec)} | Desp: ${fmtBRL(desp)}` };
             }
             if (mk === "dre") {
               const res = m?.totais?.resultado ?? bruto?.dre?.resultado_liquido ?? bruto?.dre?.lucro_liquido ?? (Number(bruto?.dre?.receita_liquida || 0) - Number(bruto?.dre?.despesas_operacionais || 0));
               const margem = m?.margens?.ebitda_pct ?? bruto?.dre?.margem_ebitda_pct ?? (bruto?.dre?.receita_liquida ? ((Number(bruto?.dre?.ebitda || 0) / Number(bruto?.dre?.receita_liquida)) * 100) : null);
-              return { 
-                valor: fmtBRL(res), 
-                label: `Margem EBITDA: ${margem != null ? Number(margem).toFixed(1) + "%" : "n/d"}` 
-              };
+              return { valor: fmtBRL(res), label: `Margem EBITDA: ${margem != null ? Number(margem).toFixed(1) + "%" : "n/d"}` };
             }
             if (mk === "custos") {
               const tot = m?.totais?.total ?? bruto?.costs?.total ?? (Number(bruto?.costs?.fixos || 0) + Number(bruto?.costs?.variaveis || 0));
               const fixos = bruto?.costs?.fixos ?? 0;
               const vars = bruto?.costs?.variaveis ?? 0;
-              return { 
-                valor: fmtBRL(tot), 
-                label: `Fixos: ${fmtBRL(fixos)} | Var: ${fmtBRL(vars)}` 
-              };
+              return { valor: fmtBRL(tot), label: `Fixos: ${fmtBRL(fixos)} | Var: ${fmtBRL(vars)}` };
+            }
+            if (mk === "contratos") {
+              const mrr = m?.totais?.mrr ?? bruto?.contracts?.mrr ?? 0;
+              const ativos = m?.totais?.ativos ?? bruto?.contracts?.total_ativos ?? 0;
+              const arr = m?.totais?.arr ?? bruto?.contracts?.arr ?? (mrr * 12);
+              return { valor: fmtBRL(mrr), label: `${ativos} contrato(s) | ARR ${fmtBRL(arr)}` };
             }
             if (mk === "planejamento") {
               const real = m?.totais?.realizado_total ?? bruto?.planning?.realizado_total ?? bruto?.planning?.total_realizado ?? 0;
               const meta = m?.totais?.metas_total ?? bruto?.planning?.meta_total ?? bruto?.planning?.total_meta ?? 0;
-              return { 
-                valor: fmtBRL(real), 
-                label: `Meta Prevista: ${fmtBRL(meta)}` 
-              };
+              return { valor: fmtBRL(real), label: `Meta Prevista: ${fmtBRL(meta)}` };
             }
             if (mk === "emprestimos") {
               const parc = m?.totais?.parcela_mes ?? bruto?.loans?.parcela_mes ?? bruto?.loans?.total_parcelas_mes ?? bruto?.cashflow?.emprestimos_auto ?? 0;
               const saldoDev = m?.totais?.saldo_total ?? bruto?.loans?.saldo_devedor_total ?? bruto?.loans?.saldo_total ?? 0;
-              return { 
-                valor: fmtBRL(parc), 
-                label: `Saldo Devedor: ${fmtBRL(saldoDev)}` 
-              };
+              return { valor: fmtBRL(parc), label: `Saldo Devedor: ${fmtBRL(saldoDev)}` };
             }
             return null;
           })();
@@ -258,25 +241,18 @@ export default function FinanceAISection() {
           const severidade = insights.some(i => i.severidade === "alta") ? "alta" :
                              insights.some(i => i.severidade === "media") ? "media" : "baixa";
           return (
-            <div key={mk}
-              className="rounded-xl border border-slate-700 bg-slate-800/80 p-4 shadow-sm"
-              style={{ borderTop: `3px solid ${sevColor[severidade]}` }}>
+            <div key={mk} className="rounded-xl border border-slate-700 bg-slate-800/80 p-4 shadow-sm" style={{ borderTop: `3px solid ${sevColor[severidade]}` }}>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
                 <span>{moduloIcon[mk]}</span>
                 <span>{moduloLabel[mk]}</span>
               </div>
-              <div className="mt-2 text-lg font-bold text-white">
-                {kpi ? kpi.valor : "—"}
-              </div>
-              <div className="text-[11px] text-slate-400">
-                {kpi ? kpi.label : "Sem dados"}
-              </div>
+              <div className="mt-2 text-lg font-bold text-white">{kpi ? kpi.valor : "—"}</div>
+              <div className="text-[11px] text-slate-400">{kpi ? kpi.label : "Sem dados"}</div>
             </div>
           );
         })}
       </div>
 
-      {/* SIMULAÇÃO DE CENÁRIOS */}
       {Array.isArray(data?.cenarios) && data.cenarios.length > 0 && (
         <div className="mb-6">
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -289,24 +265,17 @@ export default function FinanceAISection() {
                           rotulo.toLowerCase().includes("pessim") ? "#dc2626" : "#0284c7";
               const r = c.resultado || {};
               const saldo = c.lucro ?? r.saldo_final ?? r.saldo ?? (Number(c.receita || 0) - Number(c.custos || 0));
-              const ebitda = c.lucro ?? r.ebitda ?? 0;
               const deltaPct = c.delta_vs_atual_pct ?? r.delta_vs_atual_pct;
               return (
-                <div key={`cen-${idx}`} className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 shadow-sm"
-                     style={{ borderLeft: `3px solid ${cor}` }}>
+                <div key={`cen-${idx}`} className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 shadow-sm" style={{ borderLeft: `3px solid ${cor}` }}>
                   <div className="text-xs uppercase font-bold text-slate-300">{rotulo}</div>
-                  <div className="mt-1 text-sm font-bold text-white">
-                    Saldo / Lucro: {fmtBRL(saldo)}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    Receita: {fmtBRL(c.receita || r.receita)} | Custos: {fmtBRL(c.custos || r.custos)}
-                  </div>
+                  <div className="mt-1 text-sm font-bold text-white">Saldo / Lucro: {fmtBRL(saldo)}</div>
+                  <div className="text-xs text-slate-400">Receita: {fmtBRL(c.receita || r.receita)} | Custos: {fmtBRL(c.custos || r.custos)}</div>
                   {deltaPct != null && (
                     <div className="mt-1 text-[11px] font-semibold" style={{ color: deltaPct >= 0 ? "#16a34a" : "#dc2626" }}>
                       Variação vs Atual: {deltaPct >= 0 ? "+" : ""}{deltaPct}%
                     </div>
                   )}
-                  {c.premissas && <p className="mt-1 text-[11px] text-slate-400 italic leading-snug">{c.premissas}</p>}
                 </div>
               );
             })}
@@ -314,15 +283,14 @@ export default function FinanceAISection() {
         </div>
       )}
 
-      {/* CHAT / ASSISTENTE FINANCEIRO */}
       <div className="rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow-sm">
         <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
-          <span>💬</span> Consultor Financeiro Virtual
+          <span>💬</span> Consultor Financeiro Virtual (Estratégia, Caixa & Gestão de Contratos)
         </div>
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Ex: Qual a previsão de caixa para os próximos meses? Temos risco de liquidez?"
+            placeholder="Ex: Qual o impacto da nossa carteira de contratos no MRR e fluxo de caixa dos próximos 6 meses?"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && callChat()}
