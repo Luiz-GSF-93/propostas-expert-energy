@@ -4127,15 +4127,9 @@
             if(typeof renumberPricingRows === "function") renumberPricingRows();
           }
 
-          if(Array.isArray(proposalSelectedKits)){
-            const existingIdx = proposalSelectedKits.findIndex(k => String(k.id || k.name).trim() === String(kit.id || kit.name).trim());
-            if(existingIdx !== -1){
-              proposalSelectedKits[existingIdx] = kit;
-            } else {
-              proposalSelectedKits.push(kit);
-            }
-            if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
-          }
+          // Ao inserir um novo kit, ele sobrepõe o anexo do kit anterior na proposta atual
+          proposalSelectedKits = [kit];
+          if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
 
           if(typeof showToast === "function"){
             showToast(`Kit "${kit.name}" com ${items.length} itens inserido com sucesso na proposta!`, "success");
