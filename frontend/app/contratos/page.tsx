@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 interface PontoMedicao {
   id: string;
@@ -47,7 +47,12 @@ export default function ContratosPage() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [kpis, setKpis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("todos");
+  const [filterPlano, setFilterPlano] = useState("todos");
+  const [filterCobranca, setFilterCobranca] = useState("todos");
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingContractId, setEditingContractId] = useState<string | null>(null);
 
@@ -261,15 +266,50 @@ export default function ContratosPage() {
   const fmtBRL = (v: number) => (Number(v || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   const valorProjetadoReajuste = Number(formData.valor_mensal || 0) * (1 + (Number(formData.taxa_reajuste_projetada || 0) / 100));
-  const filtered = contratos.filter((c) => filterStatus === "todos" ? true : c.status === filterStatus);
 
-  const getNomePlano = (c: Contrato) => {
+  const getPlanoKey = (c: Contrato) => {
     try {
       const obs = JSON.parse(c.observacoes || "{}");
-      const p = planosDisponiveis.find(x => x.value === obs.tipo_plano_servico);
-      if (p) return p.label.split(":")[0];
+      if (obs.tipo_plano_servico) return obs.tipo_plano_servico;
     } catch {}
-    return "Contrato Personalizado";
+    return c.contract_licenses?.[0]?.tipo_licenca || "telemedicao_starter";
+  };
+
+  const getNomePlano = (c: Contrato) => {
+    const key = getPlanoKey(c);
+    const p = planosDisponiveis.find(x => x.value === key);
+    return p ? p.label : "Contrato Personalizado";
+  };
+
+  const getTipoCobranca = (c: Contrato) => {
+    try {
+      const obs = JSON.parse(c.observacoes || "{}");
+      return obs.tipo_cobranca || "fixa";
+    } catch {}
+    return "fixa";
+  };
+
+  const filteredContratos = useMemo(() => {
+    return contratos.filter((c) => {
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        const razao = (c.clients?.razao_social || "").toLowerCase();
+        const cnpj = (c.clients?.cnpj || "").toLowerCase();
+        const num = String(c.numero_contrato || "");
+        if (!razao.includes(term) && !cnpj.includes(term) && !num.includes(term)) return false;
+      }
+      if (filterStatus !== "todos" && c.status !== filterStatus) return false;
+      if (filterPlano !== "todos" && getPlanoKey(c) !== filterPlano) return false;
+      if (filterCobranca !== "todos" && getTipoCobranca(c) !== filterCobranca) return false;
+      return true;
+    });
+  }, [contratos, searchTerm, filterStatus, filterPlano, filterCobranca]);
+
+  const handleLimparFiltros = () => {
+    setSearchTerm("");
+    setFilterStatus("todos");
+    setFilterPlano("todos");
+    setFilterCobranca("todos");
   };
 
   return (
@@ -326,20 +366,69 @@ export default function ContratosPage() {
         </div>
       )}
 
+      {/* PAINEL DE FILTROS AVANÇADOS */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 mb-6 shadow-xl">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
+            <span>🔍</span> Filtros Avançados de Pesquisa
+          </div>
+          {(searchTerm || filterStatus !== "todos" || filterPlano !== "todos" || filterCobranca !== "todos") && (
+            <button onClick={handleLimparFiltros} className="text-xs text-rose-400 hover:text-rose-300 font-semibold underline transition cursor-pointer">
+              Limpar Filtros
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">Buscar Empresa / CNPJ / Contrato</label>
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Ex: Savegnago, 00.000, #0001..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">Tipo de Plano & Escopo</label>
+            <select value={filterPlano} onChange={(e) => setFilterPlano(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+              <option value="todos">Todos os Planos & Escopos</option>
+              {planosDisponiveis.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">Modelo de Cobrança</label>
+            <select value={filterCobranca} onChange={(e) => setFilterCobranca(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+              <option value="todos">Todos os Modelos</option>
+              <option value="fixa">Cobrança Fixa Mensal</option>
+              <option value="hibrida">Cobrança Híbrida (Fixo + % Economia)</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">Status do Contrato</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+              <option value="todos">Todos os Status</option>
+              <option value="ativo">Ativo</option>
+              <option value="renovacao_pendente">Renovação Pendente</option>
+              <option value="em_negociacao">Em Negociação</option>
+              <option value="cancelado">Cancelado / Encerrado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* TABELA DE CONTRATOS */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold text-white">Contratos e Licenças Vigentes ({filtered.length})</h2>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200">
-            <option value="todos">Todos os Status</option>
-            <option value="ativo">Ativos</option>
-            <option value="cancelado">Cancelados</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-white">Contratos e Licenças Vigentes</h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-bold">
+              {filteredContratos.length} resultado(s)
+            </span>
+          </div>
         </div>
 
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">Carregando contratos...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">Nenhum contrato cadastrado.</div>
+        ) : filteredContratos.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 text-sm">Nenhum contrato encontrado para os filtros selecionados.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -355,7 +444,7 @@ export default function ContratosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-sm">
-                {filtered.map((c) => {
+                {filteredContratos.map((c) => {
                   const lic = c.contract_licenses?.[0];
                   let obs: any = {};
                   try { obs = JSON.parse(c.observacoes || "{}"); } catch {}
@@ -387,7 +476,7 @@ export default function ContratosPage() {
                         )}
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.status === "ativo" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-rose-950 text-rose-400 border border-rose-800"}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.status === "ativo" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : c.status === "cancelado" ? "bg-rose-950 text-rose-400 border border-rose-800" : "bg-amber-950 text-amber-400 border border-amber-800"}`}>
                           {c.status.toUpperCase()}
                         </span>
                       </td>
@@ -468,10 +557,10 @@ export default function ContratosPage() {
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">Vigência (Meses)</label>
                     <select value={formData.vigencia_meses} onChange={(e) => setFormData({ ...formData, vigencia_meses: Number(e.target.value) })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white">
-                      <option value={12}>12 Meses</option>
-                      <option value={24}>24 Meses</option>
-                      <option value={36}>36 Meses</option>
-                      <option value={60}>60 Meses</option>
+                      <option value="12">12 Meses</option>
+                      <option value="24">24 Meses</option>
+                      <option value="36">36 Meses</option>
+                      <option value="60">60 Meses</option>
                     </select>
                   </div>
                   <div>
@@ -496,7 +585,7 @@ export default function ContratosPage() {
                   )}
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">Dia do Vencimento</label>
-                    <input type="number" min={1} max={31} value={formData.dia_vencimento} onChange={(e) => setFormData({ ...formData, dia_vencimento: parseInt(e.target.value) || 10 })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" />
+                    <input type="number" min="1" max="31" value={formData.dia_vencimento} onChange={(e) => setFormData({ ...formData, dia_vencimento: parseInt(e.target.value) || 10 })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" />
                   </div>
                 </div>
               </div>
