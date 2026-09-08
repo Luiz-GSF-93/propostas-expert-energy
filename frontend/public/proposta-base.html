@@ -3715,16 +3715,13 @@
       }catch(e){}
     }
 
-    async function fetchKitsRegistry(forceFresh = false){
+    async function fetchKitsRegistry(){
       const token = getSupabaseAccessToken();
       let remoteKits = [];
       try{
-        const cacheBuster = "_t=" + Date.now();
-        const response = await fetch(`/api/kits?status=active&${cacheBuster}`, {
-          cache: "no-store",
+        const response = await fetch("/api/kits?status=active", {
           headers: {
             "Accept": "application/json",
-            "Cache-Control": "no-cache",
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
           }
         });
@@ -3739,23 +3736,56 @@
         console.warn("[Kits] Consultando cache local:", err);
       }
 
-      if(remoteKits.length > 0){
-        cachedKitsList = remoteKits;
-        try { localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList)); } catch(e){}
-      } else {
-        let localKits = [];
-        try{
-          const local = localStorage.getItem("cached_commercial_kits");
-          if(local) localKits = JSON.parse(local);
-        }catch(e){ localKits = []; }
-        if(localKits.length > 0){
-          cachedKitsList = localKits.map(k => ({ ...k, items: normalizeKitItems(k.items) }));
-        }
+      let localKits = [];
+      const local = localStorage.getItem("cached_commercial_kits");
+      if(local){
+        try { localKits = JSON.parse(local); } catch(e){ localKits = []; }
       }
 
+      const kitMap = new Map();
+      (Array.isArray(localKits) ? localKits : []).forEach(k => {
+        const key = String(k.id || k.name || "").trim();
+        if(key) kitMap.set(key, k);
+      });
+      (Array.isArray(remoteKits) ? remoteKits : []).forEach(k => {
+        const key = String(k.id || k.name || "").trim();
+        if(key) kitMap.set(key, k);
+      });
+
+      if(kitMap.size > 0){
+        cachedKitsList = Array.from(kitMap.values());
+      } else {
+        cachedKitsList = [
+          {
+            id: "kit-startup-gateway",
+            name: "Kit 1: Startup Assistido + Gateway de Telemetria",
+            description: "Instalação, parametrização de gateway e testes operacionais",
+            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/gateway-telemetria-4g.pdf",
+            pdf_attachment_name: "Datasheet-Gateway-Telemetria-ExpertEnergy.pdf",
+            items: [
+              { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
+              { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
+              { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
+            ]
+          },
+          {
+            id: "kit-medicao-setorial",
+            name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
+            description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
+            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/smart-meter-multimedidor.pdf",
+            pdf_attachment_name: "Memorial-Tecnico-SmartMeter.pdf",
+            items: [
+              { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
+              { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
+              { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
+            ]
+          }
+        ];
+      }
+
+      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
       populateKitsSelect();
       renderAdminKitsTable();
-      return cachedKitsList;
     }
 
     function populateKitsSelect(){
