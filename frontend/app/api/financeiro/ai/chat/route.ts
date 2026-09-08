@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  checkAdminFromRequest, loadFinanceContextFull, logFinanceAiEvent,
-  ehPerguntaCategoria, detectarAgentes, montarContextoResumido,
-  SYS, supabaseAdmin,
+  checkAdminFromRequest,
+  loadFinanceContextFull,
+  logFinanceAiEvent,
+  supabaseAdmin,
 } from "@/lib/financeiro/ai/server";
 
 export const runtime = "nodejs";
@@ -10,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const guard = await checkAdminFromRequest(req);
-  if (!guard.ok) return NextResponse.json({ error: guard.reason, auth_status: guard.status }, { status: guard.status });
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.reason, auth_status: guard.status }, { status: guard.status });
+  }
 
   const body = await req.json().catch(() => ({}));
   const year   = Number(body?.year  ?? new Date().getFullYear());
@@ -52,48 +55,53 @@ export async function POST(req: Request) {
     }
   }
 
-  const agentes = detectarAgentes(prompt, true);
-  const contextoResumido = montarContextoResumido(ctx, agentes);
-
   const contextoCompleto = {
-    ...contextoResumido,
+    periodo: `${month}/${year}`,
+    financeiro: {
+      caixa: ctx.now.cashflow,
+      dre: ctx.now.dre,
+      custos: ctx.now.costs,
+      planejamento: ctx.now.planning,
+      emprestimos: ctx.now.loans,
+    },
     gestao_contratos_recorrentes: contratosResumo
   };
   const contextoJSON = JSON.stringify(contextoCompleto, null, 2);
 
-  const apiKey = (typeof process !== "undefined" ? process.env.OPENAI_API_KEY || "" : "");
-  const model  = (typeof process !== "undefined" ? process.env.OPENAI_MODEL || "gpt-4o-mini" : "gpt-4o-mini");
+  const apiKey = process.env.OPENAI_API_KEY || "";
+  const model  = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   if (!apiKey) {
     const fb = `[Consultor Financeiro Virtual Expert Energy]:
-Análise de Caixa e Contratos (${month}/${year}):
-• Base Recorrente MRR: R$ ${contratosResumo.mrr.toLocaleString("pt-BR", {minimumFractionDigits: 2})} (${contratosResumo.total_ativos} contratos ativos | ARR Projetado: R$ ${contratosResumo.arr.toLocaleString("pt-BR", {minimumFractionDigits: 2})}).
+Análise Executiva (${month}/${year}):
+• Base de Contratos Recorrentes (MRR): R$ ${contratosResumo.mrr.toLocaleString("pt-BR", {minimumFractionDigits: 2})} (${contratosResumo.total_ativos} contratos ativos | ARR: R$ ${contratosResumo.arr.toLocaleString("pt-BR", {minimumFractionDigits: 2})}).
+• Fluxo de Caixa: Saldo de R$ ${Number(ctx.now.cashflow.saldo || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2})} (Receita: R$ ${Number(ctx.now.cashflow.receita || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2})} | Despesa: R$ ${Number(ctx.now.cashflow.despesa || 0).toLocaleString("pt-BR", {minimumFractionDigits: 2})}).
 • Análise da Pergunta: "${prompt}"
-• Estratégia Recomendada: Mantenha a previsibilidade sustentada pelos contratos vigentes e acompanhe as renovações nos próximos 90 dias com reajustes pelo IPCA/IGP-M.`;
+• Estratégia Recomendada: Acompanhe as renovações nos próximos 90 dias aplicando reajuste anual pelo IPCA/IGP-M para preservar a margem e previsibilidade do caixa.`;
 
     return NextResponse.json({
       resposta: fb,
-      modulos_ativos: [...agentes, "contratos"],
       context: contextoCompleto,
       fallback: true,
     });
   }
 
   try {
-    const sysPrompt = SYS + `\n\nVOCÊ É O DIRETOR FINANCEIRO E ESTRATÉGICO (CFO/IA) DA EXPERT ENERGY.
-Você possui acesso total a:
-1. Fluxo de Caixa, DRE e Custos Operacionais.
+    const sysPrompt = `VOCÊ É O DIRETOR FINANCEIRO E ESTRATÉGICO (CFO/IA) DA EXPERT ENERGY.
+Você possui acesso em tempo real aos seguintes módulos do sistema:
+1. Fluxo de Caixa Operacional, DRE e Custos.
 2. Planejamento, Metas e Empréstimos.
-3. MÓDULO DE GESTÃO DE CONTRATOS & MRR: Base de receita recorrente mensal (MRR), ARR anualizado, renovações automáticas, consultorias de Mercado Livre (ACL), telemedição Energy Link e índices de reajuste contratual.
-Responda com autoridade executiva, números precisos em R$ (BRL) e recomendações estratégicas acionáveis.`;
+3. GESTÃO DE CONTRATOS & MRR: Base de receita recorrente mensal (MRR), ARR anualizado, renovações automáticas, consultorias de Mercado Livre (ACL), telemedição Energy Link e índices de reajuste contratual.
+Responda com autoridade executiva, números precisos formatados em R$ (BRL) e orientações estratégicas claras.`;
 
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model, temperature: 0.3,
+        model,
+        temperature: 0.3,
         messages: [
-          { role: "system", content: sysPrompt + "\n\nCONTEXTO CONSOLIDADO (FINANCEIRO + CONTRATOS MRR):\n" + contextoJSON },
+          { role: "system", content: sysPrompt + "\n\nCONTEXTO CONSOLIDADO:\n" + contextoJSON },
           { role: "user", content: prompt }
         ],
       })
@@ -101,7 +109,7 @@ Responda com autoridade executiva, números precisos em R$ (BRL) e recomendaçõ
 
     if (!resp.ok) {
       return NextResponse.json({
-        resposta: `Aviso: Análise gerada com base nos dados locais de contratos e fluxo de caixa. (MRR Ativo: R$ ${contratosResumo.mrr.toFixed(2)})`,
+        resposta: `Aviso: Análise gerada com base nos dados consolidados de contratos e fluxo de caixa. (MRR Ativo: R$ ${contratosResumo.mrr.toFixed(2)})`,
         context: contextoCompleto
       });
     }
@@ -110,14 +118,16 @@ Responda com autoridade executiva, números precisos em R$ (BRL) e recomendaçõ
     const resposta = data.choices?.[0]?.message?.content || "Sem resposta da IA.";
 
     await logFinanceAiEvent({
-      user_email: guard.user.email, user_id: guard.user.id,
-      action: "chat", period_ref: `${year}-${String(month).padStart(2,"0")}`,
-      prompt: prompt.slice(0, 100), response: resposta.slice(0, 100),
+      user_email: guard.user.email,
+      user_id: guard.user.id,
+      action: "chat",
+      period_ref: `${year}-${String(month).padStart(2,"0")}`,
+      prompt: prompt.slice(0, 100),
+      response: resposta.slice(0, 100),
     });
 
     return NextResponse.json({
       resposta,
-      modulos_ativos: [...agentes, "contratos"],
       contexto_resumido: contextoCompleto
     });
   } catch (err: any) {
