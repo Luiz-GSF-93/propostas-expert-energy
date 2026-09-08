@@ -107,6 +107,35 @@ export default function ContratosPage() {
 
   useEffect(() => { fetchDados(); }, []);
 
+  const clientesCadastrados = useMemo(() => {
+    const map = new Map<string, { razao_social: string; cnpj?: string; email?: string; telefone?: string }>();
+    contratos.forEach((c) => {
+      if (c.clients?.razao_social) {
+        map.set(c.clients.razao_social, {
+          razao_social: c.clients.razao_social,
+          cnpj: c.clients.cnpj || "",
+          email: c.clients.email || "",
+          telefone: c.clients.telefone || ""
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [contratos]);
+
+  const handleSelecionarClienteExistente = (razao: string) => {
+    if (!razao) return;
+    const c = clientesCadastrados.find((x) => x.razao_social === razao);
+    if (c) {
+      setFormData((prev) => ({
+        ...prev,
+        razao_social: c.razao_social,
+        cnpj: c.cnpj || prev.cnpj,
+        email: c.email || prev.email,
+        telefone: c.telefone || prev.telefone
+      }));
+    }
+  };
+
   const handleNovoContrato = () => {
     setEditingContractId(null);
     setFormData({
@@ -328,7 +357,7 @@ export default function ContratosPage() {
             <span>📑</span> Gestão Estratégica de Contratos & Licenças
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Controle de receita recorrente (MRR/ARR), reajustes anuais, múltiplos pontos de telemedição e consultorias ACL.
+            Múltiplos contratos e escopos por cliente (1-N), controle de receita recorrente (MRR/ARR), telemedição e consultorias ACL.
           </p>
         </div>
         <button onClick={handleNovoContrato} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/50 transition cursor-pointer">
@@ -476,7 +505,7 @@ export default function ContratosPage() {
                         )}
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.status === "ativo" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : c.status === "cancelado" ? "bg-rose-950 text-rose-400 border border-rose-800" : "bg-amber-950 text-amber-400 border border-amber-800"}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.status === "ativo" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-rose-950 text-rose-400 border border-rose-800"}`}>
                           {c.status.toUpperCase()}
                         </span>
                       </td>
@@ -494,6 +523,7 @@ export default function ContratosPage() {
         )}
       </div>
 
+      {/* MODAL COMPLETO DE CADASTRO E EDIÇÃO DE CONTRATO */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full p-6 md:p-8 shadow-2xl my-8">
@@ -503,7 +533,7 @@ export default function ContratosPage() {
                   {editingContractId ? "✏️ Editar Contrato & Parâmetros" : "📑 Novo Contrato & Gestão de Licenças"}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Configure plano, pontos de telemetria, cobrança híbrida e índices de reajuste.
+                  Você pode vincular múltiplos contratos (Energy Link, ACL, Consultoria) para a mesma empresa.
                 </p>
               </div>
               <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -511,7 +541,21 @@ export default function ContratosPage() {
 
             <form onSubmit={handleSalvar} className="space-y-6">
               <div>
-                <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-3">1. Dados do Cliente</h4>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">1. Dados do Cliente</h4>
+                  {clientesCadastrados.length > 0 && !editingContractId && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400">Ou selecione empresa existente:</span>
+                      <select onChange={(e) => handleSelecionarClienteExistente(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-cyan-300 focus:outline-none">
+                        <option value="">-- Escolher Cliente --</option>
+                        {clientesCadastrados.map((cli) => (
+                          <option key={cli.razao_social} value={cli.razao_social}>{cli.razao_social}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">Razão Social *</label>
