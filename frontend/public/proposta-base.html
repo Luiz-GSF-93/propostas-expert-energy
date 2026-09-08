@@ -3715,13 +3715,16 @@
       }catch(e){}
     }
 
-    async function fetchKitsRegistry(){
+    async function fetchKitsRegistry(forceFresh = false){
       const token = getSupabaseAccessToken();
       let remoteKits = [];
       try{
-        const response = await fetch("/api/kits?status=active", {
+        const cacheBuster = "_t=" + Date.now();
+        const response = await fetch(`/api/kits?status=active&${cacheBuster}`, {
+          cache: "no-store",
           headers: {
             "Accept": "application/json",
+            "Cache-Control": "no-cache",
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
           }
         });
@@ -3736,56 +3739,23 @@
         console.warn("[Kits] Consultando cache local:", err);
       }
 
-      let localKits = [];
-      const local = localStorage.getItem("cached_commercial_kits");
-      if(local){
-        try { localKits = JSON.parse(local); } catch(e){ localKits = []; }
-      }
-
-      const kitMap = new Map();
-      (Array.isArray(localKits) ? localKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-      (Array.isArray(remoteKits) ? remoteKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-
-      if(kitMap.size > 0){
-        cachedKitsList = Array.from(kitMap.values());
+      if(remoteKits.length > 0){
+        cachedKitsList = remoteKits;
+        try { localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList)); } catch(e){}
       } else {
-        cachedKitsList = [
-          {
-            id: "kit-startup-gateway",
-            name: "Kit 1: Startup Assistido + Gateway de Telemetria",
-            description: "Instalação, parametrização de gateway e testes operacionais",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/gateway-telemetria-4g.pdf",
-            pdf_attachment_name: "Datasheet-Gateway-Telemetria-ExpertEnergy.pdf",
-            items: [
-              { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
-              { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
-              { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
-            ]
-          },
-          {
-            id: "kit-medicao-setorial",
-            name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
-            description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/smart-meter-multimedidor.pdf",
-            pdf_attachment_name: "Memorial-Tecnico-SmartMeter.pdf",
-            items: [
-              { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
-              { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
-              { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
-            ]
-          }
-        ];
+        let localKits = [];
+        try{
+          const local = localStorage.getItem("cached_commercial_kits");
+          if(local) localKits = JSON.parse(local);
+        }catch(e){ localKits = []; }
+        if(localKits.length > 0){
+          cachedKitsList = localKits.map(k => ({ ...k, items: normalizeKitItems(k.items) }));
+        }
       }
 
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
       populateKitsSelect();
       renderAdminKitsTable();
+      return cachedKitsList;
     }
 
     function populateKitsSelect(){
@@ -3910,220 +3880,154 @@
     };
 
     window.editKitById = function(kitId){
-      syncCachedKitsFromStorage();
-      const kit = cachedKitsList.find(k => String(k.id || k.name).trim() === String(kitId).trim());
-      if(!kit) return;
-      document.getElementById("editingKitId").value = kit.id || kit.name;
-      document.getElementById("adminKitModalTitle").textContent = "Editar Kit Comercial: " + kit.name;
-      document.getElementById("newKitName").value = kit.name || "";
-      document.getElementById("newKitDescription").value = kit.description || "";
-      
-      const pdfInfo = document.getElementById("currentKitPdfInfo");
-      const pdfLink = document.getElementById("currentKitPdfLink");
-      if(kit.pdf_attachment_url){
-        pdfInfo.style.display = "block";
-        pdfLink.href = kit.pdf_attachment_url;
-        pdfLink.textContent = kit.pdf_attachment_name || "Visualizar PDF Anexo Atual";
-      } else {
-        pdfInfo.style.display = "none";
-      }
+        const kit = findKitInCache ? findKitInCache(kitId) : cachedKitsList.find(k => (k.id || k.name) === kitId);
+        if(!kit) return;
+        document.getElementById("editingKitId").value = kit.id || kit.name;
+        document.getElementById("adminKitModalTitle").textContent = "Editar Kit Comercial: " + kit.name;
+        document.getElementById("newKitName").value = kit.name || "";
+        document.getElementById("newKitDescription").value = kit.description || "";
+        
+        const pdfInfo = document.getElementById("currentKitPdfInfo");
+        const pdfLink = document.getElementById("currentKitPdfLink");
+        const pdfFileInput = document.getElementById("newKitPdfFile");
+        if(pdfFileInput) pdfFileInput.value = "";
 
-      const kitRowsBody = document.getElementById("kitModalRowsBody");
-      if(kitRowsBody) kitRowsBody.innerHTML = "";
-      if(Array.isArray(kit.items) && kit.items.length > 0){
-        kit.items.forEach(it => addKitModalRow(it));
-      } else {
-        addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
-      }
-
-      const btnReset = document.getElementById("btnNewKitReset");
-      if(btnReset) btnReset.style.display = "inline-block";
-      window.switchAdminKitTab("form");
-    };
-
-    window.deleteKitById = async function(kitId){
-      if(!confirm("Tem certeza que deseja excluir permanentemente este kit comercial?")) return;
-      
-      const token = getSupabaseAccessToken();
-      try{
-        await fetch(`/api/kits/${encodeURIComponent(kitId)}`, {
-          method: "DELETE",
-          headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
-        });
-      }catch(e){}
-
-      cachedKitsList = cachedKitsList.filter(k => String(k.id || k.name).trim() !== String(kitId).trim());
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-      populateKitsSelect();
-      renderAdminKitsTable();
-      showToast("Kit excluído com sucesso!", "success");
-    };
-
-    window.saveNewKitDirect = async function(){
-      const editingId = document.getElementById("editingKitId")?.value?.trim();
-      const name = document.getElementById("newKitName")?.value?.trim();
-      const description = document.getElementById("newKitDescription")?.value?.trim();
-      if(!name){
-        alert("Por favor, informe o nome do Kit.");
-        return;
-      }
-
-      const items = [];
-      document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
-        const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
-        const desc = tr.querySelector(".km-desc")?.value?.trim();
-        const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
-        const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
-        const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
-        if(desc){
-          items.push({ category, description: desc, qty, unit, unitValue: val });
+        if(kit.pdf_attachment_url){
+          pdfInfo.style.display = "block";
+          pdfLink.href = kit.pdf_attachment_url;
+          pdfLink.textContent = "📄 " + (kit.pdf_attachment_name || "Visualizar Anexo PDF Atual");
+        } else {
+          pdfInfo.style.display = "none";
         }
-      });
 
-      if(items.length === 0){
-        alert("Adicione ao menos um item comercial com descrição preenchida no kit.");
-        return;
-      }
-
-      const existingKit = editingId ? cachedKitsList.find(k => String(k.id || k.name).trim() === editingId) : null;
-      let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
-      let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
-
-      const pdfFileInput = document.getElementById("newKitPdfFile");
-      if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
-        const file = pdfFileInput.files[0];
-        pdfAttachmentName = file.name;
-        const statusDiv = document.getElementById("pdfUploadStatus");
-        if(statusDiv) statusDiv.innerHTML = "⏳ Processando anexo PDF...";
-
-        try {
-          pdfAttachmentUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
-            reader.readAsDataURL(file);
-          });
-        } catch(err) {
-          console.warn("Erro ao converter PDF:", err);
+        const kitRowsBody = document.getElementById("kitModalRowsBody");
+        if(kitRowsBody) kitRowsBody.innerHTML = "";
+        const items = normalizeKitItems ? normalizeKitItems(kit.items) : (Array.isArray(kit.items) ? kit.items : []);
+        if(items.length > 0){
+          items.forEach(it => addKitModalRow(it));
+        } else {
+          addKitModalRow({ category: "Serviço", description: "", qty: "1,00", unit: "un", unitValue: "" });
         }
-      }
 
-      const kitObj = {
-        id: editingId || ("kit-" + Date.now()),
-        name,
-        description,
-        pdf_attachment_url: pdfAttachmentUrl,
-        pdf_attachment_name: pdfAttachmentName,
-        items,
-        updated_at: new Date().toISOString()
+        const btnReset = document.getElementById("btnNewKitReset");
+        if(btnReset) btnReset.style.display = "inline-block";
+        switchAdminKitTab("form");
       };
 
-      const token = getSupabaseAccessToken();
-      try{
-        const res = await fetch(editingId ? `/api/kits/${encodeURIComponent(editingId)}` : "/api/kits", {
-          method: editingId ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(kitObj)
-        });
-        if(res.ok){
-          const resData = await res.json();
-          if(resData?.data?.id) kitObj.id = resData.data.id;
-        }
-      }catch(e){
-        console.warn("[Kits] Erro ao salvar kit no backend:", e);
-      }
-
-      // Atualiza lista local
-      const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
-      const targetName = String(kitObj.name).trim().toLowerCase();
-      
-      const idx = cachedKitsList.findIndex(k => {
-        const kId = String(k.id || "").trim().toLowerCase();
-        const kName = String(k.name || "").trim().toLowerCase();
-        return (editingId && (kId === targetId || kName === targetId)) || (kName === targetName);
-      });
-
-      if(idx !== -1){
-        cachedKitsList[idx] = kitObj;
-      } else {
-        cachedKitsList.push(kitObj);
-      }
-
-      if(typeof proposalSelectedKits !== "undefined" && Array.isArray(proposalSelectedKits)){
-        const propIdx = proposalSelectedKits.findIndex(k => {
-          const kId = String(k.id || "").trim().toLowerCase();
-          const kName = String(k.name || "").trim().toLowerCase();
-          return kId === targetId || kName === targetName;
-        });
-        if(propIdx !== -1){
-          proposalSelectedKits[propIdx] = kitObj;
-          if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
-        }
-      }
-
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
-      populateKitsSelect();
-      renderAdminKitsTable();
-
-      alert(editingId ? "Kit atualizado com sucesso!" : "Novo kit cadastrado com sucesso!");
-      window.closeCreateKitModalDirect();
-    };
-
-    function normalizeKitItems(rawItems){
-      if(Array.isArray(rawItems)) return rawItems;
-      if(typeof rawItems === "string"){
-        try {
-          const parsed = JSON.parse(rawItems);
-          if(Array.isArray(parsed)) return parsed;
-        } catch(e){}
-      }
-      return [];
-    }
-
-    function findKitInCache(val){
-      if(!val) return null;
-      const cleanVal = String(val).trim().toLowerCase();
-      return cachedKitsList.find(k => {
-        const kId = String(k.id || "").trim().toLowerCase();
-        const kName = String(k.name || "").trim().toLowerCase();
-        return kId === cleanVal || kName === cleanVal || cleanVal.includes(kName) || kName.includes(cleanVal);
-      }) || null;
-    }
-
-    window.handleSelectKitChange = function(){
-      const selectKit = document.getElementById("selectKitId");
-      const previewCont = document.getElementById("kitPreviewContainer");
-      const previewList = document.getElementById("kitPreviewList");
-      if(!selectKit || !previewCont || !previewList) return;
-
-      const val = String(selectKit.value || "").trim();
-      if(!val){
-        previewCont.style.display = "none";
-        previewList.innerHTML = "";
-        return;
-      }
-
-      const kit = findKitInCache(val);
-      if(kit){
-        const items = normalizeKitItems(kit.items);
-        if(items.length > 0){
-          previewList.innerHTML = items.map(it => `
-            <li style="margin-bottom:5px; line-height:1.4;">
-              <span style="font-weight:bold; color:#123d56;">[${escapeHtml(it.category || "Item")}]</span> ${escapeHtml(it.description || "")} 
-              <span style="color:#55656f; font-size:11px;">(${it.qty || "1,00"} ${it.unit || "un"} x R$ ${it.unitValue || "0,00"})</span>
-            </li>
-          `).join("");
-          previewCont.style.display = "block";
+      window.saveNewKitDirect = async function(){
+        const editingId = document.getElementById("editingKitId")?.value?.trim();
+        const name = document.getElementById("newKitName")?.value?.trim();
+        const description = document.getElementById("newKitDescription")?.value?.trim();
+        if(!name){
+          alert("Por favor, informe o nome do Kit.");
           return;
         }
-      }
 
-      previewList.innerHTML = '<li style="color:#8b3030;">Nenhum item configurado neste kit.</li>';
-      previewCont.style.display = "block";
-    };
+        const items = [];
+        document.querySelectorAll("#kitModalRowsBody tr").forEach(tr => {
+          const category = tr.querySelector(".km-cat")?.value?.trim() || "Item";
+          const desc = tr.querySelector(".km-desc")?.value?.trim();
+          const qty = tr.querySelector(".km-qty")?.value?.trim() || "1,00";
+          const unit = tr.querySelector(".km-unit")?.value?.trim() || "un";
+          const val = tr.querySelector(".km-val")?.value?.trim() || "0,00";
+          if(desc){
+            items.push({ category, description: desc, qty, unit, unitValue: val });
+          }
+        });
+
+        if(items.length === 0){
+          alert("Adicione ao menos um item comercial com descrição preenchida no kit.");
+          return;
+        }
+
+        const existingKit = editingId ? (findKitInCache ? findKitInCache(editingId) : cachedKitsList.find(k => (k.id || k.name) === editingId)) : null;
+        let pdfAttachmentUrl = existingKit?.pdf_attachment_url || "";
+        let pdfAttachmentName = existingKit?.pdf_attachment_name || "";
+
+        const pdfFileInput = document.getElementById("newKitPdfFile");
+        if(pdfFileInput && pdfFileInput.files && pdfFileInput.files[0]){
+          const file = pdfFileInput.files[0];
+          pdfAttachmentName = file.name;
+          const statusDiv = document.getElementById("pdfUploadStatus");
+          if(statusDiv) statusDiv.innerHTML = "⏳ Processando anexo PDF...";
+
+          try {
+            pdfAttachmentUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error("Falha ao ler o arquivo PDF"));
+              reader.readAsDataURL(file);
+            });
+            if(statusDiv) statusDiv.innerHTML = "✅ Anexo PDF pronto para ser salvo com o kit!";
+          } catch(err) {
+            console.warn("Erro ao converter PDF:", err);
+          }
+        }
+
+        const kitObj = {
+          id: editingId || ("kit-" + Date.now()),
+          name,
+          description,
+          pdf_attachment_url: pdfAttachmentUrl,
+          pdf_attachment_name: pdfAttachmentName,
+          items,
+          status: "active",
+          updated_at: new Date().toISOString()
+        };
+
+        const token = getSupabaseAccessToken();
+        try{
+          const res = await fetch(editingId ? `/api/kits/${encodeURIComponent(editingId)}` : "/api/kits", {
+            method: editingId ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(kitObj)
+          });
+          if(res.ok){
+            const resData = await res.json();
+            if(resData?.data?.id) kitObj.id = resData.data.id;
+          }
+        }catch(e){
+          console.warn("[Kits] Erro ao salvar kit no backend:", e);
+        }
+
+        // Atualiza na memória local
+        const targetId = String(editingId || kitObj.id || kitObj.name).trim().toLowerCase();
+        const targetName = String(kitObj.name).trim().toLowerCase();
+        
+        const idx = cachedKitsList.findIndex(k => {
+          const kId = String(k.id || "").trim().toLowerCase();
+          const kName = String(k.name || "").trim().toLowerCase();
+          return (editingId && (kId === targetId || kName === targetId)) || (kName === targetName);
+        });
+
+        if(idx !== -1){
+          cachedKitsList[idx] = kitObj;
+        } else {
+          cachedKitsList.push(kitObj);
+        }
+
+        if(typeof proposalSelectedKits !== "undefined" && Array.isArray(proposalSelectedKits)){
+          const propIdx = proposalSelectedKits.findIndex(k => {
+            const kId = String(k.id || "").trim().toLowerCase();
+            const kName = String(k.name || "").trim().toLowerCase();
+            return kId === targetId || kName === targetName;
+          });
+          if(propIdx !== -1){
+            proposalSelectedKits[propIdx] = kitObj;
+            if(typeof updateAttachedKitsUI === "function") updateAttachedKitsUI();
+          }
+        }
+
+        try { localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList)); } catch(e){}
+        populateKitsSelect();
+        renderAdminKitsTable();
+
+        alert(editingId ? "Kit e Anexo Técnico atualizados com sucesso!" : "Novo kit e Anexo Técnico cadastrados com sucesso!");
+        closeCreateKitModalDirect();
+      };
 
     window.confirmAddKitDirect = function(){
       const selectKit = document.getElementById("selectKitId");
@@ -4242,6 +4146,7 @@
 
 
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
