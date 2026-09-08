@@ -208,13 +208,50 @@ export default function FinanceAISection() {
       <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {modulosOrdem.map((mk) => {
           const m = data?.modulos?.[mk];
+          const bruto = data?.bruto;
           const kpi = (() => {
-            if (!m) return null;
-            if (mk === "fluxo_caixa") return { valor: fmtBRL(m.totais?.saldo ?? 0), label: "Saldo do mês" };
-            if (mk === "dre") return { valor: fmtBRL(m.totais?.resultado ?? 0), label: `Margem EBITDA ${m.margens?.ebitda_pct != null ? m.margens.ebitda_pct.toFixed(1) + "%" : "n/d"}` };
-            if (mk === "custos") return { valor: fmtBRL(m.totais?.total ?? 0), label: `${m.totais?.count ?? 0} contrato(s)` };
-            if (mk === "planejamento") return { valor: fmtBRL(m.totais?.realizado_total ?? 0), label: `Metas ${fmtBRL(m.totais?.metas_total ?? 0)}` };
-            if (mk === "emprestimos") return { valor: fmtBRL(m.totais?.parcela_mes ?? 0), label: `Saldo devedor ${fmtBRL(m.totais?.saldo_total ?? 0)}` };
+            if (mk === "fluxo_caixa") {
+              const val = m?.totais?.saldo ?? bruto?.cashflow?.saldo ?? (Number(bruto?.cashflow?.receita || 0) - Number(bruto?.cashflow?.despesa || 0));
+              const rec = m?.totais?.receita ?? bruto?.cashflow?.receita ?? 0;
+              const desp = m?.totais?.despesa ?? bruto?.cashflow?.despesa ?? 0;
+              return { 
+                valor: fmtBRL(val), 
+                label: `Rec: ${fmtBRL(rec)} | Desp: ${fmtBRL(desp)}` 
+              };
+            }
+            if (mk === "dre") {
+              const res = m?.totais?.resultado ?? bruto?.dre?.resultado_liquido ?? bruto?.dre?.lucro_liquido ?? (Number(bruto?.dre?.receita_liquida || 0) - Number(bruto?.dre?.despesas_operacionais || 0));
+              const margem = m?.margens?.ebitda_pct ?? bruto?.dre?.margem_ebitda_pct ?? (bruto?.dre?.receita_liquida ? ((Number(bruto?.dre?.ebitda || 0) / Number(bruto?.dre?.receita_liquida)) * 100) : null);
+              return { 
+                valor: fmtBRL(res), 
+                label: `Margem EBITDA: ${margem != null ? Number(margem).toFixed(1) + "%" : "n/d"}` 
+              };
+            }
+            if (mk === "custos") {
+              const tot = m?.totais?.total ?? bruto?.costs?.total ?? (Number(bruto?.costs?.fixos || 0) + Number(bruto?.costs?.variaveis || 0));
+              const fixos = bruto?.costs?.fixos ?? 0;
+              const vars = bruto?.costs?.variaveis ?? 0;
+              return { 
+                valor: fmtBRL(tot), 
+                label: `Fixos: ${fmtBRL(fixos)} | Var: ${fmtBRL(vars)}` 
+              };
+            }
+            if (mk === "planejamento") {
+              const real = m?.totais?.realizado_total ?? bruto?.planning?.realizado_total ?? bruto?.planning?.total_realizado ?? 0;
+              const meta = m?.totais?.metas_total ?? bruto?.planning?.meta_total ?? bruto?.planning?.total_meta ?? 0;
+              return { 
+                valor: fmtBRL(real), 
+                label: `Meta Prevista: ${fmtBRL(meta)}` 
+              };
+            }
+            if (mk === "emprestimos") {
+              const parc = m?.totais?.parcela_mes ?? bruto?.loans?.parcela_mes ?? bruto?.loans?.total_parcelas_mes ?? bruto?.cashflow?.emprestimos_auto ?? 0;
+              const saldoDev = m?.totais?.saldo_total ?? bruto?.loans?.saldo_devedor_total ?? bruto?.loans?.saldo_total ?? 0;
+              return { 
+                valor: fmtBRL(parc), 
+                label: `Saldo Devedor: ${fmtBRL(saldoDev)}` 
+              };
+            }
             return null;
           })();
           const insights = insightsPorModulo[mk] || [];
@@ -247,20 +284,28 @@ export default function FinanceAISection() {
           </h3>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             {data.cenarios.map((c: any, idx: number) => {
-              const rotulo = c.cenario || `Cenário ${idx + 1}`;
+              const rotulo = c.nome || c.cenario || `CENÁRIO ${idx + 1}`;
               const cor = rotulo.toLowerCase().includes("otim") ? "#16a34a" :
                           rotulo.toLowerCase().includes("pessim") ? "#dc2626" : "#0284c7";
               const r = c.resultado || {};
+              const saldo = c.lucro ?? r.saldo_final ?? r.saldo ?? (Number(c.receita || 0) - Number(c.custos || 0));
+              const ebitda = c.lucro ?? r.ebitda ?? 0;
+              const deltaPct = c.delta_vs_atual_pct ?? r.delta_vs_atual_pct;
               return (
                 <div key={`cen-${idx}`} className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 shadow-sm"
                      style={{ borderLeft: `3px solid ${cor}` }}>
                   <div className="text-xs uppercase font-bold text-slate-300">{rotulo}</div>
                   <div className="mt-1 text-sm font-bold text-white">
-                    Saldo: {fmtBRL(r.saldo_final ?? r.saldo)}
+                    Saldo / Lucro: {fmtBRL(saldo)}
                   </div>
                   <div className="text-xs text-slate-400">
-                    EBITDA: {fmtBRL(r.ebitda)} {r.margem_ebitda_pct != null ? `(${r.margem_ebitda_pct.toFixed(1)}%)` : ""}
+                    Receita: {fmtBRL(c.receita || r.receita)} | Custos: {fmtBRL(c.custos || r.custos)}
                   </div>
+                  {deltaPct != null && (
+                    <div className="mt-1 text-[11px] font-semibold" style={{ color: deltaPct >= 0 ? "#16a34a" : "#dc2626" }}>
+                      Variação vs Atual: {deltaPct >= 0 ? "+" : ""}{deltaPct}%
+                    </div>
+                  )}
                   {c.premissas && <p className="mt-1 text-[11px] text-slate-400 italic leading-snug">{c.premissas}</p>}
                 </div>
               );
