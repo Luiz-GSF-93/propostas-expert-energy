@@ -3703,89 +3703,86 @@
       return false;
     }
 
+    function normalizeKitItems(raw) {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    }
+
     function syncCachedKitsFromStorage(){
       try{
-        const raw = localStorage.getItem("cached_commercial_kits") || sessionStorage.getItem("cached_commercial_kits");
+        const raw = localStorage.getItem("cached_commercial_kits");
         if(raw){
           const parsed = JSON.parse(raw);
           if(Array.isArray(parsed) && parsed.length > 0){
-            cachedKitsList = parsed;
+            // Não carrega se tiver apenas os mocks antigos
+            const isMockOnly = parsed.every(k => k.id === "kit-startup-gateway" || k.id === "kit-medicao-setorial");
+            if (!isMockOnly) {
+              cachedKitsList = parsed.map(k => ({
+                ...k,
+                items: normalizeKitItems(k.items)
+              }));
+              window.cachedKitsList = cachedKitsList;
+            }
           }
         }
       }catch(e){}
     }
 
     async function fetchKitsRegistry(){
-      const token = getSupabaseAccessToken();
       let remoteKits = [];
       try{
-        const response = await fetch("/api/kits?status=active", {
+        const token = typeof getSupabaseAccessToken === "function" ? getSupabaseAccessToken() : null;
+        const response = await fetch("/api/kits?status=active&_t=" + Date.now(), {
+          cache: "no-store",
           headers: {
             "Accept": "application/json",
+            "Cache-Control": "no-cache",
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
           }
         });
         if(response.ok){
           const result = await response.json();
-          remoteKits = (Array.isArray(result) ? result : (result?.data || result?.items || [])).map(k => ({
-            ...k,
-            items: normalizeKitItems(k.items)
-          }));
+          const rawList = Array.isArray(result) ? result : (result?.data || result?.items || []);
+          if (Array.isArray(rawList) && rawList.length > 0) {
+            remoteKits = rawList.map(k => ({
+              id: k.id || ("kit-" + Math.random().toString(36).substr(2, 9)),
+              name: k.name || "Kit sem nome",
+              description: k.description || "",
+              status: k.status || "active",
+              pdf_attachment_url: k.pdf_attachment_url || "",
+              pdf_attachment_name: k.pdf_attachment_name || "",
+              items: normalizeKitItems(k.items)
+            }));
+          }
         }
       }catch(err){
-        console.warn("[Kits] Consultando cache local:", err);
+        console.warn("[Kits] Erro ao buscar kits remotos:", err);
       }
 
-      let localKits = [];
-      const local = localStorage.getItem("cached_commercial_kits");
-      if(local){
-        try { localKits = JSON.parse(local); } catch(e){ localKits = []; }
-      }
-
-      const kitMap = new Map();
-      (Array.isArray(localKits) ? localKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-      (Array.isArray(remoteKits) ? remoteKits : []).forEach(k => {
-        const key = String(k.id || k.name || "").trim();
-        if(key) kitMap.set(key, k);
-      });
-
-      if(kitMap.size > 0){
-        cachedKitsList = Array.from(kitMap.values());
+      if (remoteKits.length > 0) {
+        // Se a API retornou os kits reais do Supabase, substitui 100% a lista e o cache
+        cachedKitsList = remoteKits;
+        window.cachedKitsList = cachedKitsList;
+        try {
+          localStorage.setItem("cached_commercial_kits", JSON.stringify(cachedKitsList));
+        } catch(e){}
       } else {
-        cachedKitsList = [
-          {
-            id: "kit-startup-gateway",
-            name: "Kit 1: Startup Assistido + Gateway de Telemetria",
-            description: "Instalação, parametrização de gateway e testes operacionais",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/gateway-telemetria-4g.pdf",
-            pdf_attachment_name: "Datasheet-Gateway-Telemetria-ExpertEnergy.pdf",
-            items: [
-              { category: "Serviço", description: "Visita técnica de engenharia para parametrização e startup de gateway digital", qty: "1,00", unit: "un", unitValue: "3.500,00" },
-              { category: "Equipamento", description: "Gateway de Telemetria Industrial Multi-Protocolo 4G", qty: "1,00", unit: "un", unitValue: "4.800,00" },
-              { category: "Serviço", description: "Comissionamento, integração de telemetria e validação de grandezas elétricas", qty: "1,00", unit: "lote", unitValue: "2.200,00" }
-            ]
-          },
-          {
-            id: "kit-medicao-setorial",
-            name: "Kit 2: Sistema de Medição Setorial de Energia (Smart Meter)",
-            description: "Medidores trifásicos, TCs bipartidos e integração de telemedição",
-            pdf_attachment_url: "https://propostas-expert-energy-api.onrender.com/assets/datasheets/smart-meter-multimedidor.pdf",
-            pdf_attachment_name: "Memorial-Tecnico-SmartMeter.pdf",
-            items: [
-              { category: "Equipamento", description: "Medidor de Energia Trifásico Classe 0,5% RS-485 / Modbus", qty: "3,00", unit: "un", unitValue: "1.950,00" },
-              { category: "Material", description: "Transformadores de Corrente (TC) bipartidos de alta precisão", qty: "9,00", unit: "un", unitValue: "220,00" },
-              { category: "Serviço", description: "Instalação física, cabeamento blindado e comissionamento", qty: "1,00", unit: "lote", unitValue: "4.500,00" }
-            ]
-          }
-        ];
+        // Fallback apenas de cache local se não for mock
+        syncCachedKitsFromStorage();
       }
 
-      safeSetLocalStorage("cached_commercial_kits", cachedKitsList);
       populateKitsSelect();
       renderAdminKitsTable();
+      return cachedKitsList;
     }
 
     function populateKitsSelect(){
@@ -3801,7 +3798,7 @@
     }
 
     function renderAdminKitsTable(){
-      syncCachedKitsFromStorage();
+      if(!cachedKitsList || cachedKitsList.length === 0) { syncCachedKitsFromStorage(); }
       const tbody = document.getElementById("adminKitsTableBody");
       const badge = document.getElementById("countKitsBadge");
       if(badge) badge.textContent = String(cachedKitsList.length);
