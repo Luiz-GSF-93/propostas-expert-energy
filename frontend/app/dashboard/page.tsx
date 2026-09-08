@@ -151,6 +151,14 @@ function IconChart() {
   );
 }
 
+function IconContract() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
 function IconFinance() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -494,6 +502,10 @@ export default function DashboardPage() {
 
   function handleOpenContactsRegistry() {
     window.location.href = "/contatos";
+  }
+
+  function handleOpenContractsManagement() {
+    window.location.href = "/contratos";
   }
 
   function handleOpenFinancialManagement() {
@@ -1442,6 +1454,13 @@ export default function DashboardPage() {
       : []),
     ...(isAdmin
       ? [
+          {
+            key: "contratos",
+            label: "Gestão de Contratos",
+            icon: <IconContract />,
+            onClick: handleOpenContractsManagement,
+            className: "bg-gradient-to-br from-indigo-700 to-blue-800 hover:from-indigo-600 hover:to-blue-700",
+          },
           {
             key: "financeiro",
             label: "Gestão Financeira",
